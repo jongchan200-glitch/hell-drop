@@ -32,12 +32,33 @@
   const TYPE_BY_ZONE=[['ROOT','ROCK','TIMBER','ROOT'],['ROCK','CRYSTAL','ROCK','CRYSTAL'],['LAVA','ROCK','LAVA'],['PRESSURE','LAVA','CRYSTAL'],['METAL','PRESSURE','METAL'],['CORE','METAL','CRYSTAL'],['CHAIN','CORE','CHAIN']];
   let W=400,H=800,clock=0,lastFrame=0,s=makeGame(),best=readRecord(),heldKeys=new Set();
   const images={};
+  const capeRig={core:null,left:null,right:null,ready:false};
   // Only the original V4.2 reference family; no generated replacement faces.
   const IMAGE_FILES={falling:'hero_fall',braking:'hero_cape',jumpLeft:'hero_jump_left',jumpRight:'hero_jump_right',intro:'hero_intro',dizzy:'hero_hit'};
   Object.entries(IMAGE_FILES).forEach(([key,file])=>{
-    const img=new Image(); img.onload=()=>{images[key]=img;if(key==='intro')showPortrait(img);};
+    const img=new Image(); img.onload=()=>{images[key]=img;if(key==='braking')prepareCapeRig(img);if(key==='intro')showPortrait(img);};
     img.onerror=()=>{}; img.src='assets/'+file+'.webp';
   });
+  function prepareCapeRig(original){
+    // Create an articulated 3-layer puppet directly from the single original
+    // 512px hero_cape image. No generated poses, no new character images.
+    // Source pixels are never redrawn and the central face/body stays unchanged.
+    const width=original.naturalWidth,height=original.naturalHeight;
+    const masks={
+      left:[[0,151],[45,148],[86,156],[125,171],[154,191],[184,222],[210,255],[208,311],[188,350],[132,364],[64,349],[15,317]],
+      right:[[511,139],[468,143],[420,158],[384,180],[359,206],[328,224],[303,255],[306,310],[333,350],[395,361],[462,335],[506,302]]
+    };
+    const shape=(context,points)=>{context.beginPath();context.moveTo(points[0][0],points[0][1]);
+      for(let i=1;i<points.length;i++)context.lineTo(points[i][0],points[i][1]);context.closePath();};
+    const canvas=()=>{const c=document.createElement('canvas');c.width=width;c.height=height;return c;};
+    const core=canvas(),cc=core.getContext('2d');cc.drawImage(original,0,0);
+    for(const name of ['left','right']){
+      const piece=canvas(),pc=piece.getContext('2d');pc.save();shape(pc,masks[name]);pc.clip();
+      pc.drawImage(original,0,0);pc.restore();capeRig[name]=piece;
+      cc.globalCompositeOperation='destination-out';cc.fillStyle='#fff';shape(cc,masks[name]);cc.fill();
+    }
+    cc.globalCompositeOperation='source-over';capeRig.core=core;capeRig.ready=true;
+  }
   function showPortrait(img){ if(!img?.naturalWidth)return;const p=$('portrait');p.querySelector('img')?.remove();
     const node=new Image();node.src=img.src;node.alt='';p.append(node);$('portraitFallback').classList.add('hidden'); }
   function readRecord(){try{return Number(localStorage.getItem('hell_fall_web_v42_best')||0)||0;}catch(_){return 0;}}
@@ -49,7 +70,7 @@
   function smooth(t){t=Math.max(0,Math.min(1,t));return t*t*(3-2*t);}
   function posX(g,p=g.hopProgress){return wallX(g.hopFrom)*(1-smooth(p))+wallX(g.wall)*smooth(p);}
   function rngSeed(seed){let x=(seed>>>0)||1;return()=>{x=(x+0x6D2B79F5)>>>0;let t=x;t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return ((t^(t>>>14))>>>0)/4294967296;};}
-  function makeGame(stage='READY'){return{seed:(Math.random()*1000000000)|0,stage,depth:0,speed:T.START,timeLeft:T.LIMIT,elapsed:0,introElapsed:0,boost:0,fold:0,lastTapAt:-1,tapPulse:0,tapCount:0,tapIntervals:[],cadence:0,wall:'L',hopFrom:'L',hopProgress:1,obstacles:[],timeGates:[],coinGates:[],runCoins:0,nextObstacle:370,nextTimeGate:1400,nextCoin:210,coinNumber:0,obstacleNumber:0,gateNumber:0,gateFlash:0,zoneFlash:0,lastBonus:0,failure:''};}
+  function makeGame(stage='READY'){return{seed:(Math.random()*1000000000)|0,stage,depth:0,speed:T.START,timeLeft:T.LIMIT,elapsed:0,introElapsed:0,boost:0,fold:0,lastTapAt:-1,tapPulse:0,tapCount:0,tapIntervals:[],cadence:0,wall:'L',hopFrom:'L',hopProgress:1,hopVisual:1,obstacles:[],timeGates:[],coinGates:[],runCoins:0,nextObstacle:370,nextTimeGate:1400,nextCoin:210,coinNumber:0,obstacleNumber:0,gateNumber:0,gateFlash:0,zoneFlash:0,lastBonus:0,failure:''};}
   function start(intro){s=makeGame(intro?'INTRO':'PLAYING');lastReward={distance:0,foundCoins:0,bonus:0,levelUps:0,level:sys.profile.level,newBalance:sys.profile.coins};heldKeys.clear();sys.audio.unlock();sys.audio.playZone(intro?-1:0);sys.audio.effect('start');updateUI();}
   function finish(msg){if(s.stage==='OVER')return;s.stage='OVER';s.failure=msg;if(s.depth>best){best=s.depth;saveRecord(best);}lastReward=sys.awardRun(s.depth,s.runCoins);sys.audio.effect(lastReward.levelUps>0?'level':'hit');sys.audio.playZone(-1);heldKeys.clear();boostBtn.classList.remove('active');updateUI();}
   function tapAccelerate(){
@@ -66,7 +87,7 @@
     sys.audio.effect('tap');
     boostBtn.classList.remove('tap-burst');void boostBtn.offsetWidth;boostBtn.classList.add('tap-burst');
   }
-  function jump(){if(s.stage!=='PLAYING'||s.hopProgress<1)return;s.hopFrom=s.wall;s.wall=otherWall(s.wall);s.hopProgress=0;jumpBtn.classList.add('active');sys.audio.effect('jump');}
+  function jump(){if(s.stage!=='PLAYING'||s.hopProgress<1)return;s.hopFrom=s.wall;s.wall=otherWall(s.wall);s.hopProgress=0;s.hopVisual=0;jumpBtn.classList.add('active');sys.audio.effect('jump');}
   function advance(dt){
     const old=s.depth,tier=tierOf(old);
     // Recent inter-tap rhythm controls the gauge. Slow tapping holds a low
@@ -86,6 +107,8 @@
     const nextSpeed=s.speed+(target-s.speed)*(1-Math.exp(-response*dt));
     const fold=s.fold+(boost-s.fold)*(1-Math.exp(-(boost>s.fold?9.5:3.9)*dt));
     const depth=old+(s.speed+nextSpeed)*.5*dt,hop=Math.min(1,s.hopProgress+dt/T.HOP_SECONDS);
+    // Visual kick has ~24 rendered frames at 60 FPS; physics collision timing stays unchanged.
+    const hopVisual=Math.min(1,s.hopVisual+dt/.40);
     let remain=Math.max(0,s.timeLeft-dt),glow=Math.max(0,s.gateFlash-dt),bonus=s.lastBonus;
     const zoneFlash=zoneOf(depth)>zoneOf(old)?2.1:Math.max(0,s.zoneFlash-dt);
     s.timeGates=s.timeGates.filter(g=>g.depth>=old-80);
@@ -137,7 +160,7 @@
       const p=Math.min(1,s.hopProgress+dt*along/T.HOP_SECONDS);
       if(Math.abs(posX(s,p)-wallX(o.wall))<.18){crashed=true;break;}
     }
-    Object.assign(s,{boost,fold,cadence:rate,tapPulse:Math.max(0,s.tapPulse-dt*3.3),speed:nextSpeed,depth,timeLeft:remain,elapsed:s.elapsed+dt,hopProgress:hop,gateFlash:glow,zoneFlash,lastBonus:bonus});
+    Object.assign(s,{boost,fold,cadence:rate,tapPulse:Math.max(0,s.tapPulse-dt*3.3),speed:nextSpeed,depth,timeLeft:remain,elapsed:s.elapsed+dt,hopProgress:hop,hopVisual,gateFlash:glow,zoneFlash,lastBonus:bonus});
     if(hop>=1)jumpBtn.classList.remove('active');
     if(crashed)finish('지층 장애물에 부딪혔어!');else if(remain<=0)finish('시간이 다 됐어!');
   }
@@ -221,7 +244,7 @@
     for(const coin of s.coinGates){if(coin.collected)continue;const y=charY+(coin.depth-s.depth)*ppm;if(y>-80*u&&y<H+90*u)drawCoin(coin,y,u);}
     const arc=Math.sin(Math.min(1,s.hopProgress)*Math.PI)*15*u;
     drawSpeedWind(posX(s)*W,charY-arc,u);
-    drawHero(posX(s)*W,charY-arc,u,s.fold,s.elapsed,s.speed,s.stage==='OVER',s.hopProgress<1,s.hopFrom);
+    drawHero(posX(s)*W,charY-arc,u,s.fold,s.elapsed,s.speed,s.stage==='OVER',s.hopVisual<1,s.hopFrom);
     if(s.speed>670){ctx.fillStyle='#ff4f6115';ctx.fillRect(0,0,W,H);}
     if(s.gateFlash>.72){ctx.fillStyle='#6be1cd20';ctx.fillRect(0,0,W,H);}
   }
@@ -301,29 +324,96 @@
     ctx.drawImage(img,x-width/2,y-height*.52,width,height);
     ctx.restore();return true;
   }
-  function drawLockedCapeSprite(img,x,y,u,fold,tilt){
-    // The V4.2 original hero_cape is the ONE authoritative gameplay face.
-    // Only the cape side-wings compress; the center crop (face/body) never changes.
-    if(!img?.naturalWidth)return false;
-    const iw=img.naturalWidth,ih=img.naturalHeight;
-    const nominal=165*u,scale=nominal/iw,midL=iw*.28,midR=iw*.72;
-    const side=(midL*scale)*(1-.62*fold),center=(midR-midL)*scale,total=center+side*2;
-    const h=nominal*(1+.09*fold);
-    ctx.save();ctx.translate(x,y);ctx.rotate(tilt);ctx.translate(-total/2,-h*.52);
-    ctx.drawImage(img,0,0,midL,ih,0,0,side,h);
-    ctx.drawImage(img,midL,0,midR-midL,ih,side,0,center,h);
-    ctx.drawImage(img,midR,0,iw-midR,ih,side+center,0,side,h);
+  // V0.5 rig: THREE pixel-exact layers cut from the ORIGINAL hero_cape artwork.
+  // The face, hair and body live in the stationary core. Each arm and cape wing
+  // has a separate shoulder pivot and moves continuously on every animation frame.
+  // Unlike swapping generated poses, no interpolated frame can change the face.
+  function drawLockedCapeSprite(img,x,y,u,fold,tilt,elapsed=0,opacity=1){
+    const {core,left,right}=capeRig;
+    if(!capeRig.ready){
+      return paintSprite(img,x,y,165*u,165*u,opacity);
+    }
+    // This deliberately reveals a clear fold even at moderate thumb-tapping
+    // speeds; it DOES NOT change the actual falling physics/boost.
+    const raw=Math.max(0,Math.min(1,fold));
+    const amt=Math.pow(raw,.57);
+    const size=170*u, scale=size/512;
+    const flap=Math.sin(elapsed*(6+raw*6))*.021*(1-raw);
+    ctx.save();ctx.translate(x,y);ctx.rotate(tilt);ctx.globalAlpha*=opacity;
+    ctx.translate(-size/2,-size*.52);ctx.scale(scale,scale);
+    const wings=[{img:left,px:181,py:230,sign:-1},{img:right,px:331,py:228,sign:1}];
+    for(const wing of wings){
+      ctx.save();ctx.translate(wing.px,wing.py);
+      ctx.rotate(wing.sign*(amt*1.64+flap));
+      ctx.scale(1-.32*amt,1-.1*amt);
+      ctx.translate(-wing.px,-wing.py);
+      ctx.drawImage(wing.img,0,0,512,512);ctx.restore();
+    }
+    // Always paint the ORIGINAL central face/body on top of the flexible cloak.
+    ctx.drawImage(core,0,0,512,512);
     ctx.restore();return true;
+  }
+  function drawKickSprite(img,x,y,u,rot,scale,opacity){
+    if(!img?.naturalWidth||opacity<=0)return false;
+    const size=151*u*scale;
+    ctx.save();ctx.translate(x,y);ctx.rotate(rot);ctx.globalAlpha*=opacity;
+    ctx.drawImage(img,-size/2,-size*.52,size,size);
+    ctx.restore();return true;
+  }
+  function drawWallKickImpact(u,side,phase,y){
+    // Small kick contact sparks originate at the ACTUAL wall, not the character.
+    const strength=Math.max(0,1-phase/.34);
+    if(strength<=0)return;
+    const wx=wallX(s.hopFrom)*W;
+    const sy=y+19*u;
+    ctx.save();ctx.globalAlpha*=strength;
+    const direction=side;
+    ctx.strokeStyle='#ffdf9a';ctx.lineWidth=2.7*u;ctx.lineCap='round';
+    for(let i=0;i<5;i++){
+      const a=(-.8+i*.38)*direction;
+      const v=(20+i%3*7)*(1-phase*.45)*u;
+      ctx.beginPath();ctx.moveTo(wx,sy);
+      ctx.lineTo(wx+Math.cos(a)*v*direction,sy+Math.sin(a)*v);ctx.stroke();
+    }
+    ctx.strokeStyle='#ffe7ae';ctx.lineWidth=1.7*u;
+    ctx.beginPath();ctx.arc(wx,sy,(14+phase*45)*u,-Math.PI*.64,Math.PI*.68);ctx.stroke();
+    ctx.restore();
   }
   function drawHero(x,y,u,fold,elapsed,speed,dead,hopping,hopFrom){
     y+=Math.sin(elapsed*(10+fold*10))*(1.2+fold*1.5)*u;
     if(dead){
       if(!paintSprite(images.dizzy,x,y,139*u,139*u,1))drawFallbackHero(x,y,u,false,elapsed,true,false,hopFrom);
     }else if(hopping){
+      const p=Math.min(1,Math.max(0,s.hopVisual));
+      const side=hopFrom==='L'?1:-1;
       const key=hopFrom==='L'?'jumpLeft':'jumpRight';
-      if(!paintSprite(images[key],x,y,142*u,142*u,1))drawLockedCapeSprite(images.braking,x,y,u,fold,.11*(hopFrom==='L'?1:-1));
+      const kick=images[key];
+      // 0..15%: foot drives against wall; 15..65%: torso turns in flight;
+      // 65..100%: cape catches the air and the feet settle at the other wall.
+      const impact=Math.max(0,1-p/.20);
+      const travel=smooth(Math.min(1,Math.max(0,(p-.10)/.62)));
+      const landing=smooth(Math.min(1,Math.max(0,(p-.65)/.35)));
+      const tilt=side*((-.20+travel*.46)*(1-landing));
+      const squash=1+impact*.09-Math.sin(Math.PI*p)*.045;
+      drawWallKickImpact(u,side,p,y);
+      if(p>.11&&p<.69){
+        // Lightweight motion echo; frames are continuous (not discrete images).
+        const echo=.13*Math.sin(Math.PI*Math.min(1,(p-.11)/.58));
+        drawKickSprite(kick,x-side*(15+speed*.014)*u,y+4*u,u,tilt-.09*side,squash*.94,echo);
+      }
+      const faceOut=1-landing;
+      if(!drawKickSprite(kick,x,y,u,tilt,squash,faceOut))
+        drawLockedCapeSprite(images.braking,x,y,u,fold,tilt,elapsed,faceOut);
+      if(landing>0)drawLockedCapeSprite(images.braking,x,y,u,fold,side*.08*(1-landing),elapsed,landing);
+      if(p>.65){
+        const t=(p-.65)/.35;
+        // Brief wall contact glow on arrival (not a new gameplay obstacle).
+        ctx.save();ctx.globalAlpha*=(1-t)*.33;
+        ctx.strokeStyle='#b9ecff';ctx.lineWidth=2*u;
+        ctx.beginPath();ctx.arc(x,y+12*u,(24+19*t)*u,0,2*Math.PI);ctx.stroke();ctx.restore();
+      }
     }else{
-      if(!drawLockedCapeSprite(images.braking,x,y,u,fold,Math.sin(elapsed*5)*fold*.02)){
+      if(!drawLockedCapeSprite(images.braking,x,y,u,fold,Math.sin(elapsed*5)*fold*.02,elapsed)){
         drawFallbackHero(x,y,u,fold<.55,elapsed,false,false,hopFrom);
       }
       if(s.tapPulse>.04){
@@ -332,7 +422,6 @@
         ctx.strokeStyle='#ffbf7d';ctx.lineWidth=2.5*u;ctx.stroke();ctx.restore();
       }
     }
-    if(hopping&&!dead){const trail=hopFrom==='L'?-1:1;line([[x+37*u*trail,y+12*u],[x+71*u*trail,y+24*u]],'#ffffff77',3*u);}
   }
   // A single parametric vortex: fixed small tip, rising top, continuous curves.
   // It is a UI gauge and never appears around or behind the hero.
@@ -433,5 +522,5 @@
   document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('drawer').classList.contains('hidden'))$('drawer').classList.add('hidden')});
   fit();updateUI();requestAnimationFrame(frame);
   // Expose read-only simple debug state for local test harnesses, never gameplay rewards.
-  window.HellFallTest={snapshot:()=>({stage:s.stage,depth:s.depth,speed:s.speed,timeLeft:s.timeLeft,wall:s.wall,hopProgress:s.hopProgress,boost:s.boost,fold:s.fold,cadence:s.cadence,tapCount:s.tapCount,runCoins:s.runCoins,hazards:s.obstacles.length,gates:s.timeGates.length,profile:{...sys.profile}}),start:()=>start(false)};
+  window.HellFallTest={snapshot:()=>({stage:s.stage,depth:s.depth,speed:s.speed,timeLeft:s.timeLeft,wall:s.wall,hopProgress:s.hopProgress,hopVisual:s.hopVisual,boost:s.boost,fold:s.fold,cadence:s.cadence,tapCount:s.tapCount,runCoins:s.runCoins,hazards:s.obstacles.length,gates:s.timeGates.length,profile:{...sys.profile}}),start:()=>start(false)};
 })();
