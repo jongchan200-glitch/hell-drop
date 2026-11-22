@@ -53,7 +53,7 @@
     actor.addEventListener('keydown',e=>{
       if(disposed||!active||!isHome())return;
       if(['ArrowLeft','ArrowRight','Enter',' '].includes(e.key)){
-        e.preventDefault();show(side==='front'?'back':'front');
+        e.preventDefault();e.stopPropagation();show(side==='front'?'back':'front');
       }else if(e.key==='Home'){
         e.preventDefault();show('front');
       }
