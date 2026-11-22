@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b101b"><title>지옥 낙하 · 개발용 AI 시뮬레이터</title>
+<link rel="stylesheet" href="simulator.css">
+</head>
+<body>
+<div class="topbar"><div class="brand"><div class="brand-icon">🌪</div><div><strong>지옥 낙하 <em>SIM LAB</em></strong><small>AI 자동 플레이 · 난이도 검증실</small></div></div><a class="game-link" href="./">↗ 실제 게임</a></div>
+<div class="layout">
+ <section class="stage-panel" aria-label="낙하 화면">
+  <div class="stage-head"><span class="live-dot"></span><span id="status">자동 플레이 준비 완료</span><span id="zoneTitle">01 / 07 · 지하 동굴</span></div>
+  <div class="stage"><canvas id="scene" width="400" height="668" aria-label="시뮬레이터의 자동 플레이 낙하 애니메이션"></canvas>
+   <div class="stage-overlay-top"><div><small>낙하 깊이 · 심도</small><strong id="depth">0</strong></div><div class="stage-stat-time"><small>남은 시간</small><strong id="remain">10.0<small>초</small></strong></div></div>
+   <div class="stage-overlay-bottom"><span id="speed">속도 124 m/s</span><span>🪙 <b id="coinCount">0</b></span><span>⏱ <b id="clockCount">0</b></span></div>
+   <div id="endBanner" class="end-banner hidden"><strong id="endTitle">분석 완료</strong><span id="endText"></span></div>
+  </div>
+  <p class="stage-note">실제 캐릭터 원본 이미지 사용 · 가상 AI가 점프·시계·장애물을 판정합니다.</p>
+ </section>
+ <section class="control-panel" aria-label="시뮬레이션 설정과 재생">
+  <div class="headline"><div class="eyebrow">DEV ONLY · EXPERIMENTAL</div><h1>8분 클리어 검증실</h1><p>최고 가속으로도 <b>8분 이상</b>. 일반 플레이어는 대부분 중간 탈락하도록 설계한 <b>실험용 밸런스</b>를 눈으로 확인하세요.</p></div>
+  <div class="setting-card"><label for="scenario">AI 플레이 스타일</label><select id="scenario"><option value="perfect">🏆 최고속도 · 장비 사용</option><option value="noGear">⚡ 최고속도 · 장비 없음</option><option value="medium">⌛ 초반 중속 · 시계 2개 놓침</option><option value="normal">🎮 일반 플레이어</option></select><p id="scenarioDesc">초당 6회 연타 · 시계 전부 노림 · 마지막 구역에 보조장비 적용</p></div>
+  <div class="stats-grid"><div class="stat"><small>플레이 시간</small><strong id="played">00:00 <small>/ 08:02</small></strong></div><div class="stat"><small>AI 연타 속도</small><strong id="taps">6.0 <small>회/초</small></strong></div><div class="stat"><small>놓친 시계</small><strong id="missed">0</strong></div><div class="stat"><small>자동 플레이 결과</small><strong id="result" class="result">검증 준비</strong></div></div>
+  <div class="play-card"><div class="play-card-header"><b>플레이 기록 재생</b><span id="clock">00:00 / 08:02</span></div>
+    <input id="timeline" type="range" min="0" max="100" step="1" value="0" aria-label="재생 위치를 앞뒤로 이동">
+    <div class="play-actions"><button id="jumpStart" title="처음으로">⏮</button><button id="back" title="10초 뒤로">↶ <span>10초</span></button><button id="toggle" class="play-main">▶ 재생</button><button id="forward" title="10초 앞으로"><span>10초</span> ↷</button><select id="rate" aria-label="재생 속도"><option value="1">1×</option><option value="2">2×</option><option value="4" selected>4×</option><option value="8">8×</option><option value="16">16×</option></select></div>
+    <div class="seek-note">바를 좌우로 드래그하면 원하는 장면을 즉시 볼 수 있어요.</div>
+  </div>
+  <div class="zone-card"><div class="section-title"><b>구역 바로가기</b><small>선택 시 해당 구역부터 재생</small></div><div class="zone-grid" id="zones"></div></div>
+  <div class="balance-card"><div class="section-title"><b>실험용 난이도 진행표</b><small>실전 게임과 분리</small></div><div id="zoneProgress" class="zone-progress"></div><p id="event" class="event">AI가 다음 시계와 장애물을 보고 행동합니다.</p></div>
+  <div class="disclaimer"><b>중요</b> · 이 화면은 다음 버전의 난이도를 검토하기 위한 개발용 예측 모델입니다. 현재 V0.4 게임에 아직 적용되지 않았으며, 실제 사람의 조작 가능성을 보증하지 않습니다. 시뮬레이터 결과와 플레이 기록은 실제 코인·레벨에 반영되지 않습니다.</div>
+ </section>
+</div>
+<script src="sim-core.js"></script><script src="simulator.js"></script>
+</body></html>
