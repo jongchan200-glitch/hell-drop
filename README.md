@@ -1,24 +1,22 @@
-# 지옥 낙하 · HELL FALL WEB 0.3
+# 지옥 낙하 (Hell Fall) · WEB 0.4
 
-## Current live build
-- Public site: https://jongchan200-glitch.github.io/hell-drop/
-- v0.3 — rhythmic fold-to-dive gameplay implemented; original V4.2 art and profile kept.
-- Left button `망토 접기`: each distinct tap folds the cape and adds speed. Holding is one tap only. The cape unfolds and the fall slows naturally when tapping ends.
-- Right button `벽 점프`: swap walls once on press, with the original short hop.
-- Visuals: original V4.2 glide/jump/intro/impact sprites, plus two newly generated consistent illustrated phases `assets/hero_fold.webp`, `assets/hero_dive.webp`. Animated crossfade by cape fold, enhanced speed airflow, and a fold meter.
-- Maintains 10-second clock, depth zones, collision and time gates, highscores under the original `hell_fall_web_v42_best` localStorage key.
-- This is a web test build, not user-approved final release. Actual Galaxy gameplay balancing remains to be evaluated.
+**고정 테스트 주소:** https://jongchan200-glitch.github.io/hell-drop/
 
-## Controls
-Touch: rapid TAP left to accelerate; tap right to switch walls. Stop tapping to slow. Hold does **not** continuously accelerate.
-Keyboard: tap Space repeatedly to accelerate, Right Arrow to jump, Enter to start/retry.
+이 웹앱은 기존 V4.2 캐릭터와 7구역 게임을 유지하면서, 연타 가속·독립 토네이도 게이지·누적 성장·단일 코인 구조·지층 음악 슬롯을 구현한 테스트 버전입니다. 주소나 설치파일을 매번 바꿀 필요 없이 동일한 `main` 브랜치가 GitHub Pages로 배포됩니다.
 
-## Source and backups
-- Main branch remains the **single** live source, with GitHub Pages `main / (root)` published.
-- Earlier v0.2 full source is preserved in Git history. The V4.2 native backup is preserved in Google Drive.
-- All artworks in this repository have been authorized for publication by their creator.
-- Gameplay music, advertisement/coins, online rankings, and Android packaging remain unimplemented.
+## 실제 구현
+- 왼쪽 탭의 **연타 속도**에 따라 가속 게이지(토네이도) 상승; 2~3회만 누르면 최고속도에 도달하는 구버전 방식은 제거. 약 9회/초에 가까운 연타를 유지할 때 최고 단계가 가능하도록 초기 설정. 속도를 늦추거나 멈추면 빠르게 감소. 길게 누르기는 한 번만 인정.
+- 토네이도는 오른쪽 벽 옆 별도 HUD에 캔버스로 그려, 작은 고정 밑동에서 위로 자연스럽게 성장하고 축소. 캐릭터는 속도에 따라 바람 연출과 망토만 변형.
+- 캐릭터 얼굴/몸통은 `hero_cape.webp` 단일 원본 프레임 고정. **동작별 그림 교체에 따른 얼굴 변화를 제거.** 점프/피격은 기존 V4.2 원본 리소스를 그대로 사용. `CHARACTER_LOCK.md` 참조.
+- 기존 일곱 구역(각 5,000m), 지층별 배경/장애물, 시계 아이템(+시간), 벽 점프, TIME 10초, 최고기록 유지.
+- 게임 중 **코인 수집**과 게임 오버 후 **누적 낙하 거리 / 레벨업 보너스** 적용. `localStorage`에 코인·총 낙하거리·레벨·완료 판수·설정 저장. 플레이하다 게임 오버 시 한 번만 정산.
+- 홈에서 캐릭터·상점·코인 획득소·기록·설정 화면 열기. 상점/아이템 인벤토리/단일 코인 지갑 API의 기본 구조 마련. 아이템 판매 목록·가격·효과는 아직 미확정이며 **실제 구매할 수 있는 아이템은 없음**.
+- 게임오버에 **재도전 / 홈 / 보상형 광고 자리** 제공. 광고 서비스가 연동되지 않았으므로 시청 버튼은 비활성화, 미시청 코인 지급 없음. 현금결제 기능도 아직 없음.
+- 간단한 기본 효과음과 SFX/BGM 음량 별도 설정. 7개 지층과 홈에 음악 슬롯 8개 확보(`audio/README.md`). 음악 파일이 아직 없으므로 BGM은 현재 재생되지 않음. 실제 음원 연결 시 2.2초 교차 페이드 구현.
 
-## Testing
-- Node syntax check and Chromium mobile-viewport automated tests: startup, sprite loading, idle speed, one tap, press-and-hold exactly one event, fast multi-tap speed boost, relaxation, wall jump, no JS errors.
-- Real-world phone timing, difficulty and user approval remain pending.
+## 주의·추후 작업
+- 난이도·속도·보상량은 실기기에서 추가 검증이 필요한 테스트 수치입니다. 아이템, 광고, 결제, 코인 경제 전체의 가격과 마지막 7구역 클리어 규칙은 향후 확정합니다.
+- 유료 결제나 광고 보상이 실제로 적용되면 현재의 브라우저 로컬 저장은 조작 가능하므로 **서버 검증·계정 동기화·광고 서버 측 콜백** 등 보안 설계가 필요합니다.
+- 새 버전 배포 전 테스트, 이전 버전 Git commit 보존, 사용자 승인 시 일괄 변경 원칙을 지킵니다.
+
+**실행:** `index.html`을 HTTPS 정적 서버에서 실행합니다. `index.html`, `style.css`, `systems.js`, `game.js`, `assets/`를 함께 배포합니다. Playwright 테스트는 `tests` 폴더에서 로컬 시뮬레이션으로 실행.

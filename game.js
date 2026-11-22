@@ -1,19 +1,22 @@
 'use strict';
 /*
- * HELL FALL WEB 0.3 — V4.2 art restored and new rapid-tap mantle gameplay.
- * Default: cape spread and slow descent. Each distinct touch folds cape and accelerates.
- * Holding is exactly ONE touch; releasing the input makes the cape reopen smoothly.
- * Switch walls with the right button. All user progress remains in the existing key.
+ * HELL FALL WEB 0.4 — storm cadence, canonical art, local progression,
+ * future commerce / reward / zone music infrastructure. V4.2 game world preserved.
+ * All character states use the curated original V4.2 sprite set only.
+ * Original high-score key stays unchanged for continuity.
  */
 (function () {
   const $ = (id) => document.getElementById(id);
   const canvas = $('scene'), ctx = canvas.getContext('2d', { alpha: false });
   const gameRoot = $('game'), hud = $('hud'), controls = $('controls'), overlay = $('overlay');
   const boostBtn = $('boost'), jumpBtn = $('jump'), toast = $('toast');
+  const sys=window.HellSystems; if(!sys)throw new Error('Missing systems.js');
+  const vortexCanvas=$('vortexCanvas'), vortexCtx=vortexCanvas.getContext('2d');
+  let lastReward={distance:0,foundCoins:0,bonus:0,levelUps:0,level:sys.profile.level,newBalance:sys.profile.coins};
   const T = {
     LIMIT:10, MAX:1560, START:124, GLIDE:112, GLIDE_TIER:8, BOOST_SPEED:510,
-    BOOST_TIER:35, TAP_GAIN:.235, BOOST_DECAY:.45, BOOST_GRACE:.14,
-    HOP_SECONDS:.155, ZONE_LENGTH:5000
+    BOOST_TIER:35, MIN_TAP_INTERVAL:.055, TAP_RATE_BASE:1.0, TAP_RATE_RANGE:8,
+    RISE_RESPONSE:1.2, FALL_RESPONSE:4.8, HOP_SECONDS:.155, ZONE_LENGTH:5000
   };
   const ZONES=['지표면 · 지하 동굴','깊은 암반층','마그마 지대','맨틀 지대','외핵','내핵','지옥의 심연'];
   const PALETTES=[
@@ -29,7 +32,8 @@
   const TYPE_BY_ZONE=[['ROOT','ROCK','TIMBER','ROOT'],['ROCK','CRYSTAL','ROCK','CRYSTAL'],['LAVA','ROCK','LAVA'],['PRESSURE','LAVA','CRYSTAL'],['METAL','PRESSURE','METAL'],['CORE','METAL','CRYSTAL'],['CHAIN','CORE','CHAIN']];
   let W=400,H=800,clock=0,lastFrame=0,s=makeGame(),best=readRecord(),heldKeys=new Set();
   const images={};
-  const IMAGE_FILES={falling:'hero_fall',braking:'hero_cape',fold:'hero_fold',dive:'hero_dive',jumpLeft:'hero_jump_left',jumpRight:'hero_jump_right',intro:'hero_intro',dizzy:'hero_hit'};
+  // Only the original V4.2 reference family; no generated replacement faces.
+  const IMAGE_FILES={falling:'hero_fall',braking:'hero_cape',jumpLeft:'hero_jump_left',jumpRight:'hero_jump_right',intro:'hero_intro',dizzy:'hero_hit'};
   Object.entries(IMAGE_FILES).forEach(([key,file])=>{
     const img=new Image(); img.onload=()=>{images[key]=img;if(key==='intro')showPortrait(img);};
     img.onerror=()=>{}; img.src='assets/'+file+'.webp';
@@ -45,24 +49,38 @@
   function smooth(t){t=Math.max(0,Math.min(1,t));return t*t*(3-2*t);}
   function posX(g,p=g.hopProgress){return wallX(g.hopFrom)*(1-smooth(p))+wallX(g.wall)*smooth(p);}
   function rngSeed(seed){let x=(seed>>>0)||1;return()=>{x=(x+0x6D2B79F5)>>>0;let t=x;t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return ((t^(t>>>14))>>>0)/4294967296;};}
-  function makeGame(stage='READY'){return{seed:(Math.random()*1000000000)|0,stage,depth:0,speed:T.START,timeLeft:T.LIMIT,elapsed:0,introElapsed:0,boost:0,fold:0,lastTapAt:-1,tapPulse:0,tapCount:0,wall:'L',hopFrom:'L',hopProgress:1,obstacles:[],timeGates:[],nextObstacle:370,nextTimeGate:1400,obstacleNumber:0,gateNumber:0,gateFlash:0,zoneFlash:0,lastBonus:0,failure:''};}
-  function start(intro){s=makeGame(intro?'INTRO':'PLAYING');heldKeys.clear();updateUI();}
-  function finish(msg){s.stage='OVER';s.failure=msg;if(s.depth>best){best=s.depth;saveRecord(best);}heldKeys.clear();boostBtn.classList.remove('active');updateUI();}
+  function makeGame(stage='READY'){return{seed:(Math.random()*1000000000)|0,stage,depth:0,speed:T.START,timeLeft:T.LIMIT,elapsed:0,introElapsed:0,boost:0,fold:0,lastTapAt:-1,tapPulse:0,tapCount:0,tapIntervals:[],cadence:0,wall:'L',hopFrom:'L',hopProgress:1,obstacles:[],timeGates:[],coinGates:[],runCoins:0,nextObstacle:370,nextTimeGate:1400,nextCoin:210,coinNumber:0,obstacleNumber:0,gateNumber:0,gateFlash:0,zoneFlash:0,lastBonus:0,failure:''};}
+  function start(intro){s=makeGame(intro?'INTRO':'PLAYING');lastReward={distance:0,foundCoins:0,bonus:0,levelUps:0,level:sys.profile.level,newBalance:sys.profile.coins};heldKeys.clear();sys.audio.unlock();sys.audio.playZone(intro?-1:0);sys.audio.effect('start');updateUI();}
+  function finish(msg){if(s.stage==='OVER')return;s.stage='OVER';s.failure=msg;if(s.depth>best){best=s.depth;saveRecord(best);}lastReward=sys.awardRun(s.depth,s.runCoins);sys.audio.effect(lastReward.levelUps>0?'level':'hit');sys.audio.playZone(-1);heldKeys.clear();boostBtn.classList.remove('active');updateUI();}
   function tapAccelerate(){
     if(s.stage!=='PLAYING')return;
-    // A pointerdown or non-repeat keydown is one tap; holding is never repeated.
-    s.boost=Math.min(1,s.boost+T.TAP_GAIN);
+    // Cadence—not lifetime tap count—controls the continuously moving storm.
+    // A press-and-hold counts once; no repeated pointerdown while held.
+    const gap=s.lastTapAt<0?-1:s.elapsed-s.lastTapAt;
+    if(gap>=0&&gap<T.MIN_TAP_INTERVAL)return;
+    if(gap>.07&&gap<1.55){s.tapIntervals.push(gap);if(s.tapIntervals.length>5)s.tapIntervals.shift()}
+    else if(gap>=1.55)s.tapIntervals.length=0;
     s.lastTapAt=s.elapsed;
     s.tapPulse=1;
     s.tapCount++;
+    sys.audio.effect('tap');
     boostBtn.classList.remove('tap-burst');void boostBtn.offsetWidth;boostBtn.classList.add('tap-burst');
   }
-  function jump(){if(s.stage!=='PLAYING'||s.hopProgress<1)return;s.hopFrom=s.wall;s.wall=otherWall(s.wall);s.hopProgress=0;jumpBtn.classList.add('active');}
+  function jump(){if(s.stage!=='PLAYING'||s.hopProgress<1)return;s.hopFrom=s.wall;s.wall=otherWall(s.wall);s.hopProgress=0;jumpBtn.classList.add('active');sys.audio.effect('jump');}
   function advance(dt){
     const old=s.depth,tier=tierOf(old);
-    // During silence the red cape automatically opens, increasing drag.
-    // A quick rhythm of distinct taps is required to sustain high speed.
-    const boost=Math.max(0,s.boost-((s.elapsed-s.lastTapAt)>=T.BOOST_GRACE?T.BOOST_DECAY*dt:0));
+    // Recent inter-tap rhythm controls the gauge. Slow tapping holds a low
+    // storm, and successive higher levels demand increasingly faster rhythms.
+    // 2 taps never fill the gauge; ~9 taps/second is required near the peak.
+    const interval=s.tapIntervals.length?s.tapIntervals.reduce((a,b)=>a+b,0)/s.tapIntervals.length:0;
+    const rawRate=interval>0?Math.min(13,1/interval):0;
+    const silence=s.lastTapAt<0?999:s.elapsed-s.lastTapAt;
+    const anticipation=interval>0?Math.min(.30,interval*.84):.12;
+    const rate=rawRate*Math.exp(-Math.max(0,silence-anticipation)*5.2);
+    const demand=Math.max(0,Math.min(1,(rate-T.TAP_RATE_BASE)/T.TAP_RATE_RANGE));
+    const targetBoost=Math.pow(demand,1.55);
+    const responseBoost=targetBoost>s.boost?T.RISE_RESPONSE:T.FALL_RESPONSE;
+    const boost=s.boost+(targetBoost-s.boost)*(1-Math.exp(-responseBoost*dt));
     const target=Math.min(T.MAX,T.GLIDE+tier*T.GLIDE_TIER+(T.BOOST_SPEED+tier*T.BOOST_TIER)*Math.pow(boost,1.15));
     const response=target>s.speed?4.25:2.6;
     const nextSpeed=s.speed+(target-s.speed)*(1-Math.exp(-response*dt));
@@ -83,8 +101,24 @@
       const along=Math.max(0,Math.min(1,(g.depth-old)/traveled));
       const p=Math.min(1,s.hopProgress+dt*along/T.HOP_SECONDS);
       if(Math.abs(posX(s,p)-wallX(g.wall))<=.12){
-        bonus=3.25-Math.min(.65,tier*.04);remain=Math.min(T.LIMIT,remain+bonus);glow=1.2;g.collected=true;
+        bonus=3.25-Math.min(.65,tier*.04);remain=Math.min(T.LIMIT,remain+bonus);glow=1.2;g.collected=true;sys.audio.effect('clock');
       }
+    }
+    // Optional in-run collectible coins. Earned coins commit once on game-over.
+    s.coinGates=s.coinGates.filter(c=>c.depth>=old-100);
+    while(s.nextCoin<depth+2350){
+      const r=rngSeed(s.seed+52617+s.coinNumber*383);const wall=s.coinNumber===0?'L':(r()<.5?'L':'R');
+      if(!s.timeGates.some(g=>Math.abs(g.depth-s.nextCoin)<125) &&
+         !s.obstacles.some(o=>Math.abs(o.depth-s.nextCoin)<105)){
+        s.coinGates.push({depth:s.nextCoin,wall,value:s.coinNumber===0?2:1+Math.floor(r()*3)});
+      }
+      s.nextCoin+=790+r()*470;s.coinNumber++;
+    }
+    for(const coin of s.coinGates){
+      if(coin.collected||!(old<coin.depth&&depth>=coin.depth))continue;
+      const at=Math.max(0,Math.min(1,(coin.depth-old)/traveled));
+      const p=Math.min(1,s.hopProgress+dt*at/T.HOP_SECONDS);
+      if(Math.abs(posX(s,p)-wallX(coin.wall))<.14){coin.collected=true;s.runCoins+=coin.value;sys.audio.effect('coin')}
     }
     s.obstacles=s.obstacles.filter(o=>o.depth>=old-90);
     while(s.nextObstacle<depth+2600){
@@ -103,19 +137,26 @@
       const p=Math.min(1,s.hopProgress+dt*along/T.HOP_SECONDS);
       if(Math.abs(posX(s,p)-wallX(o.wall))<.18){crashed=true;break;}
     }
-    Object.assign(s,{boost,fold,tapPulse:Math.max(0,s.tapPulse-dt*3.3),speed:nextSpeed,depth,timeLeft:remain,elapsed:s.elapsed+dt,hopProgress:hop,gateFlash:glow,zoneFlash,lastBonus:bonus});
+    Object.assign(s,{boost,fold,cadence:rate,tapPulse:Math.max(0,s.tapPulse-dt*3.3),speed:nextSpeed,depth,timeLeft:remain,elapsed:s.elapsed+dt,hopProgress:hop,gateFlash:glow,zoneFlash,lastBonus:bonus});
     if(hop>=1)jumpBtn.classList.remove('active');
     if(crashed)finish('지층 장애물에 부딪혔어!');else if(remain<=0)finish('시간이 다 됐어!');
   }
   function updateUI(){
     const playing=s.stage==='PLAYING',over=s.stage==='OVER';
     hud.classList.toggle('hidden',!playing&&!over);controls.classList.toggle('hidden',!playing);overlay.classList.toggle('hidden',s.stage!=='READY'&&!over);
+    $('vortexGauge').classList.toggle('hidden',!playing);$('runBadge').classList.toggle('hidden',!playing);$('runCoinLabel').textContent=String(s.runCoins);
+    $('walletStrip').classList.toggle('hidden',over);$('homeNav').classList.toggle('hidden',over);$('backHome').classList.toggle('hidden',!over);
+    const progress=sys.levelProgress(sys.profile.totalDepth);
+    $('homeLevel').textContent=sys.profile.level;$('homeCoin').textContent=sys.profile.coins;
+    $('homeProgressText').textContent='누적 낙하 '+sys.profile.totalDepth.toLocaleString('ko-KR')+'m';
+    $('homeNextText').textContent='다음 레벨까지 '+(progress.next-progress.within).toLocaleString('ko-KR')+'m';
+    $('homeProgressFill').style.width=(progress.ratio*100).toFixed(1)+'%';
     if(s.stage==='READY'||over){
       $('menuTitle').textContent=over?'추락 종료!':'지옥 낙하';
       $('menuTitle').style.color=over?COLORS.red:COLORS.gold;
       $('menuSubtitle').classList.toggle('hidden',over);$('portrait').classList.toggle('hidden',over);$('readyCopy').classList.toggle('hidden',over);$('overCopy').classList.toggle('hidden',!over);
       $('start').textContent=over?'다시 도전하기':'지옥으로 뛰어들기!';
-      if(over){$('failure').textContent=s.failure;$('finalDepth').innerHTML=Math.floor(s.depth)+' <small>m</small>';$('finalBest').textContent='최고 기록 '+Math.floor(best)+' m';}
+      if(over){$('failure').textContent=s.failure;$('finalDepth').innerHTML=Math.floor(s.depth)+' <small>m</small>';$('finalBest').textContent='최고 기록 '+Math.floor(best)+' m';$('earnedCoin').textContent='+'+lastReward.foundCoins;$('earnedLevel').textContent='+'+lastReward.bonus;$('totalTravel').textContent='누적 '+sys.profile.totalDepth.toLocaleString('ko-KR')+'m · Lv.'+sys.profile.level;}
     }
     $('zoneLabel').textContent=(zoneOf(s.depth)+1)+'구역 · '+ZONES[zoneOf(s.depth)];
     $('depthLabel').innerHTML=Math.floor(s.depth)+' <small>m</small>';
@@ -124,7 +165,8 @@
     $('timeCaption').classList.toggle('alert',s.timeLeft<3);
     $('speedLabel').textContent='속도 '+Math.floor(s.speed)+' m/s · 난이도 '+(tierOf(s.depth)+1);
     $('timeFill').style.width=(100*s.timeLeft/T.LIMIT)+'%';$('timeFill').classList.toggle('danger',s.timeLeft<3);
-    boostBtn.classList.toggle('active',s.tapPulse>.6);$('boostHint').textContent=s.boost>.8?'⚡ 초고속 하강!':s.boost>.38?'망토 접는 중 · 가속!':'연타할수록 빨라져요';$('boostFill').style.width=(s.fold*100).toFixed(1)+'%';
+    boostBtn.classList.toggle('active',s.tapPulse>.6);$('boostHint').textContent=s.boost>.84?'🌪️ 폭풍 유지!':s.boost>.39?'더 빠르게!':'빠르게 연타!';
+    $('vortexState').textContent=s.boost>.93?'폭풍 최고!':s.boost>.65?'격렬한 돌개':s.boost>.26?'회오리 성장':s.boost>.045?'바람 발생':'바람 대기';
     toast.classList.add('hidden');toast.classList.remove('mint');
     if(playing && s.zoneFlash>0){toast.textContent=ZONES[zoneOf(s.depth)]+' 진입!';toast.style.opacity=String(Math.min(1,s.zoneFlash/1.5));toast.classList.remove('hidden');}
     if(playing && s.gateFlash>0){toast.textContent='⏱ +'+s.lastBonus.toFixed(1)+'초!';toast.style.opacity=String(Math.min(1,s.gateFlash/1.1));toast.classList.remove('hidden');toast.classList.add('mint');}
@@ -176,6 +218,7 @@
     }
     for(const g of s.timeGates){if(g.collected)continue;const y=charY+(g.depth-s.depth)*ppm;if(y>-85*u&&y<H+100*u)drawGate(g,y,u);}
     for(const o of s.obstacles){const y=charY+(o.depth-s.depth)*ppm;if(y>-100*u&&y<H+105*u)drawHazard(o,y,u);}
+    for(const coin of s.coinGates){if(coin.collected)continue;const y=charY+(coin.depth-s.depth)*ppm;if(y>-80*u&&y<H+90*u)drawCoin(coin,y,u);}
     const arc=Math.sin(Math.min(1,s.hopProgress)*Math.PI)*15*u;
     drawSpeedWind(posX(s)*W,charY-arc,u);
     drawHero(posX(s)*W,charY-arc,u,s.fold,s.elapsed,s.speed,s.stage==='OVER',s.hopProgress<1,s.hopFrom);
@@ -186,6 +229,12 @@
     disk(x,y,43*u,`rgba(107,225,205,${.10+p*.08})`);disk(x,y,27*u,'#6be1cd35');disk(x,y,20*u,'#1a4d4b');
     ctx.beginPath();ctx.arc(x,y,18*u,0,Math.PI*2);ctx.strokeStyle=COLORS.mint;ctx.lineWidth=4*u;ctx.stroke();
     line([[x,y-10*u],[x,y],[x+9*u,y+5*u]],COLORS.cream,3.3*u);disk(x,y,3*u,COLORS.cream);txt('+TIME',x,y-37*u,11*u,COLORS.mint);
+  }
+  function drawCoin(coin,y,u){
+    const x=wallX(coin.wall)*W;
+    ctx.save();ctx.translate(x,y);ctx.rotate(clock*1.8);
+    disk(0,0,27*u,'#ffd46d28');disk(0,0,17*u,'#ffd46d');disk(0,0,13*u,'#a75b20');
+    disk(0,0,9*u,'#ffe6a6');txt('✦',0,5*u,15*u,'#b67827');ctx.restore();
   }
   function drawHazard(o,y,u){const dir=o.wall==='L'?1:-1,base=W*(dir>0?.206:.794),z=zoneOf(o.depth),p=PALETTES[z];
     const X=v=>base+dir*v*u,Y=v=>y+v*u;
@@ -252,35 +301,84 @@
     ctx.drawImage(img,x-width/2,y-height*.52,width,height);
     ctx.restore();return true;
   }
+  function drawLockedCapeSprite(img,x,y,u,fold,tilt){
+    // The V4.2 original hero_cape is the ONE authoritative gameplay face.
+    // Only the cape side-wings compress; the center crop (face/body) never changes.
+    if(!img?.naturalWidth)return false;
+    const iw=img.naturalWidth,ih=img.naturalHeight;
+    const nominal=165*u,scale=nominal/iw,midL=iw*.28,midR=iw*.72;
+    const side=(midL*scale)*(1-.62*fold),center=(midR-midL)*scale,total=center+side*2;
+    const h=nominal*(1+.09*fold);
+    ctx.save();ctx.translate(x,y);ctx.rotate(tilt);ctx.translate(-total/2,-h*.52);
+    ctx.drawImage(img,0,0,midL,ih,0,0,side,h);
+    ctx.drawImage(img,midL,0,midR-midL,ih,side,0,center,h);
+    ctx.drawImage(img,midR,0,iw-midR,ih,side+center,0,side,h);
+    ctx.restore();return true;
+  }
   function drawHero(x,y,u,fold,elapsed,speed,dead,hopping,hopFrom){
-    y+=Math.sin(elapsed*(10+fold*12))*(1.2+fold*1.6)*u;
+    y+=Math.sin(elapsed*(10+fold*10))*(1.2+fold*1.5)*u;
     if(dead){
       if(!paintSprite(images.dizzy,x,y,139*u,139*u,1))drawFallbackHero(x,y,u,false,elapsed,true,false,hopFrom);
     }else if(hopping){
       const key=hopFrom==='L'?'jumpLeft':'jumpRight';
-      if(!paintSprite(images[key],x,y,142*u,142*u,1))drawFallbackHero(x,y,u,false,elapsed,false,true,hopFrom);
+      if(!paintSprite(images[key],x,y,142*u,142*u,1))drawLockedCapeSprite(images.braking,x,y,u,fold,.11*(hopFrom==='L'?1:-1));
     }else{
-      // Cross-fade between full spread, half-fold, and full dive; no abrupt swapping.
-      const a=Math.max(0,Math.min(1,fold));
-      const glide=images.braking,half=images.fold,fast=images.dive;
-      if(a<=.52){
-        const t=a/.52;
-        const good=paintSprite(glide,x,y,169*u,169*u,1-t);
-        paintSprite(half,x,y,134*u,191*u,t);
-        if(!good && !half?.naturalWidth)drawFallbackHero(x,y,u,true,elapsed,false,false,hopFrom);
-      }else{
-        const t=(a-.52)/.48;
-        paintSprite(half,x,y,134*u,191*u,1-t);
-        if(!paintSprite(fast,x,y,114*u,208*u,t) && !half?.naturalWidth)drawFallbackHero(x,y,u,false,elapsed,false,false,hopFrom);
+      if(!drawLockedCapeSprite(images.braking,x,y,u,fold,Math.sin(elapsed*5)*fold*.02)){
+        drawFallbackHero(x,y,u,fold<.55,elapsed,false,false,hopFrom);
       }
-      // Momentary fabric snap/swoosh follows every new tap.
-      if(s.tapPulse>.03){
-        ctx.save();ctx.globalAlpha=s.tapPulse*.36;
+      if(s.tapPulse>.04){
+        ctx.save();ctx.globalAlpha=s.tapPulse*.26;
         ctx.beginPath();ctx.arc(x,y-25*u,(85+20*(1-s.tapPulse))*u,Math.PI*.23,Math.PI*.82);
         ctx.strokeStyle='#ffbf7d';ctx.lineWidth=2.5*u;ctx.stroke();ctx.restore();
       }
     }
     if(hopping&&!dead){const trail=hopFrom==='L'?-1:1;line([[x+37*u*trail,y+12*u],[x+71*u*trail,y+24*u]],'#ffffff77',3*u);}
+  }
+  // A single parametric vortex: fixed small tip, rising top, continuous curves.
+  // It is a UI gauge and never appears around or behind the hero.
+  function drawVortex(){
+    if(s.stage!=='PLAYING')return;
+    const dw=vortexCanvas.clientWidth,dh=vortexCanvas.clientHeight;
+    if(!dw||!dh)return;
+    const dpr=Math.min(window.devicePixelRatio||1,2.25);
+    if(vortexCanvas.width!==Math.round(dw*dpr)||vortexCanvas.height!==Math.round(dh*dpr)){
+      vortexCanvas.width=Math.round(dw*dpr);vortexCanvas.height=Math.round(dh*dpr);
+    }
+    vortexCtx.setTransform(dpr,0,0,dpr,0,0);vortexCtx.clearRect(0,0,dw,dh);
+    const c=vortexCtx,g=s.boost,bottom=dh-10,baseR=4.8,baseY=bottom-4;
+    const height=7+(dh-25)*Math.pow(g,.83);
+    const spin=clock*(2.5+g*21),topY=baseY-height;
+    c.save();
+    // Bottom cyclone seed stays fixed across every speed and frame.
+    c.beginPath();c.ellipse(dw/2,baseY,baseR,2.6,0,0,Math.PI*2);
+    c.strokeStyle='#84cfe4';c.lineWidth=2.2;c.stroke();
+    c.beginPath();c.ellipse(dw/2,baseY+2,8,2.5,0,0,Math.PI*2);
+    c.strokeStyle='#69d9d9aa';c.lineWidth=1.3;c.stroke();
+    const count=Math.max(1,Math.ceil(2+g*17));
+    for(let i=0;i<count;i++){
+      const t=(i+.35)/count,y=baseY-height*t;
+      const r=baseR+(Math.max(0,t)*Math.pow(g,.64))*dw*.41;
+      const phase=spin-i*.48;
+      const ox=Math.sin(phase)*r*.22;
+      c.beginPath();c.ellipse(dw/2+ox,y,Math.max(3,r),Math.max(2.3,2.4+r*.22),Math.sin(phase)*.19,0,Math.PI*2);
+      const a=Math.min(.95,.40+g*.45+t*.08);
+      c.strokeStyle=g>.76?`rgba(255,${Math.floor(187-(g-.76)*290)},126,${a})`:g>.34?`rgba(254,${Math.floor(205-g*48)},125,${a})`:`rgba(109,225,229,${a})`;
+      c.lineWidth=1.6+g*1.5;c.stroke();
+      // Bright front spiral: continuously sweeps through every ring.
+      c.beginPath();c.arc(dw/2+ox,y,Math.max(3,r),phase,phase+Math.PI*.83);
+      c.strokeStyle='rgba(250,252,246,'+(.33+g*.56)+')';c.lineWidth=1.2+g*1.6;c.stroke();
+    }
+    if(g>.17){
+      const trails=Math.floor(2+g*6);
+      for(let i=0;i<trails;i++){
+        const t=(i+.6)/(trails+1),y=baseY-height*t,sign=i%2?-1:1;
+        const r=baseR+(dw*.38)*g*t;
+        c.beginPath();c.moveTo(dw/2+sign*r,y+7);c.quadraticCurveTo(dw/2+sign*(r+10),y-12,dw/2+sign*(r+4),y-20);
+        c.strokeStyle=g>.74?'#ffb97299':'#a3e8ec88';c.lineWidth=1+g;c.stroke();
+      }
+    }
+    if(g>.8){c.beginPath();c.ellipse(dw/2,topY,baseR+dw*.35*g,6+g*3,0,0,Math.PI*2);c.strokeStyle='#ffb780ab';c.lineWidth=2.3;c.stroke();}
+    c.restore();
   }
   function introScene(seconds){
     const u=W/400,groundY=H*.58;ctx.fillStyle=gradient(0,0,0,H,[[0,'#241937'],[.58,'#693c4d'],[1,'#a55e50']]);ctx.fillRect(0,0,W,H);
@@ -296,11 +394,14 @@
   }
   function draw(){if(s.stage==='READY')introScene(-1);else if(s.stage==='INTRO'){if(s.introElapsed<1.62)introScene(s.introElapsed);else{const depth=s.depth;s.depth=(s.introElapsed-1.62)*120;cave();s.depth=depth;}}else cave();}
   function frame(now){let dt=lastFrame?Math.min(.05,Math.max(0,(now-lastFrame)/1000)):0;lastFrame=now;clock+=dt;
-    if(s.stage==='INTRO'){s.introElapsed+=dt;if(s.introElapsed>=2.45){s=makeGame('PLAYING');}}
+    if(s.stage==='INTRO'){s.introElapsed+=dt;if(s.introElapsed>=2.45){s=makeGame('PLAYING');sys.audio.playZone(0);}}
     else if(s.stage==='PLAYING')advance(dt);
-    draw();updateUI();requestAnimationFrame(frame);
+    if(s.stage==='PLAYING')sys.audio.playZone(zoneOf(s.depth));
+    sys.audio.fade(dt);
+    draw();drawVortex();updateUI();requestAnimationFrame(frame);
   }
   $('start').addEventListener('click',()=>start(s.stage==='READY'));
+  $('backHome').addEventListener('click',()=>{s=makeGame('READY');sys.audio.playZone(-1);updateUI();});
   boostBtn.addEventListener('pointerdown',e=>{if(s.stage!=='PLAYING')return;e.preventDefault();tapAccelerate();});
   // No pointerup/hold listener: holding does not generate additional acceleration.
   jumpBtn.addEventListener('pointerdown',e=>{if(s.stage!=='PLAYING')return;e.preventDefault();jump();jumpBtn.setPointerCapture(e.pointerId);});
@@ -309,9 +410,28 @@
     if(e.code==='Space')tapAccelerate();else if(e.code==='ArrowRight')jump();else if(e.code==='Enter'&&(s.stage==='READY'||s.stage==='OVER'))start(s.stage==='READY');}});
   document.addEventListener('keyup',e=>heldKeys.delete(e.code));
   window.addEventListener('blur',()=>{heldKeys.clear();});
-  document.addEventListener('visibilitychange',()=>{if(document.hidden){heldKeys.clear();lastFrame=0;}});
+  document.addEventListener('visibilitychange',()=>{sys.audio.visibility(document.hidden);if(document.hidden){heldKeys.clear();lastFrame=0;}});
   window.addEventListener('resize',fit);if(window.ResizeObserver)new ResizeObserver(fit).observe(gameRoot);
+  function esc(t){return String(t).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));}
+  const titles={character:'캐릭터',shop:'상점',earn:'코인 획득소',records:'내 기록',settings:'설정'};
+  function openPanel(type){if(!titles[type])return;sys.audio.unlock();$('drawerTitle').textContent=titles[type];
+    const prof=sys.profile,prog=sys.levelProgress(prof.totalDepth),fmt=n=>Number(n).toLocaleString('ko-KR');
+    let html='';
+    if(type==='character')html=`<div class="banner">👧 <b>우서이</b> · 캐릭터 외형 고정<br>Lv.${prof.level} · 다음 레벨까지 ${fmt(prog.next-prog.within)}m</div><div class="info-card"><strong>선택한 캐릭터</strong>기존 V4.2 원본 캐릭터를 사용 중이야.<br><span class="muted">새 표정·동작은 동일한 얼굴 설정을 기준으로만 제작할 예정이야.</span></div><div class="info-card"><strong>꾸미기 · 캐릭터 교체</strong><span class="muted">캐릭터/꾸미기 상점 슬롯 준비 중</span></div>`;
+    else if(type==='shop')html=`<div class="banner">🪙 내 코인 <b>${fmt(prof.coins)}</b></div><div class="info-card"><strong>가속 장비</strong>돌개 강화·속도 유지 등 장비 슬롯<br><span class="muted">효과·가격·판매 여부는 아직 결정 전이야.</span></div><div class="info-card"><strong>꾸미기 · 새 캐릭터</strong>구매한 물품은 보관함에 저장하는 구조가 준비돼 있어.<br><span class="muted">아직 실제 판매 아이템은 없어.</span></div>`;
+    else if(type==='earn')html=`<div class="banner">🪙 현재 코인 <b>${fmt(prof.coins)}</b><br><small>게임 중 수집 · 누적 레벨업 · 선택형 광고 · 코인 구매</small></div><div class="info-card"><strong>무료로 얻기</strong>게임에서 코인 줍기 / 누적 낙하로 레벨업</div><div class="info-card"><strong>▶ 보상형 광고</strong><span class="muted">광고 서비스 연동 전이어서 현재 시청·코인 지급을 사용할 수 없어.</span></div><div class="info-card"><strong>코인 구매</strong><span class="muted">현금 결제는 추후 설계·심사 후 연결할 예정이야. 현재 결제 기능 없음.</span></div>`;
+    else if(type==='records')html=`<div class="banner">🏆 최고 낙하 <b>${fmt(Math.floor(best))}m</b></div><div class="info-card"><strong>누적 낙하</strong>${fmt(prof.totalDepth)}m · Lv.${prof.level}<br><span class="muted">다음 레벨까지 ${fmt(prog.next-prog.within)}m</span></div><div class="info-card"><strong>플레이 횟수</strong>${fmt(prof.runs)}판 완료</div><div class="info-card"><strong>획득 코인 기록</strong>게임에서 수집 ${fmt(prof.worldCoins)}코인 · 현재 보유 ${fmt(prof.coins)}코인</div>`;
+    else if(type==='settings')html=`<div class="info-card"><strong>🔊 음악 음량</strong><label for="musicRange">BGM <span id="musicValue">${Math.round(prof.settings.music*100)}%</span><input id="musicRange" type="range" min="0" max="100" value="${Math.round(prof.settings.music*100)}"></label><label for="sfxRange">효과음 <span id="sfxValue">${Math.round(prof.settings.sfx*100)}%</span><input id="sfxRange" type="range" min="0" max="100" value="${Math.round(prof.settings.sfx*100)}"></label></div><div class="info-card"><strong>🎵 지층별 클래식 편곡 슬롯</strong><span class="muted">준비된 음악이 연결되면 지층 변경 시 약 2초 동안 자연스럽게 교체돼.</span><ul class="slot-list">${sys.MUSIC_SLOTS.map((v,i)=>`<li><span>${i===0?'홈':i+'구역'} · ${esc(v.name)}</span><span>${v.ready?'음원 연결':'음원 대기'}</span></li>`).join('')}</ul></div>`;
+    $('drawerBody').innerHTML=html;$('drawer').classList.remove('hidden');
+    if(type==='settings')for(const [key,id] of [['music','musicRange'],['sfx','sfxRange']]){
+      $(id).addEventListener('input',e=>{sys.setting(key,Number(e.target.value)/100);$(key+'Value').textContent=e.target.value+'%';});
+    }
+  }
+  document.querySelectorAll('[data-panel]').forEach(button=>button.addEventListener('click',()=>openPanel(button.dataset.panel)));
+  $('drawerClose').addEventListener('click',()=>$('drawer').classList.add('hidden'));
+  $('drawer').addEventListener('click',e=>{if(e.target===$('drawer'))$('drawer').classList.add('hidden')});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('drawer').classList.contains('hidden'))$('drawer').classList.add('hidden')});
   fit();updateUI();requestAnimationFrame(frame);
   // Expose read-only simple debug state for local test harnesses, never gameplay rewards.
-  window.HellFallTest={snapshot:()=>({stage:s.stage,depth:s.depth,speed:s.speed,timeLeft:s.timeLeft,wall:s.wall,hopProgress:s.hopProgress,boost:s.boost,fold:s.fold,tapCount:s.tapCount,hazards:s.obstacles.length,gates:s.timeGates.length}),start:()=>start(false)};
+  window.HellFallTest={snapshot:()=>({stage:s.stage,depth:s.depth,speed:s.speed,timeLeft:s.timeLeft,wall:s.wall,hopProgress:s.hopProgress,boost:s.boost,fold:s.fold,cadence:s.cadence,tapCount:s.tapCount,runCoins:s.runCoins,hazards:s.obstacles.length,gates:s.timeGates.length,profile:{...sys.profile}}),start:()=>start(false)};
 })();

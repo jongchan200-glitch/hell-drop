@@ -27,13 +27,18 @@
         </div>
         <div class="time-track"><div class="time-fill" id="timeFill"></div></div>
       </header>
+      <div id="runBadge" class="run-badge hidden">🪙 <span id="runCoinLabel">0</span></div>
+      <aside id="vortexGauge" class="vortex-gauge hidden" aria-label="연타 속도로 성장하는 토네이도 가속 게이지">
+        <span class="vortex-title">STORM</span>
+        <canvas id="vortexCanvas" aria-hidden="true"></canvas>
+        <span class="vortex-state" id="vortexState">바람 대기</span>
+      </aside>
       <div id="toast" class="toast hidden" role="status"></div>
       <div id="controls" class="controls hidden" aria-label="게임 조작 버튼">
         <button type="button" id="boost" class="stone-button boost" aria-label="망토 접기 연타 가속">
-          <span class="button-icon" aria-hidden="true">⚡</span>
+          <span class="button-icon" aria-hidden="true">🌪️</span>
           <strong>망토 접기</strong>
-          <small id="boostHint">연타할수록 빨라져요</small>
-          <span class="fold-meter" aria-hidden="true"><span id="boostFill"></span></span>
+          <small id="boostHint">더 빠르게 연타!</small>
         </button>
         <button type="button" id="jump" class="stone-button jump" aria-label="벽 점프">
           <span class="button-icon" aria-hidden="true">👟</span>
@@ -43,6 +48,7 @@
       </div>
       <div id="overlay" class="overlay">
         <div class="menu" id="menu">
+          <div id="walletStrip" class="wallet-strip">Lv.<span id="homeLevel">1</span> · 🪙 <span id="homeCoin">0</span></div>
           <h1 id="menuTitle">지옥 낙하</h1>
           <p class="subhead" id="menuSubtitle">HELL FALL · V4.2 · 가족 테스트</p>
           <div id="portrait" class="portrait" aria-hidden="true"><span id="portraitFallback">🦸</span></div>
@@ -51,21 +57,37 @@
             <p class="hero-meta">동옥초등학교 · 키 160cm 조금 안 됨</p>
             <p class="hero-secret">몸무게: 비밀 🤫</p>
             <p class="hero-trait">특징: 아침에 세수 안 함! 😂</p>
-            <p class="instructions">망토: 왼쪽을 연타하면 접히며 가속!<br>터치를 멈추면 펼쳐지며 감속<br>벽 점프: 반대편 벽으로 휙!</p>
+            <p class="instructions">망토: 더 빠르게 연타할수록 토네이도가 성장!<br>멈추면 빠르게 줄어들고 망토가 다시 펼쳐져<br>벽 점프: 반대편 벽으로 휙!</p>
+            <div class="home-progress"><div class="home-progress-top"><span id="homeProgressText">누적 낙하 0m</span><span id="homeNextText">다음 레벨까지 2,400m</span></div><div class="home-progress-track"><div id="homeProgressFill"></div></div></div>
           </div>
           <div id="overCopy" class="hidden">
             <p class="failure" id="failure">추락 종료!</p>
             <p class="final-depth" id="finalDepth">0 <small>m</small></p>
             <p class="final-best" id="finalBest">최고 기록 0 m</p>
+            <div class="reward-summary"><span>이번 판 코인 <b id="earnedCoin">+0</b></span><span>레벨 보상 <b id="earnedLevel">+0</b></span></div>
+            <p class="over-total" id="totalTravel">누적 낙하 0m · Lv.1</p>
+            <button type="button" id="overAd" class="ad-choice" disabled>▶ 광고 보고 코인 받기 <small>광고 연동 준비 중</small></button>
           </div>
           <button type="button" class="start-button" id="start">지옥으로 뛰어들기!</button>
+          <button type="button" class="back-home hidden" id="backHome">홈으로 돌아가기</button>
+          <nav id="homeNav" class="home-nav" aria-label="게임 홈 메뉴">
+            <button data-panel="character">👧 캐릭터</button>
+            <button data-panel="shop">🛍 상점</button>
+            <button data-panel="earn">🪙 코인</button>
+            <button data-panel="records">🏅 기록</button>
+            <button data-panel="settings">⚙️ 설정</button>
+          </nav>
           <p class="footnote">PC: 스페이스 연타(가속) · →(점프) · Enter(시작)</p>
         </div>
       </div>
-      <div class="version">WEB 0.3 · TAP TO DIVE</div>
+      <section id="drawer" class="drawer hidden" aria-label="게임 부가 메뉴" role="dialog" aria-modal="true">
+        <div class="drawer-card"><div class="drawer-head"><h2 id="drawerTitle">메뉴</h2><button id="drawerClose" type="button" aria-label="닫기">✕</button></div><div id="drawerBody" class="drawer-body"></div></div>
+      </section>
+      <div class="version">WEB 0.4 · STORM & PROGRESSION</div>
     </section>
-    <aside class="outside-note">기본 활강 · 연타 가속 · 벽 점프 | 최고 기록은 이 브라우저에 저장돼요.</aside>
+    <aside class="outside-note">연타로 토네이도 성장 · 누적 레벨과 코인은 이 브라우저에 저장돼요.</aside>
   </main>
+  <script src="systems.js" defer></script>
   <script src="game.js" defer></script>
 </body>
 </html>
