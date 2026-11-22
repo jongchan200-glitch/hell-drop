@@ -26,3 +26,10 @@
 - Added `hero_turnaround.js`, `hero_turnaround.css`, `assets/turn_*.webp`. The original `hero_3d.js`, `assets/hero_sculpt.bin.gz`, and original sprites remain available for rollback/comparison. Current gameplay sprites remain unchanged.
 - Existing gameplay, music 8 tracks, settings, records/coins (localStorage), and independent simulator are untouched.
 - Requires user Galaxy review; do not treat this as approved or final 3D. Next version may need true multi-view sculpted rig/model.
+
+
+## WEB 1.1 TEST — original front/back-only lobby (2026-11-23)
+- User rejected the redrawn four-view WEB 1.0 character and its direction-by-direction slideshow. Revert the home display to the original V4.2 front artwork `assets/hero_intro.webp` and the preexisting WEB 0.9 inferred rear artwork `assets/hero_back.webp`.
+- On horizontal swipe (32px threshold), alternate **front ↔ back** only. No angled view, faux mesh, deformation, or 360-degree claim. Keyboard arrows/Enter alternate; Home restores front.
+- Gameplay sprites and original character files are unchanged; no changes to BGM, gameplay physics, user levels/coins/records, settings, or simulator.
+- This is a two-view illustrated toggle, not genuine 3D. Real-device visual QA is pending user review. The older WEB 0.9/1.0 implementations remain in Git history for rollback.

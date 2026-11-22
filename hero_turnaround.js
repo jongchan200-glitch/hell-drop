@@ -1,114 +1,84 @@
-/* Hell Fall WEB 1.0 test: original character rebuilt as four clean illustrated
-   directions. This is a temporary multi-view preview, NOT a rigged 3D model.
-   Old WEB 0.9 WebGL sculpt remains safely in Git history.
-   The game, account, coins, settings and audio are not changed by this viewer. */
-(function () {
+/* Hell Fall WEB 1.1 — original heroine, FRONT/BACK ONLY.
+   No 3D sculpt, no 4-view replacement, and no synthetic side profiles.
+   Gameplay, storage, BGM and the original character art remain unchanged. */
+(function(){
   'use strict';
-  const SOURCES = {
-    front: 'assets/turn_front.webp?v=10a',
-    threequarter: 'assets/turn_threequarter.webp?v=10a',
-    side: 'assets/turn_side.webp?v=10a',
-    back: 'assets/turn_back.webp?v=10a'
+  const SOURCES={
+    front:'assets/hero_intro.webp?v=11-frontback',
+    back:'assets/hero_back.webp?v=11-frontback'
   };
-  const VIEWS = [
-    {at:0,src:'front',flip:false,title:'정면'},
-    {at:45,src:'threequarter',flip:false,title:'오른쪽 사선'},
-    {at:90,src:'side',flip:false,title:'오른쪽 옆모습'},
-    {at:180,src:'back',flip:false,title:'뒷모습'},
-    {at:270,src:'side',flip:true,title:'왼쪽 옆모습(반전)'},
-    {at:315,src:'threequarter',flip:true,title:'왼쪽 사선(반전)'}
-  ];
-  function mount(actor,opts={}) {
-    if (!actor) return null;
-    const isHome = opts.isHome || (()=>true);
-    let target=45, actual=45, dragging=null, lastX=0, totalMove=0;
-    let currentView=-1, raf=0, disposed=false, active=false;
+  function mount(actor,opts={}){
+    if(!actor)return null;
+    const isHome=opts.isHome||(()=>true);
     const stage=document.createElement('div');
-    stage.className='turnaround-stage'; stage.setAttribute('aria-hidden','true');
-    const sprites=VIEWS.map(v=>{
-      const img=document.createElement('img'); img.className='turnaround-pose';
-      img.src=SOURCES[v.src]; img.alt=''; img.draggable=false;
-      if(v.flip)img.classList.add('turnaround-mirror');
-      stage.appendChild(img); return img;
-    });
-    const keep=actor.querySelector('#lobbyTurn');
+    stage.className='turnaround-stage';stage.setAttribute('aria-hidden','true');
+    const images={};
+    for(const [side,src] of Object.entries(SOURCES)){
+      const img=document.createElement('img');
+      img.className='turnaround-pose';
+      img.src=src;img.alt='';img.draggable=false;
+      stage.appendChild(img);images[side]=img;
+    }
+    const old=actor.querySelector('#lobbyTurn');
     const canvas=actor.querySelector('#lobby3dCanvas');
     if(canvas)canvas.hidden=true;
-    actor.insertBefore(stage,keep||null);
-
-    function wrap(d){return ((d%360)+360)%360;}
-    function closestView(deg){
-      let best=0,bestDist=Infinity;
-      for(let i=0;i<VIEWS.length;i++){
-        const diff=Math.abs(wrap(deg-VIEWS[i].at+180)-180);
-        if(diff<bestDist){bestDist=diff;best=i;}
-      }
-      return best;
+    actor.insertBefore(stage,old||null);
+    let side='front',active=false,held=null,startX=0,startY=0,disposed=false;
+    function show(next){
+      side=next==='back'?'back':'front';
+      images.front.classList.toggle('is-selected',side==='front');
+      images.back.classList.toggle('is-selected',side==='back');
+      actor.setAttribute('aria-label','우서이 '+(side==='front'?'정면':'뒷모습')+'. 좌우로 밀어 앞뒷모습 전환');
+      actor.setAttribute('aria-pressed',String(side==='back'));
+      actor.dataset.characterSide=side;
     }
-    function show(i){
-      if(i===currentView)return;
-      currentView=i;
-      sprites.forEach((img,n)=>img.classList.toggle('is-selected',n===i));
-    }
-    function label(){
-      const d=Math.round(wrap(target));
-      actor.setAttribute('aria-valuenow',String(d));
-      actor.setAttribute('aria-valuetext',VIEWS[closestView(d)].title);
-    }
-    function frame(){
-      if(disposed)return;
-      if(isHome()&&active){
-        if(dragging===null)actual+=(target-actual)*0.27;
-        else actual=target;
-        show(closestView(actual));
-      }
-      raf=requestAnimationFrame(frame);
-    }
-    const end=e=>{
-      if(dragging!==e.pointerId)return;
-      dragging=null;actor.classList.remove('is-dragging');
+    function finish(e,commit){
+      if(held!==e.pointerId)return;
+      const dx=e.clientX-startX,dy=e.clientY-startY;
+      held=null;
+      actor.classList.remove('is-dragging');
       if(actor.hasPointerCapture?.(e.pointerId))actor.releasePointerCapture(e.pointerId);
-      if(totalMove<7)target+=22.5;
-      label();
-    };
+      if(commit&&Math.abs(dx)>=32&&Math.abs(dx)>Math.abs(dy)*1.15){
+        show(side==='front'?'back':'front');
+      }
+    }
     actor.addEventListener('pointerdown',e=>{
-      if(!active||!isHome()||(e.pointerType==='mouse'&&e.button!==0))return;
-      dragging=e.pointerId;lastX=e.clientX;totalMove=0;
+      if(disposed||!active||!isHome()||(e.pointerType==='mouse'&&e.button!==0))return;
+      held=e.pointerId;startX=e.clientX;startY=e.clientY;
       actor.classList.add('is-dragging');
       actor.setPointerCapture?.(e.pointerId);
     });
-    actor.addEventListener('pointermove',e=>{
-      if(dragging!==e.pointerId)return;
-      let dx=e.clientX-lastX;lastX=e.clientX;
-      totalMove+=Math.abs(dx);target+=dx*180/165;
-      if(totalMove>2&&e.cancelable)e.preventDefault();
-      actual=target;show(closestView(actual));label();
-    });
-    actor.addEventListener('pointerup',end);
-    actor.addEventListener('pointercancel',end);
+    actor.addEventListener('pointerup',e=>finish(e,true));
+    actor.addEventListener('pointercancel',e=>finish(e,false));
     actor.addEventListener('keydown',e=>{
-      if(!isHome()||!active)return;
-      if(['ArrowLeft','ArrowRight','Home'].includes(e.key)){
-        e.preventDefault();
-        target=e.key==='Home'?45:target+(e.key==='ArrowLeft'?-15:15);
-        label();
+      if(disposed||!active||!isHome())return;
+      if(['ArrowLeft','ArrowRight','Enter',' '].includes(e.key)){
+        e.preventDefault();show(side==='front'?'back':'front');
+      }else if(e.key==='Home'){
+        e.preventDefault();show('front');
       }
     });
+    show('front');
     Promise.all(Object.values(SOURCES).map(src=>new Promise((resolve,reject)=>{
-      const img=new Image();img.onload=resolve;img.onerror=()=>reject(Error(src));img.src=src;
+      const image=new Image();
+      image.onload=()=>resolve();
+      image.onerror=()=>reject(Error('Cannot load original character '+src));
+      image.src=src;
     }))).then(()=>{
       if(disposed)return;
       active=true;
       actor.classList.add('is-turnaround-ready');
-      show(1);label();
-      window.HellFall3DStatus={ready:true,model:'four-view-illustration',true3D:false,rotation:'360-degree direction preview',views:4};
+      show('front');
+      window.HellFall3DStatus={ready:true,true3D:false,model:'original-front-back',views:2,rotation:'swipe toggle'};
     }).catch(err=>{
-      console.warn('Character art unavailable. Original portrait remains.',err);
-      if(canvas)canvas.hidden=true;
-      window.HellFall3DStatus={ready:false,model:'four-view-illustration',error:String(err)};
+      console.warn('Original character back artwork not loaded; preserve original front.',err);
+      window.HellFall3DStatus={ready:false,true3D:false,model:'original-front-back',error:String(err)};
     });
-    label();raf=requestAnimationFrame(frame);
-    return {setYaw(deg){target=Number(deg)||0;label();},getYaw:()=>actual*Math.PI/180,dispose(){disposed=true;cancelAnimationFrame(raf);}};
+    return {
+      setYaw(deg){if(active)show(((Number(deg)%360+360)%360)>=90&&((Number(deg)%360+360)%360)<270?'back':'front');},
+      getYaw:()=>side==='back'?Math.PI:0,
+      dispose(){disposed=true;held=null;stage.remove();}
+    };
   }
   window.HellFallLobby3D={mount};
 })();
