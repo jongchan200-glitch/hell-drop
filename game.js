@@ -496,6 +496,12 @@
   function applyControlSide(){
     controls.classList.toggle('boost-right',sys.profile.settings.boostSide==='right');
   }
+  // On mobile, the first tap unlocks lobby audio. Starting PLAY goes directly to
+  // the zone track; touching the character or menus starts the calm lobby theme.
+  document.addEventListener('pointerdown',e=>{
+    if(s.stage!=='READY'||e.target.closest('#start'))return;
+    sys.audio.unlock();sys.audio.playZone(-1);
+  },{capture:true,passive:true,once:true});
   $('start').addEventListener('click',()=>start());
   $('restart').addEventListener('click',()=>start());
   $('backHome').addEventListener('click',()=>{s=makeGame('READY');sys.audio.playZone(-1);$('drawer').classList.add('hidden');updateUI();});
@@ -518,7 +524,7 @@
     else if(type==='shop')html=`<div class="banner">🪙 내 코인 <b>${fmt(prof.coins)}</b></div><div class="info-card"><strong>가속 장비</strong>돌개 강화·속도 유지 등 장비 슬롯<br><span class="muted">효과·가격·판매 여부는 아직 결정 전이야.</span></div><div class="info-card"><strong>꾸미기 · 새 캐릭터</strong>구매한 물품은 보관함에 저장하는 구조가 준비돼 있어.<br><span class="muted">아직 실제 판매 아이템은 없어.</span></div>`;
     else if(type==='earn')html=`<div class="banner">🪙 현재 코인 <b>${fmt(prof.coins)}</b><br><small>게임 중 수집 · 누적 레벨업 · 선택형 광고 · 코인 구매</small></div><div class="info-card"><strong>무료로 얻기</strong>게임에서 코인 줍기 / 누적 낙하로 레벨업</div><div class="info-card"><strong>▶ 보상형 광고</strong><span class="muted">광고 서비스 연동 전이어서 현재 시청·코인 지급을 사용할 수 없어.</span></div><div class="info-card"><strong>코인 구매</strong><span class="muted">현금 결제는 추후 설계·심사 후 연결할 예정이야. 현재 결제 기능 없음.</span></div>`;
     else if(type==='records')html=`<div class="banner">🏆 최고 낙하 <b>${fmt(Math.floor(best))}m</b></div><div class="info-card"><strong>누적 낙하</strong>${fmt(prof.totalDepth)}m · Lv.${prof.level}<br><span class="muted">다음 레벨까지 ${fmt(prog.next-prog.within)}m</span></div><div class="info-card"><strong>플레이 횟수</strong>${fmt(prof.runs)}판 완료</div><div class="info-card"><strong>획득 코인 기록</strong>게임에서 수집 ${fmt(prof.worldCoins)}코인 · 현재 보유 ${fmt(prof.coins)}코인</div>`;
-    else if(type==='settings')html=`<div class="info-card"><strong>🎮 가속·벽점프 버튼 위치</strong><span class="muted">휴대폰을 잡고 연타하기 편한 손으로 가속 버튼을 옮길 수 있어. 선택은 자동 저장돼.</span><div class="control-layout-choices" role="group" aria-label="가속 버튼 방향"><button type="button" class="control-layout-choice" data-boost-side="left" aria-pressed="${prof.settings.boostSide!=='right'}">🌪️ 가속 왼쪽<br><small>점프 오른쪽</small></button><button type="button" class="control-layout-choice" data-boost-side="right" aria-pressed="${prof.settings.boostSide==='right'}">🌪️ 가속 오른쪽<br><small>점프 왼쪽</small></button></div></div><div class="info-card"><strong>🔊 음악 음량</strong><label for="musicRange">BGM <span id="musicValue">${Math.round(prof.settings.music*100)}%</span><input id="musicRange" type="range" min="0" max="100" value="${Math.round(prof.settings.music*100)}"></label><label for="sfxRange">효과음 <span id="sfxValue">${Math.round(prof.settings.sfx*100)}%</span><input id="sfxRange" type="range" min="0" max="100" value="${Math.round(prof.settings.sfx*100)}"></label></div><div class="info-card"><strong>🎵 지층별 클래식 편곡 슬롯</strong><span class="muted">준비된 음악이 연결되면 지층 변경 시 약 2초 동안 자연스럽게 교체돼.</span><ul class="slot-list">${sys.MUSIC_SLOTS.map((v,i)=>`<li><span>${i===0?'홈':i+'구역'} · ${esc(v.name)}</span><span>${v.ready?'음원 연결':'음원 대기'}</span></li>`).join('')}</ul></div>`;
+    else if(type==='settings')html=`<div class="info-card"><strong>🎮 가속·벽점프 버튼 위치</strong><span class="muted">휴대폰을 잡고 연타하기 편한 손으로 가속 버튼을 옮길 수 있어. 선택은 자동 저장돼.</span><div class="control-layout-choices" role="group" aria-label="가속 버튼 방향"><button type="button" class="control-layout-choice" data-boost-side="left" aria-pressed="${prof.settings.boostSide!=='right'}">🌪️ 가속 왼쪽<br><small>점프 오른쪽</small></button><button type="button" class="control-layout-choice" data-boost-side="right" aria-pressed="${prof.settings.boostSide==='right'}">🌪️ 가속 오른쪽<br><small>점프 왼쪽</small></button></div></div><div class="info-card"><strong>🔊 음악 음량</strong><label for="musicRange">BGM <span id="musicValue">${Math.round(prof.settings.music*100)}%</span><input id="musicRange" type="range" min="0" max="100" value="${Math.round(prof.settings.music*100)}"></label><label for="sfxRange">효과음 <span id="sfxValue">${Math.round(prof.settings.sfx*100)}%</span><input id="sfxRange" type="range" min="0" max="100" value="${Math.round(prof.settings.sfx*100)}"></label></div><div class="info-card"><strong>🎵 지층별 클래식 편곡 미리듣기</strong><span class="muted">리듬게임에서 만든 음악 8곡을 연결했어. 아래 ▶ 버튼을 누르면 해당 곡이 재생되고, 닫으면 홈 음악으로 돌아가.</span><ul class="slot-list music-preview-list">${sys.MUSIC_SLOTS.map((v,i)=>`<li><span>${i===0?'홈':i+'구역'} · ${esc(v.title||v.name)}</span><button type="button" data-music-preview="${i}" aria-label="${esc(v.title||v.name)} 미리듣기">▶</button></li>`).join('')}</ul></div>`;
     $('drawerBody').innerHTML=html;$('drawer').classList.remove('hidden');
     if(type==='settings'){
       for(const [key,id] of [['music','musicRange'],['sfx','sfxRange']]){
@@ -530,12 +536,29 @@
           $('drawerBody').querySelectorAll('[data-boost-side]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.boostSide===sys.profile.settings.boostSide)));
         });
       });
+      $('drawerBody').querySelectorAll('[data-music-preview]').forEach(button=>{
+        button.addEventListener('click',()=>{
+          const idx=Number(button.dataset.musicPreview);
+          const target=idx-1;
+          const playingSame=sys.audio.activeTrack===idx;
+          sys.audio.unlock();sys.audio.playZone(playingSame?-1:target);
+          $('drawerBody').querySelectorAll('[data-music-preview]').forEach(b=>{
+            const selected=!playingSame&&Number(b.dataset.musicPreview)===idx;
+            b.textContent=selected?'■':'▶';
+            b.setAttribute('aria-pressed',String(selected));
+          });
+        });
+      });
     }
   }
   document.querySelectorAll('[data-panel]').forEach(button=>button.addEventListener('click',()=>openPanel(button.dataset.panel)));
-  $('drawerClose').addEventListener('click',()=>$('drawer').classList.add('hidden'));
-  $('drawer').addEventListener('click',e=>{if(e.target===$('drawer'))$('drawer').classList.add('hidden')});
-  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('drawer').classList.contains('hidden'))$('drawer').classList.add('hidden')});
+  function closePanel(){
+    $('drawer').classList.add('hidden');
+    sys.audio.playZone(s.stage==='PLAYING'?zoneOf(s.depth):-1);
+  }
+  $('drawerClose').addEventListener('click',closePanel);
+  $('drawer').addEventListener('click',e=>{if(e.target===$('drawer'))closePanel()});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('drawer').classList.contains('hidden'))closePanel()});
   // Lobby: authentic original portrait + lightweight 2D perspective preview.
   // A single frontal drawing cannot show a truthful 3D rear view; user can
   // inspect left/right three-quarter style angles, ready for future pose assets.

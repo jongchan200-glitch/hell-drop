@@ -1,0 +1,58 @@
+[
+  {
+    "file": "menu.mp3",
+    "title": "비발디 겨울 2악장 · 밤의 발라드",
+    "duration": 181.76,
+    "bytes": 2908621,
+    "sha256": "f3524d330e682aeb6c0c1c6be307dc4f6c462ee25c6790d5e715d79547aff67c"
+  },
+  {
+    "file": "zone_01.m4a",
+    "title": "모차르트 터키 행진곡 · 어쿠스틱 여행",
+    "duration": 231.705011,
+    "bytes": 2885129,
+    "sha256": "b8c32a38f91f09af76d87ca46c7c67431e068e2834a309b1ec513e23b72e68e1"
+  },
+  {
+    "file": "zone_02.m4a",
+    "title": "베토벤 비창 3악장 · 따뜻한 피아노팝",
+    "duration": 205.957007,
+    "bytes": 2572789,
+    "sha256": "de461f735e9647a8b3fde3c2cc8e15298174306aa579a992a7436346fe19372e"
+  },
+  {
+    "file": "zone_03.mp3",
+    "title": "월광소나타 3악장 · EASY 다이내믹 V6",
+    "duration": 145.789388,
+    "bytes": 2333091,
+    "sha256": "4d4ec1e7623000440147309c590b98f1383429d8c0b2d142813e46ad2d8c1c76"
+  },
+  {
+    "file": "zone_04.mp3",
+    "title": "비발디 겨울 1악장 · 설원 모험",
+    "duration": 151.196735,
+    "bytes": 2419608,
+    "sha256": "6e5cf82fa7fc30d07d8ec2d4429e70319f28b0e4880388202f43ea777e89dbc3"
+  },
+  {
+    "file": "zone_05.mp3",
+    "title": "베토벤 비창 3악장 · ARCADE BREAK",
+    "duration": 60.473469,
+    "bytes": 968036,
+    "sha256": "4e0961ef6f15d1282448674fca233010ce7b8351bd3880b782210c29cdcd1b2c"
+  },
+  {
+    "file": "zone_06.mp3",
+    "title": "월광소나타 3악장 · HARD 다이내믹 V6",
+    "duration": 136.881633,
+    "bytes": 2190567,
+    "sha256": "a640aedfc67ba871528b97cc8d3e82f861e6e416db2e31b7b31e44dcb4e98bc4"
+  },
+  {
+    "file": "zone_07.mp3",
+    "title": "비발디 겨울 1악장 · ARCADE BOSS",
+    "duration": 63.712653,
+    "bytes": 1019863,
+    "sha256": "b77ee22a924f6128135d9a45ac83f0454967dba655335b20d3deaea27ecd32fc"
+  }
+]

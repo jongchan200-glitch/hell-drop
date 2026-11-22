@@ -179,3 +179,10 @@
 /* App is a viewport-locked mobile game, never a scrolling document. */
 .outside-note{display:none}
 html,body{height:100%;overflow:hidden}
+
+/* V0.8 · music previews inside settings without disrupting game controls. */
+.music-preview-list{display:flex;flex-direction:column;gap:4px}
+.drawer-body .music-preview-list li{display:flex;align-items:center;gap:8px;padding:7px 0;min-height:42px}
+.music-preview-list li>span{flex:1;min-width:0;font-size:11px;line-height:1.4;color:#e9dfc9}
+.music-preview-list button{flex:0 0 42px;height:34px;border:1px solid #bd9b64;border-radius:10px;background:#4f3933;color:#ffe4ac;font-size:14px;font-weight:900;cursor:pointer}
+.music-preview-list button[aria-pressed="true"]{background:#b66b3f;color:#fff;border-color:#f9d79c}

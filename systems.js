@@ -3,15 +3,17 @@
    Catalog & paid/rewarded ad connections intentionally disabled until implemented. */
 (function(){
   const KEY='hell_fall_profile_v1';
+  // Original arrangements from the user's Rhythm Game Lab / shared game-music library.
+  // Local MP3s are loaded only when their zone is played; no external URL dependency.
   const MUSIC_SLOTS=[
-    {name:'홈 화면',file:'audio/menu.ogg',ready:false},
-    {name:'지표면 · 지하 동굴',file:'audio/zone_01.ogg',ready:false},
-    {name:'깊은 암반층',file:'audio/zone_02.ogg',ready:false},
-    {name:'마그마 지대',file:'audio/zone_03.ogg',ready:false},
-    {name:'맨틀 지대',file:'audio/zone_04.ogg',ready:false},
-    {name:'외핵',file:'audio/zone_05.ogg',ready:false},
-    {name:'내핵',file:'audio/zone_06.ogg',ready:false},
-    {name:'지옥의 심연',file:'audio/zone_07.ogg',ready:false}
+    {name:'홈 화면',title:'비발디 겨울 2악장 · 밤의 발라드',file:'audio/menu.mp3',ready:true},
+    {name:'지표면 · 지하 동굴',title:'모차르트 터키 행진곡 · 어쿠스틱 여행',file:'audio/zone_01.m4a',ready:true},
+    {name:'깊은 암반층',title:'베토벤 비창 3악장 · 따뜻한 피아노팝',file:'audio/zone_02.m4a',ready:true},
+    {name:'마그마 지대',title:'베토벤 월광소나타 3악장 · EASY 다이내믹 V6',file:'audio/zone_03.mp3',ready:true},
+    {name:'맨틀 지대',title:'비발디 겨울 1악장 · 설원 모험',file:'audio/zone_04.mp3',ready:true},
+    {name:'외핵',title:'베토벤 비창 3악장 · ARCADE BREAK',file:'audio/zone_05.mp3',ready:true},
+    {name:'내핵',title:'베토벤 월광소나타 3악장 · HARD 다이내믹 V6',file:'audio/zone_06.mp3',ready:true},
+    {name:'지옥의 심연',title:'비발디 겨울 1악장 · ARCADE BOSS',file:'audio/zone_07.mp3',ready:true}
   ];
   const ITEM_CATALOG=[]; // Future in-game items: {id,name,price,type,description,effect}
   const clamp=(v,a,b)=>Math.max(a,Math.min(b,Number.isFinite(+v)?+v:a));
@@ -56,8 +58,13 @@
     },
     playZone(zone){const idx=Math.max(0,Math.min(7,zone+1));if(idx===this.activeTrack)return;
       const slot=MUSIC_SLOTS[idx];this.activeTrack=idx;this.fadeTime=0;
+      // A fast double switch should not leave a third track playing behind the scenes.
+      if(this.previous){this.previous.pause();this.previous=null;}
       this.previous=this.bgm;this.bgm=null;
-      if(slot?.ready){try{const track=new Audio(slot.file);track.loop=true;track.preload='auto';track.volume=0;track.play().catch(()=>{});this.bgm=track;}catch(_){/* no audio */}}
+      if(slot?.ready){try{
+        const track=new Audio(slot.file);track.loop=true;track.preload='metadata';track.volume=0;
+        track.setAttribute('playsinline','');track.play().catch(()=>{});this.bgm=track;
+      }catch(_){/* audio disabled */}}
     },
     fade(dt){this.fadeTime+=dt;const t=clamp(this.fadeTime/2.2,0,1);
       if(this.bgm)this.bgm.volume=clamp(profile.settings.music*t,0,1);
