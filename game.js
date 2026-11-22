@@ -1,6 +1,6 @@
 'use strict';
 /*
- * HELL FALL WEB 0.6 — thumb-friendly three-tap cadence, reversible controls,
+ * HELL FALL WEB 0.7 — five-tap cadence, premium lobby and original character preview,
  * future commerce / reward / zone music infrastructure. V4.2 game world preserved.
  * All character states use the curated original V4.2 sprite set only.
  * Original high-score key stays unchanged for continuity.
@@ -15,8 +15,8 @@
   let lastReward={distance:0,foundCoins:0,bonus:0,levelUps:0,level:sys.profile.level,newBalance:sys.profile.coins};
   const T = {
     LIMIT:10, MAX:1560, START:124, GLIDE:112, GLIDE_TIER:8, BOOST_SPEED:510,
-    BOOST_TIER:35, MIN_TAP_INTERVAL:.055, TAP_RATE_BASE:.65, TAP_RATE_RANGE:2.15,
-    RISE_RESPONSE:1.2, FALL_RESPONSE:4.8, HOP_SECONDS:.155, ZONE_LENGTH:5000
+    BOOST_TIER:35, MIN_TAP_INTERVAL:.055, TAP_RATE_BASE:.8, TAP_RATE_RANGE:4.0,
+    RISE_RESPONSE:1.2, FALL_RESPONSE:6.7, HOP_SECONDS:.155, ZONE_LENGTH:5000
   };
   const ZONES=['지표면 · 지하 동굴','깊은 암반층','마그마 지대','맨틀 지대','외핵','내핵','지옥의 심연'];
   const PALETTES=[
@@ -36,7 +36,7 @@
   // Only the original V4.2 reference family; no generated replacement faces.
   const IMAGE_FILES={falling:'hero_fall',braking:'hero_cape',jumpLeft:'hero_jump_left',jumpRight:'hero_jump_right',intro:'hero_intro',dizzy:'hero_hit'};
   Object.entries(IMAGE_FILES).forEach(([key,file])=>{
-    const img=new Image(); img.onload=()=>{images[key]=img;if(key==='braking')prepareCapeRig(img);if(key==='intro')showPortrait(img);};
+    const img=new Image(); img.onload=()=>{images[key]=img;if(key==='braking')prepareCapeRig(img);};
     img.onerror=()=>{}; img.src='assets/'+file+'.webp';
   });
   function prepareCapeRig(original){
@@ -59,8 +59,6 @@
     }
     cc.globalCompositeOperation='source-over';capeRig.core=core;capeRig.ready=true;
   }
-  function showPortrait(img){ if(!img?.naturalWidth)return;const p=$('portrait');p.querySelector('img')?.remove();
-    const node=new Image();node.src=img.src;node.alt='';p.append(node);$('portraitFallback').classList.add('hidden'); }
   function readRecord(){try{return Number(localStorage.getItem('hell_fall_web_v42_best')||0)||0;}catch(_){return 0;}}
   function saveRecord(value){try{localStorage.setItem('hell_fall_web_v42_best',String(value));}catch(_){/*local file private mode*/}}
   function zoneOf(depth){return Math.min(6,Math.floor(depth/5000));}
@@ -71,7 +69,7 @@
   function posX(g,p=g.hopProgress){return wallX(g.hopFrom)*(1-smooth(p))+wallX(g.wall)*smooth(p);}
   function rngSeed(seed){let x=(seed>>>0)||1;return()=>{x=(x+0x6D2B79F5)>>>0;let t=x;t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return ((t^(t>>>14))>>>0)/4294967296;};}
   function makeGame(stage='READY'){return{seed:(Math.random()*1000000000)|0,stage,depth:0,speed:T.START,timeLeft:T.LIMIT,elapsed:0,introElapsed:0,boost:0,fold:0,lastTapAt:-1,tapPulse:0,tapCount:0,tapIntervals:[],cadence:0,wall:'L',hopFrom:'L',hopProgress:1,hopVisual:1,obstacles:[],timeGates:[],coinGates:[],runCoins:0,nextObstacle:370,nextTimeGate:1400,nextCoin:210,coinNumber:0,obstacleNumber:0,gateNumber:0,gateFlash:0,zoneFlash:0,lastBonus:0,failure:''};}
-  function start(intro){applyControlSide();s=makeGame(intro?'INTRO':'PLAYING');lastReward={distance:0,foundCoins:0,bonus:0,levelUps:0,level:sys.profile.level,newBalance:sys.profile.coins};heldKeys.clear();sys.audio.unlock();sys.audio.playZone(intro?-1:0);sys.audio.effect('start');updateUI();}
+  function start(){applyControlSide();s=makeGame('PLAYING');lastReward={distance:0,foundCoins:0,bonus:0,levelUps:0,level:sys.profile.level,newBalance:sys.profile.coins};heldKeys.clear();sys.audio.unlock();sys.audio.playZone(0);sys.audio.effect('start');updateUI();}
   function finish(msg){if(s.stage==='OVER')return;s.stage='OVER';s.failure=msg;if(s.depth>best){best=s.depth;saveRecord(best);}lastReward=sys.awardRun(s.depth,s.runCoins);sys.audio.effect(lastReward.levelUps>0?'level':'hit');sys.audio.playZone(-1);heldKeys.clear();boostBtn.classList.remove('active');updateUI();}
   function tapAccelerate(){
     if(s.stage!=='PLAYING')return;
@@ -92,12 +90,12 @@
     const old=s.depth,tier=tierOf(old);
     // Recent inter-tap rhythm controls the gauge. Slow tapping holds a low
     // storm, and successive higher levels demand increasingly faster rhythms.
-    // Full boost is reachable with a comfortable sustained ~3 taps/second.
+    // Max boost requires a sustained ~5 thumb-taps/second (V0.7 design).
     // Allow one thumb-tap interval of grace before fading, not auto-repeat on hold.
     const interval=s.tapIntervals.length?s.tapIntervals.reduce((a,b)=>a+b,0)/s.tapIntervals.length:0;
     const rawRate=interval>0?Math.min(13,1/interval):0;
     const silence=s.lastTapAt<0?999:s.elapsed-s.lastTapAt;
-    const anticipation=interval>0?Math.min(.45,Math.max(.31,interval*1.13)):.12;
+    const anticipation=interval>0?Math.min(.43,Math.max(.23,interval*1.13)):.12;
     const rate=rawRate*Math.exp(-Math.max(0,silence-anticipation)*5.2);
     const demand=Math.max(0,Math.min(1,(rate-T.TAP_RATE_BASE)/T.TAP_RATE_RANGE));
     const targetBoost=Math.pow(demand,1.55);
@@ -166,30 +164,41 @@
     if(crashed)finish('지층 장애물에 부딪혔어!');else if(remain<=0)finish('시간이 다 됐어!');
   }
   function updateUI(){
-    const playing=s.stage==='PLAYING',over=s.stage==='OVER';
-    hud.classList.toggle('hidden',!playing&&!over);controls.classList.toggle('hidden',!playing);overlay.classList.toggle('hidden',s.stage!=='READY'&&!over);
-    $('vortexGauge').classList.toggle('hidden',!playing);$('runBadge').classList.toggle('hidden',!playing);$('runCoinLabel').textContent=String(s.runCoins);
-    $('walletStrip').classList.toggle('hidden',over);$('homeNav').classList.toggle('hidden',over);$('backHome').classList.toggle('hidden',!over);
+    const playing=s.stage==='PLAYING',over=s.stage==='OVER',ready=s.stage==='READY';
+    hud.classList.toggle('hidden',!playing&&!over);
+    controls.classList.toggle('hidden',!playing);
+    overlay.classList.toggle('hidden',!over);
+    $('lobby').classList.toggle('hidden',!ready);
+    $('vortexGauge').classList.toggle('hidden',!playing);
+    $('runBadge').classList.toggle('hidden',!playing);
+    $('runCoinLabel').textContent=String(s.runCoins);
     const progress=sys.levelProgress(sys.profile.totalDepth);
-    $('homeLevel').textContent=sys.profile.level;$('homeCoin').textContent=sys.profile.coins;
-    $('homeProgressText').textContent='누적 낙하 '+sys.profile.totalDepth.toLocaleString('ko-KR')+'m';
-    $('homeNextText').textContent='다음 레벨까지 '+(progress.next-progress.within).toLocaleString('ko-KR')+'m';
-    $('homeProgressFill').style.width=(progress.ratio*100).toFixed(1)+'%';
-    if(s.stage==='READY'||over){
-      $('menuTitle').textContent=over?'추락 종료!':'지옥 낙하';
-      $('menuTitle').style.color=over?COLORS.red:COLORS.gold;
-      $('menuSubtitle').classList.toggle('hidden',over);$('portrait').classList.toggle('hidden',over);$('readyCopy').classList.toggle('hidden',over);$('overCopy').classList.toggle('hidden',!over);
-      $('start').textContent=over?'다시 도전하기':'지옥으로 뛰어들기!';
-      if(over){$('failure').textContent=s.failure;$('finalDepth').innerHTML=Math.floor(s.depth)+' <small>m</small>';$('finalBest').textContent='최고 기록 '+Math.floor(best)+' m';$('earnedCoin').textContent='+'+lastReward.foundCoins;$('earnedLevel').textContent='+'+lastReward.bonus;$('totalTravel').textContent='누적 '+sys.profile.totalDepth.toLocaleString('ko-KR')+'m · Lv.'+sys.profile.level;}
+    if(ready){
+      $('homeLevel').textContent=sys.profile.level;
+      $('homeCoin').textContent=sys.profile.coins.toLocaleString('ko-KR');
+      $('homeBest').textContent=Math.floor(best).toLocaleString('ko-KR');
+      $('homeTotal').textContent=sys.profile.totalDepth.toLocaleString('ko-KR');
+      $('homeProgressFill').style.width=(progress.ratio*100).toFixed(1)+'%';
+    }
+    if(over){
+      $('failure').textContent=s.failure;
+      $('finalDepth').innerHTML=Math.floor(s.depth)+' <small>m</small>';
+      $('finalBest').textContent='최고 기록 '+Math.floor(best).toLocaleString('ko-KR')+' m';
+      $('earnedCoin').textContent='+'+lastReward.foundCoins;
+      $('earnedLevel').textContent='+'+lastReward.bonus;
+      $('totalTravel').textContent='누적 '+sys.profile.totalDepth.toLocaleString('ko-KR')+'m · Lv.'+sys.profile.level;
     }
     $('zoneLabel').textContent=(zoneOf(s.depth)+1)+'구역 · '+ZONES[zoneOf(s.depth)];
     $('depthLabel').innerHTML=Math.floor(s.depth)+' <small>m</small>';
     $('recordLabel').textContent='최고 '+Math.floor(Math.max(best,s.depth))+' m';
-    $('timeLabel').textContent=s.timeLeft.toFixed(1);$('timeLabel').style.color=s.timeLeft<5?COLORS.red:'white';
+    $('timeLabel').textContent=s.timeLeft.toFixed(1);
+    $('timeLabel').style.color=s.timeLeft<5?COLORS.red:'white';
     $('timeCaption').classList.toggle('alert',s.timeLeft<3);
     $('speedLabel').textContent='속도 '+Math.floor(s.speed)+' m/s · 난이도 '+(tierOf(s.depth)+1);
-    $('timeFill').style.width=(100*s.timeLeft/T.LIMIT)+'%';$('timeFill').classList.toggle('danger',s.timeLeft<3);
-    boostBtn.classList.toggle('active',s.tapPulse>.6);$('boostHint').textContent=s.boost>.84?'🌪️ 폭풍 유지!':s.boost>.39?'더 빠르게!':'빠르게 연타!';
+    $('timeFill').style.width=(100*s.timeLeft/T.LIMIT)+'%';
+    $('timeFill').classList.toggle('danger',s.timeLeft<3);
+    boostBtn.classList.toggle('active',s.tapPulse>.6);
+    $('boostHint').textContent=s.boost>.84?'🌪️ 폭풍 유지!':s.boost>.39?'더 빠르게!':'빠르게 연타!';
     $('vortexState').textContent=s.boost>.93?'폭풍 최고!':s.boost>.65?'격렬한 돌개':s.boost>.26?'회오리 성장':s.boost>.045?'바람 발생':'바람 대기';
     toast.classList.add('hidden');toast.classList.remove('mint');
     if(playing && s.zoneFlash>0){toast.textContent=ZONES[zoneOf(s.depth)]+' 진입!';toast.style.opacity=String(Math.min(1,s.zoneFlash/1.5));toast.classList.remove('hidden');}
@@ -470,22 +479,16 @@
     if(g>.8){c.beginPath();c.ellipse(dw/2,topY,baseR+dw*.35*g,6+g*3,0,0,Math.PI*2);c.strokeStyle='#ffb780ab';c.lineWidth=2.3;c.stroke();}
     c.restore();
   }
-  function introScene(seconds){
-    const u=W/400,groundY=H*.58;ctx.fillStyle=gradient(0,0,0,H,[[0,'#241937'],[.58,'#693c4d'],[1,'#a55e50']]);ctx.fillRect(0,0,W,H);
-    ctx.fillStyle='#6b3f38';ctx.fillRect(0,groundY,W,H-groundY);
-    for(let i=0;i<10;i++){const x=i*53%W,y=groundY+42*u+(i*57%Math.max(1,H-groundY));disk(x,y,(10+i%4*5)*u,'#432b36');}
-    ctx.beginPath();ctx.moveTo(W*.17,groundY+26*u);ctx.bezierCurveTo(W*.19,groundY-16*u,W*.79,groundY-19*u,W*.83,groundY+26*u);ctx.bezierCurveTo(W*.84,groundY+110*u,W*.14,groundY+110*u,W*.17,groundY+26*u);ctx.closePath();ctx.strokeStyle='#ff8550';ctx.lineWidth=15*u;ctx.stroke();ctx.fillStyle='#090e1b';ctx.fill();
-    if(seconds<0)return;
-    if(seconds<.55){const img=images.intro;if(img?.naturalWidth){const ph=240*u,pw=ph*img.naturalWidth/img.naturalHeight;ctx.drawImage(img,W*.27-pw/2,groundY-ph*.98,pw,ph);}else drawFallbackHero(W*.27,groundY-62*u,u,false,seconds,false,false,'L');return;}
-    const fall=seconds<.95?-33*Math.sin((seconds-.55)/.4*Math.PI):(seconds-.95)**2*390;
-    const heroY=groundY-58*u+fall*u,heroX=W*(.105+.395*Math.min(1,(seconds-.55)/.92));
-    drawHero(heroX,heroY,u,false,seconds,45,false,false,'L');
-    if(seconds>.75)txt('으아아아악!',W*.5,groundY-138*u,19*u,'white');
+  // No artificial hole-jump intro. Home is a dedicated living character lobby,
+  // and pressing PLAY enters the existing falling gameplay immediately.
+  function draw(){
+    if(s.stage==='READY'){ctx.fillStyle='#0f0d19';ctx.fillRect(0,0,W,H);}
+    else cave();
   }
-  function draw(){if(s.stage==='READY')introScene(-1);else if(s.stage==='INTRO'){if(s.introElapsed<1.62)introScene(s.introElapsed);else{const depth=s.depth;s.depth=(s.introElapsed-1.62)*120;cave();s.depth=depth;}}else cave();}
-  function frame(now){let dt=lastFrame?Math.min(.05,Math.max(0,(now-lastFrame)/1000)):0;lastFrame=now;clock+=dt;
-    if(s.stage==='INTRO'){s.introElapsed+=dt;if(s.introElapsed>=2.45){s=makeGame('PLAYING');sys.audio.playZone(0);}}
-    else if(s.stage==='PLAYING')advance(dt);
+  function frame(now){
+    let dt=lastFrame?Math.min(.05,Math.max(0,(now-lastFrame)/1000)):0;
+    lastFrame=now;clock+=dt;
+    if(s.stage==='PLAYING')advance(dt);
     if(s.stage==='PLAYING')sys.audio.playZone(zoneOf(s.depth));
     sys.audio.fade(dt);
     draw();drawVortex();updateUI();requestAnimationFrame(frame);
@@ -493,14 +496,15 @@
   function applyControlSide(){
     controls.classList.toggle('boost-right',sys.profile.settings.boostSide==='right');
   }
-  $('start').addEventListener('click',()=>start(s.stage==='READY'));
-  $('backHome').addEventListener('click',()=>{s=makeGame('READY');sys.audio.playZone(-1);updateUI();});
+  $('start').addEventListener('click',()=>start());
+  $('restart').addEventListener('click',()=>start());
+  $('backHome').addEventListener('click',()=>{s=makeGame('READY');sys.audio.playZone(-1);$('drawer').classList.add('hidden');updateUI();});
   boostBtn.addEventListener('pointerdown',e=>{if(s.stage!=='PLAYING')return;e.preventDefault();tapAccelerate();});
   // No pointerup/hold listener: holding does not generate additional acceleration.
   jumpBtn.addEventListener('pointerdown',e=>{if(s.stage!=='PLAYING')return;e.preventDefault();jump();jumpBtn.setPointerCapture(e.pointerId);});
   jumpBtn.addEventListener('pointerup',e=>{if(jumpBtn.hasPointerCapture(e.pointerId))jumpBtn.releasePointerCapture(e.pointerId);});
   document.addEventListener('keydown',e=>{if(['Space','ArrowRight','Enter'].includes(e.code)){e.preventDefault();if(e.repeat||heldKeys.has(e.code))return;heldKeys.add(e.code);
-    if(e.code==='Space')tapAccelerate();else if(e.code==='ArrowRight')jump();else if(e.code==='Enter'&&(s.stage==='READY'||s.stage==='OVER'))start(s.stage==='READY');}});
+    if(e.code==='Space')tapAccelerate();else if(e.code==='ArrowRight')jump();else if(e.code==='Enter'&&(s.stage==='READY'||s.stage==='OVER')&&document.activeElement?.tagName!=='BUTTON')start();}});
   document.addEventListener('keyup',e=>heldKeys.delete(e.code));
   window.addEventListener('blur',()=>{heldKeys.clear();});
   document.addEventListener('visibilitychange',()=>{sys.audio.visibility(document.hidden);if(document.hidden){heldKeys.clear();lastFrame=0;}});
@@ -510,7 +514,7 @@
   function openPanel(type){if(!titles[type])return;sys.audio.unlock();$('drawerTitle').textContent=titles[type];
     const prof=sys.profile,prog=sys.levelProgress(prof.totalDepth),fmt=n=>Number(n).toLocaleString('ko-KR');
     let html='';
-    if(type==='character')html=`<div class="banner">👧 <b>우서이</b> · 캐릭터 외형 고정<br>Lv.${prof.level} · 다음 레벨까지 ${fmt(prog.next-prog.within)}m</div><div class="info-card"><strong>선택한 캐릭터</strong>기존 V4.2 원본 캐릭터를 사용 중이야.<br><span class="muted">새 표정·동작은 동일한 얼굴 설정을 기준으로만 제작할 예정이야.</span></div><div class="info-card"><strong>꾸미기 · 캐릭터 교체</strong><span class="muted">캐릭터/꾸미기 상점 슬롯 준비 중</span></div>`;
+    if(type==='character')html=`<div class="character-owned"><div class="owned-frame"><img src="assets/hero_intro.webp" alt="우서이 캐릭터"></div><div class="owned-details"><span class="owned-kicker">EQUIPPED · 01</span><strong>우서이</strong><p>Lv.${prof.level} · 현재 캐릭터</p><span class="equipped-tag">✓ 장착 중</span></div></div><div class="info-card"><strong>캐릭터 성장</strong>누적 낙하 ${fmt(prof.totalDepth)}m<br><span class="muted">다음 레벨까지 ${fmt(prog.next-prog.within)}m</span></div><div class="info-card"><strong>캐릭터 보관함</strong><div class="future-characters"><span class="future-slot">✦<small>다음 캐릭터</small></span><span class="future-slot">✦<small>추가 예정</small></span><span class="future-slot">✦<small>추가 예정</small></span></div><span class="muted">현재 선택 가능한 캐릭터는 우서이 한 명이야. 새 캐릭터는 추후 추가돼.</span></div>`;
     else if(type==='shop')html=`<div class="banner">🪙 내 코인 <b>${fmt(prof.coins)}</b></div><div class="info-card"><strong>가속 장비</strong>돌개 강화·속도 유지 등 장비 슬롯<br><span class="muted">효과·가격·판매 여부는 아직 결정 전이야.</span></div><div class="info-card"><strong>꾸미기 · 새 캐릭터</strong>구매한 물품은 보관함에 저장하는 구조가 준비돼 있어.<br><span class="muted">아직 실제 판매 아이템은 없어.</span></div>`;
     else if(type==='earn')html=`<div class="banner">🪙 현재 코인 <b>${fmt(prof.coins)}</b><br><small>게임 중 수집 · 누적 레벨업 · 선택형 광고 · 코인 구매</small></div><div class="info-card"><strong>무료로 얻기</strong>게임에서 코인 줍기 / 누적 낙하로 레벨업</div><div class="info-card"><strong>▶ 보상형 광고</strong><span class="muted">광고 서비스 연동 전이어서 현재 시청·코인 지급을 사용할 수 없어.</span></div><div class="info-card"><strong>코인 구매</strong><span class="muted">현금 결제는 추후 설계·심사 후 연결할 예정이야. 현재 결제 기능 없음.</span></div>`;
     else if(type==='records')html=`<div class="banner">🏆 최고 낙하 <b>${fmt(Math.floor(best))}m</b></div><div class="info-card"><strong>누적 낙하</strong>${fmt(prof.totalDepth)}m · Lv.${prof.level}<br><span class="muted">다음 레벨까지 ${fmt(prog.next-prog.within)}m</span></div><div class="info-card"><strong>플레이 횟수</strong>${fmt(prof.runs)}판 완료</div><div class="info-card"><strong>획득 코인 기록</strong>게임에서 수집 ${fmt(prof.worldCoins)}코인 · 현재 보유 ${fmt(prof.coins)}코인</div>`;
@@ -532,6 +536,53 @@
   $('drawerClose').addEventListener('click',()=>$('drawer').classList.add('hidden'));
   $('drawer').addEventListener('click',e=>{if(e.target===$('drawer'))$('drawer').classList.add('hidden')});
   document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('drawer').classList.contains('hidden'))$('drawer').classList.add('hidden')});
+  // Lobby: authentic original portrait + lightweight 2D perspective preview.
+  // A single frontal drawing cannot show a truthful 3D rear view; user can
+  // inspect left/right three-quarter style angles, ready for future pose assets.
+  (function setupLobbyCharacter(){
+    const actor=$('lobbyCharacter'),turn=$('lobbyTurn'),embers=$('lobbyEmbers');
+    let yaw=0,pointerId=null,lastX=0,lastMove=0,suppressClick=false;
+    const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+    function render(){
+      turn.style.setProperty('--hero-yaw',yaw.toFixed(1)+'deg');
+      turn.style.setProperty('--hero-shift',(-yaw*.13).toFixed(1)+'px');
+      turn.style.setProperty('--hero-tilt',(yaw*.018).toFixed(2)+'deg');
+      actor.setAttribute('aria-valuenow',String(Math.round(yaw)));
+      actor.setAttribute('aria-valuetext',Math.abs(yaw)<4?'정면':(yaw>0?'오른쪽 ':'왼쪽 ')+Math.round(Math.abs(yaw))+'도');
+    }
+    actor.addEventListener('pointerdown',e=>{
+      if(s.stage!=='READY'||(e.pointerType==='mouse'&&e.button!==0))return;
+      pointerId=e.pointerId;lastX=e.clientX;lastMove=0;
+      actor.classList.add('is-dragging');actor.setPointerCapture(e.pointerId);
+    });
+    actor.addEventListener('pointermove',e=>{
+      if(e.pointerId!==pointerId)return;
+      const dx=e.clientX-lastX;lastX=e.clientX;lastMove+=Math.abs(dx);
+      yaw=clamp(yaw+dx*.48,-55,55);render();
+      if(lastMove>4&&e.cancelable)e.preventDefault();
+    });
+    const release=e=>{
+      if(e.pointerId!==pointerId)return;
+      pointerId=null;actor.classList.remove('is-dragging');
+      if(actor.hasPointerCapture(e.pointerId))actor.releasePointerCapture(e.pointerId);
+      if(lastMove<7){yaw=Math.abs(yaw)>8?0:30;render();}
+    };
+    actor.addEventListener('pointerup',release);
+    actor.addEventListener('pointercancel',release);
+    actor.addEventListener('lostpointercapture',()=>{pointerId=null;actor.classList.remove('is-dragging')});
+    actor.addEventListener('keydown',e=>{
+      if(e.key==='ArrowLeft'||e.key==='ArrowRight'||e.key==='Home'){
+        e.preventDefault();yaw=e.key==='Home'?0:clamp(yaw+(e.key==='ArrowLeft'?-14:14),-55,55);render();
+      }
+    });
+    const frag=document.createDocumentFragment();
+    for(let i=0;i<22;i++){
+      const dot=document.createElement('i');const x=6+(i*37+31)%88,y=22+(i*23+17)%77;
+      dot.style.cssText=`--x:${x}%;--y:${y}%;--size:${1+i%3}px;--dur:${4.2+(i%6)*.83}s;--delay:-${(i*17)%41/4}s;--drift:${(i%2?1:-1)*(14+i%5*11)}px`;
+      frag.appendChild(dot);
+    }
+    embers.appendChild(frag);render();
+  })();
   applyControlSide();fit();updateUI();requestAnimationFrame(frame);
   // Expose read-only simple debug state for local test harnesses, never gameplay rewards.
   window.HellFallTest={snapshot:()=>({stage:s.stage,depth:s.depth,speed:s.speed,timeLeft:s.timeLeft,wall:s.wall,hopProgress:s.hopProgress,hopVisual:s.hopVisual,boost:s.boost,fold:s.fold,cadence:s.cadence,tapCount:s.tapCount,runCoins:s.runCoins,hazards:s.obstacles.length,gates:s.timeGates.length,boostSide:sys.profile.settings.boostSide,profile:{...sys.profile}}),start:()=>start(false)};

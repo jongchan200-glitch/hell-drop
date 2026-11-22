@@ -3,12 +3,24 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
-  <meta name="theme-color" content="#090e1b">
-  <meta name="description" content="지옥 낙하 — V4.2 가족 테스트 원본 분위기 복원판">
+  <meta name="theme-color" content="#110e1b">
+  <meta name="description" content="지옥 낙하 — 캐릭터와 함께 지하 세계를 돌파하는 낙하 게임">
   <title>지옥 낙하 · HELL FALL</title>
-  <link rel="stylesheet" href="style.css?v=06-thumb">
+  <link rel="preload" href="assets/lobby_abyss.webp" as="image">
+  <link rel="preload" href="assets/hero_intro.webp" as="image">
+  <link rel="stylesheet" href="style.css?v=07-lobby">
 </head>
 <body>
+  <svg class="svg-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+    <symbol id="icon-person" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.2"/><path d="M4.5 20c.3-4.5 3.2-6.8 7.5-6.8s7.2 2.3 7.5 6.8"/></symbol>
+    <symbol id="icon-shop" viewBox="0 0 24 24"><path d="M3 9l1.8-5h14.4L21 9v2c0 1.8-2.3 2.9-4.2 1.1A3.7 3.7 0 0 1 12 12a3.7 3.7 0 0 1-4.8.1C5.2 13.9 3 12.8 3 11V9zM5 13v7h14v-7M9 20v-5h6v5"/></symbol>
+    <symbol id="icon-coin" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="5.3"/><path d="M12 8.5v7M9.7 10.1h3.7c2.6 0 2.3 3.7-.2 3.7H10"/></symbol>
+    <symbol id="icon-trophy" viewBox="0 0 24 24"><path d="M7 4h10v6a5 5 0 0 1-10 0V4zM7 6H4v3a4 4 0 0 0 3 4M17 6h3v3a4 4 0 0 1-3 4M12 15v4M8 21h8M9 19h6"/></symbol>
+    <symbol id="icon-gear" viewBox="0 0 24 24"><path d="M10 2h4l.6 2.4 1.8.8 2.2-1.3 2.7 2.8-1.3 2.2.8 1.8L23 11v3l-2.2.5-.8 1.9 1.3 2.2-2.7 2.7-2.2-1.2-1.8.7-.6 2.2h-4l-.5-2.2-1.9-.7-2.2 1.2-2.7-2.7 1.2-2.2-.7-1.9L1 14v-3l2.2-.3.7-1.8-1.2-2.2 2.7-2.8 2.2 1.3 1.9-.8L10 2z"/><circle cx="12" cy="12.5" r="3.2"/></symbol>
+    <symbol id="icon-spark" viewBox="0 0 24 24"><path d="m12 2 2.5 7.5L22 12l-7.5 2.5L12 22l-2.5-7.5L2 12l7.5-2.5L12 2z"/></symbol>
+    <symbol id="icon-play" viewBox="0 0 24 24"><path d="M8 4.5 20 12 8 19.5V4.5z"/></symbol>
+    <symbol id="icon-arrow" viewBox="0 0 24 24"><path d="M4 12h16M14 6l6 6-6 6"/></symbol>
+  </svg>
   <main class="shell">
     <section class="game" id="game" aria-label="지옥 낙하 게임">
       <canvas id="scene" aria-label="낙하하는 동굴과 캐릭터"></canvas>
@@ -36,58 +48,89 @@
       <div id="toast" class="toast hidden" role="status"></div>
       <div id="controls" class="controls hidden" aria-label="게임 조작 버튼">
         <button type="button" id="boost" class="stone-button boost" aria-label="망토 접기 연타 가속">
-          <span class="button-icon" aria-hidden="true">🌪️</span>
-          <strong>망토 접기</strong>
+          <span class="button-icon" aria-hidden="true">🌪️</span><strong>망토 접기</strong>
           <small id="boostHint">더 빠르게 연타!</small>
         </button>
         <button type="button" id="jump" class="stone-button jump" aria-label="벽 점프">
-          <span class="button-icon" aria-hidden="true">👟</span>
-          <strong>벽 점프</strong>
-          <small>한 번 누르기</small>
+          <span class="button-icon" aria-hidden="true">👟</span><strong>벽 점프</strong><small>한 번 누르기</small>
         </button>
       </div>
-      <div id="overlay" class="overlay">
-        <div class="menu" id="menu">
-          <div id="walletStrip" class="wallet-strip">Lv.<span id="homeLevel">1</span> · 🪙 <span id="homeCoin">0</span></div>
-          <h1 id="menuTitle">지옥 낙하</h1>
-          <p class="subhead" id="menuSubtitle">HELL FALL · V4.2 · 가족 테스트</p>
-          <div id="portrait" class="portrait" aria-hidden="true"><span id="portraitFallback">🦸</span></div>
-          <div id="readyCopy">
-            <p class="hero-name">주인공 우서이 (13)</p>
-            <p class="hero-meta">동옥초등학교 · 키 160cm 조금 안 됨</p>
-            <p class="hero-secret">몸무게: 비밀 🤫</p>
-            <p class="hero-trait">특징: 아침에 세수 안 함! 😂</p>
-            <p class="instructions">망토: 초당 약 3회 연타로 최고 가속!<br>멈추면 빠르게 줄어들고 망토가 다시 펼쳐져<br>벽 점프: 반대편 벽으로 휙!</p>
-            <div class="home-progress"><div class="home-progress-top"><span id="homeProgressText">누적 낙하 0m</span><span id="homeNextText">다음 레벨까지 2,400m</span></div><div class="home-progress-track"><div id="homeProgressFill"></div></div></div>
+
+      <!-- V0.7 polished full-screen lobby: isolated from the game-over dialog. -->
+      <section id="lobby" class="lobby" aria-label="지옥 낙하 홈 화면">
+        <div class="lobby-world" aria-hidden="true"></div>
+        <div class="lobby-ambient" aria-hidden="true"></div>
+        <div class="lobby-embers" id="lobbyEmbers" aria-hidden="true"></div>
+        <div class="lobby-vignette" aria-hidden="true"></div>
+        <div class="lobby-layout">
+          <header class="lobby-header">
+            <div class="lobby-account" aria-label="캐릭터 레벨">
+              <div class="account-avatar"><img src="assets/hero_intro.webp" alt=""></div>
+              <div class="account-meta"><strong>우서이 <span id="homeLevel">1</span><small> LV</small></strong><div class="account-track"><span id="homeProgressFill"></span></div></div>
+            </div>
+            <button type="button" class="lobby-wallet" data-panel="earn" aria-label="코인 획득소 열기">
+              <svg class="wallet-icon"><use href="#icon-coin"></use></svg>
+              <strong id="homeCoin">0</strong><span class="wallet-plus">+</span>
+            </button>
+          </header>
+          <div class="lobby-title" aria-label="지옥 낙하">
+            <div class="lobby-kicker"><span></span>THE DESCENT<span></span></div>
+            <h1>지옥 <em>낙하</em></h1>
+            <p>HELL FALL <span>✦</span> INTO THE ABYSS</p>
           </div>
-          <div id="overCopy" class="hidden">
-            <p class="failure" id="failure">추락 종료!</p>
+          <div class="lobby-showcase" id="lobbyShowcase">
+            <div class="lobby-backlight" aria-hidden="true"></div>
+            <div class="lobby-shadow" aria-hidden="true"></div>
+            <div id="lobbyCharacter" class="lobby-character" tabindex="0" role="slider" aria-label="우서이 캐릭터 좌우 돌려보기. 좌우로 밀거나 방향키를 사용하세요" aria-valuemin="-55" aria-valuemax="55" aria-valuenow="0" aria-valuetext="정면" aria-orientation="horizontal">
+              <div id="lobbyTurn" class="lobby-turn">
+                <div class="lobby-idle">
+                  <img id="lobbyHero" draggable="false" src="assets/hero_intro.webp" alt="">
+                </div>
+              </div>
+            </div>
+            <div class="showcase-ground" aria-hidden="true"></div>
+            <div class="character-identity"><span class="identity-diamond">✦</span><b>우서이</b><i></i><span>첫 번째 탐험가</span></div>
+            <div class="character-turn-tip"><span>‹</span> 좌우로 밀어 캐릭터 돌려보기 <span>›</span></div>
+          </div>
+          <div class="lobby-bottom">
+            <div class="lobby-summary"><div><small>PERSONAL BEST</small><strong><svg><use href="#icon-trophy"></use></svg><span id="homeBest">0</span><i>m</i></strong></div><div class="summary-divider"></div><div><small>TOTAL DESCENT</small><strong><svg><use href="#icon-spark"></use></svg><span id="homeTotal">0</span><i>m</i></strong></div></div>
+            <button type="button" class="lobby-play" id="start"><span class="play-insignia"><svg><use href="#icon-play"></use></svg></span><span class="play-copy"><strong>지옥으로 뛰어들기</strong><small>지하 세계 탐험 시작</small></span><svg class="play-arrow"><use href="#icon-arrow"></use></svg></button>
+            <nav id="homeNav" class="lobby-nav" aria-label="게임 홈 메뉴">
+              <button type="button" data-panel="character"><svg><use href="#icon-person"></use></svg><span>캐릭터</span></button>
+              <button type="button" data-panel="shop"><svg><use href="#icon-shop"></use></svg><span>상점</span></button>
+              <button type="button" data-panel="earn"><svg><use href="#icon-coin"></use></svg><span>코인</span></button>
+              <button type="button" data-panel="records"><svg><use href="#icon-trophy"></use></svg><span>기록</span></button>
+              <button type="button" data-panel="settings"><svg><use href="#icon-gear"></use></svg><span>설정</span></button>
+            </nav>
+            <div class="lobby-home-indicator" aria-hidden="true"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Game over has a dedicated result card; the home screen is a separate lobby. -->
+      <div id="overlay" class="overlay hidden">
+        <div class="menu menu-over" id="menu">
+          <h2 id="menuTitle">추락 종료!</h2>
+          <div id="overCopy">
+            <p class="failure" id="failure">시간이 다 됐어!</p>
             <p class="final-depth" id="finalDepth">0 <small>m</small></p>
             <p class="final-best" id="finalBest">최고 기록 0 m</p>
             <div class="reward-summary"><span>이번 판 코인 <b id="earnedCoin">+0</b></span><span>레벨 보상 <b id="earnedLevel">+0</b></span></div>
             <p class="over-total" id="totalTravel">누적 낙하 0m · Lv.1</p>
             <button type="button" id="overAd" class="ad-choice" disabled>▶ 광고 보고 코인 받기 <small>광고 연동 준비 중</small></button>
           </div>
-          <button type="button" class="start-button" id="start">지옥으로 뛰어들기!</button>
-          <button type="button" class="back-home hidden" id="backHome">홈으로 돌아가기</button>
-          <nav id="homeNav" class="home-nav" aria-label="게임 홈 메뉴">
-            <button data-panel="character">👧 캐릭터</button>
-            <button data-panel="shop">🛍 상점</button>
-            <button data-panel="earn">🪙 코인</button>
-            <button data-panel="records">🏅 기록</button>
-            <button data-panel="settings">⚙️ 설정</button>
-          </nav>
-          <p class="footnote">⚙️ 설정에서 가속 버튼을 오른쪽으로 바꿀 수 있어!<br>PC: 스페이스 연타(가속) · →(점프) · Enter(시작)</p>
+          <button type="button" class="start-button" id="restart">다시 도전하기</button>
+          <button type="button" class="back-home" id="backHome">홈으로 돌아가기</button>
         </div>
       </div>
       <section id="drawer" class="drawer hidden" aria-label="게임 부가 메뉴" role="dialog" aria-modal="true">
         <div class="drawer-card"><div class="drawer-head"><h2 id="drawerTitle">메뉴</h2><button id="drawerClose" type="button" aria-label="닫기">✕</button></div><div id="drawerBody" class="drawer-body"></div></div>
       </section>
-      <div class="version">WEB 0.6 · THUMB CONTROLS</div>
+      <div class="version">WEB 0.7 · ABYSS LOBBY</div>
     </section>
     <aside class="outside-note">연타로 토네이도 성장 · 누적 레벨과 코인은 이 브라우저에 저장돼요.</aside>
   </main>
-  <script src="systems.js?v=06-thumb" defer></script>
-  <script src="game.js?v=06-thumb" defer></script>
+  <script src="systems.js?v=07-lobby" defer></script>
+  <script src="game.js?v=07-lobby" defer></script>
 </body>
 </html>
