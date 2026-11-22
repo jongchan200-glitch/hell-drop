@@ -40,3 +40,10 @@
 - The home front remains unchanged: `assets/hero_intro.webp` (original approved character art). Replaced only the **home back view** reference with new transparent artwork `assets/hero_back_fixed.webp`: naturally arranged rear-facing wavy hair, red-and-gold cape, tan cargo pants and rear-facing sneaker heel/toe geometry.
 - QA before commit: reviewed corrected transparent art against screenshot of approved front side-by-side; inspected alpha/background edges, lower-body shape and shoe heels. This is an illustrated rear view, not a 3D mesh; pose is an artistic approximation. A real browser screenshot and Galaxy touch validation still need to be explicitly confirmed.
 - Swipe operation remains strictly front/back, no side pictures. Gameplay, sound, coins, level, records and simulator unchanged. `assets/hero_back.webp` (previous defective asset) preserved only for history, not loaded by the new preview.
+
+
+## WEB 1.3 TEST — much quieter default music (2026-11-23)
+- Initial background music defaults to 7% instead of 26%. The existing BGM slider still allows full 0–100% user adjustment. Effects (SFX) remain unchanged.
+- Existing profile with the exact legacy 26% default is migrated to 7% once using `settings.musicDefaultRevision`; custom stored BGM values other than the old default are preserved and any subsequently selected value is retained. Older manually selected 26% cannot be distinguished from an untouched default.
+- No changes to the soundtrack list, crossfade, track transitions, game logic, coins, character, settings except the default BGM value, or the simulator.
+- This is intentionally only the first volume experiment. Whether automatic music selection should persist across home/play/game over will be reviewed separately after user listening feedback.

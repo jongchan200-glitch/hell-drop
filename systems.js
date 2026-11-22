@@ -3,6 +3,7 @@
    Catalog & paid/rewarded ad connections intentionally disabled until implemented. */
 (function(){
   const KEY='hell_fall_profile_v1';
+  const DEFAULT_MUSIC=.07; // 7%: quiet ambience on first launch; slider remains 0–100%.
   // Original arrangements from the user's Rhythm Game Lab / shared game-music library.
   // Local MP3s are loaded only when their zone is played; no external URL dependency.
   const MUSIC_SLOTS=[
@@ -18,12 +19,24 @@
   const ITEM_CATALOG=[]; // Future in-game items: {id,name,price,type,description,effect}
   const clamp=(v,a,b)=>Math.max(a,Math.min(b,Number.isFinite(+v)?+v:a));
   const int=(v)=>Math.max(0,Math.floor(Number(v)||0));
-  function newProfile(){return {coins:0,totalDepth:0,level:1,runs:0,worldCoins:0,inventory:[],settings:{music:.26,sfx:.32,boostSide:'left'},claimed:[]};}
+  function newProfile(){return {coins:0,totalDepth:0,level:1,runs:0,worldCoins:0,inventory:[],settings:{music:DEFAULT_MUSIC,sfx:.32,boostSide:'left',musicDefaultRevision:1},claimed:[]};}
   function load(){let obj={};try{obj=JSON.parse(localStorage.getItem(KEY)||'{}')||{}}catch(_){/* blocked */}
     const p={...newProfile(),...obj};p.coins=int(p.coins);p.totalDepth=int(p.totalDepth);p.runs=int(p.runs);p.worldCoins=int(p.worldCoins);
     p.inventory=Array.isArray(p.inventory)?p.inventory.filter(x=>typeof x==='string').slice(0,200):[];
     p.claimed=Array.isArray(p.claimed)?p.claimed.filter(x=>typeof x==='string').slice(0,200):[];
-    p.settings={music:clamp(obj?.settings?.music??.26,0,1),sfx:clamp(obj?.settings?.sfx??.32,0,1),boostSide:obj?.settings?.boostSide==='right'?'right':'left'};
+    // Prior builds saved the old default (26%) into profiles even without visiting settings.
+    // Migrate that untouched default once. Preserve all other custom music choices and
+    // do not alter gameplay coins, records, levels, effects volume or control layout.
+    const oldSettings=obj?.settings||{};
+    const oldMusic=oldSettings.music;
+    const isOldDefault=oldSettings.musicDefaultRevision!==1
+      && (oldMusic==null||Number(oldMusic)===.26);
+    p.settings={
+      music:clamp(isOldDefault?DEFAULT_MUSIC:(oldMusic??DEFAULT_MUSIC),0,1),
+      sfx:clamp(oldSettings.sfx??.32,0,1),
+      boostSide:oldSettings.boostSide==='right'?'right':'left',
+      musicDefaultRevision:1
+    };
     p.level=levelFromDepth(p.totalDepth);return p;
   }
   let profile=load();
