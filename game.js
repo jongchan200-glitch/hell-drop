@@ -3,8 +3,7 @@
  * HELL FALL WEB RESTORE 0.1 — playable browser translation of V4.2 Kotlin game.
  * Original V4.2 mechanics: hold cape to brake, press to switch walls.
  * Future proposed rapid-tap acceleration is NOT included here yet.
- * Optional local `assets/hero_*.png` are PRIVATE reference-art sprites. The public
- * GitHub version intentionally omits them and uses a generic fallback character.
+ * Restored build now uses the original V4.2 character art sprites and intro profile.
  */
 (function () {
   const $ = (id) => document.getElementById(id);
@@ -29,7 +28,7 @@
   const IMAGE_FILES={falling:'hero_fall',braking:'hero_cape',jumpLeft:'hero_jump_left',jumpRight:'hero_jump_right',intro:'hero_intro',dizzy:'hero_hit'};
   Object.entries(IMAGE_FILES).forEach(([key,file])=>{
     const img=new Image(); img.onload=()=>{images[key]=img;if(key==='intro')showPortrait(img);};
-    img.onerror=()=>{}; img.src='assets/'+file+'.png';
+    img.onerror=()=>{}; img.src='assets/'+file+'.webp';
   });
   function showPortrait(img){ if(!img?.naturalWidth)return;const p=$('portrait');p.querySelector('img')?.remove();
     const node=new Image();node.src=img.src;node.alt='';p.append(node);$('portraitFallback').classList.add('hidden'); }
@@ -108,7 +107,7 @@
     $('timeCaption').classList.toggle('alert',s.timeLeft<3);
     $('speedLabel').textContent='속도 '+Math.floor(s.speed)+' m/s · 난이도 '+(tierOf(s.depth)+1);
     $('timeFill').style.width=(100*s.timeLeft/T.LIMIT)+'%';$('timeFill').classList.toggle('danger',s.timeLeft<3);
-    brakeBtn.classList.toggle('active',isBraking());$('brakeHint').textContent=isBraking()?'제동 중':'누르는 동안 감속';
+    brakeBtn.classList.toggle('active',isBraking());$('brakeHint').textContent=isBraking()?'제동 중':'짧게 탁 / 길게 꾹';
     toast.classList.add('hidden');toast.classList.remove('mint');
     if(playing && s.zoneFlash>0){toast.textContent=ZONES[zoneOf(s.depth)]+' 진입!';toast.style.opacity=String(Math.min(1,s.zoneFlash/1.5));toast.classList.remove('hidden');}
     if(playing && s.gateFlash>0){toast.textContent='⏱ +'+s.lastBonus.toFixed(1)+'초!';toast.style.opacity=String(Math.min(1,s.gateFlash/1.1));toast.classList.remove('hidden');toast.classList.add('mint');}

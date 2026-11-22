@@ -1,34 +1,28 @@
-# Hell Fall — browser restoration (WEB 0.1)
+# 지옥 낙하 · HELL FALL
 
-2026-11-22. Playable web reconstruction based on the previously archived Android/Kotlin V4.2 game rules. This is a **test version**, not a final release.
+V4.2 안드로이드 백업을 바탕으로 만든 모바일 웹앱 복원판.
 
-## Launch
+## 실행
 
-Open `index.html` in a modern desktop/mobile browser, or host the folder through a static web server. No server API and no external dependencies are required. The game uses a Canvas, `game.js` and `style.css`. The optional original test sprites **are not included in this public repository**; the game renders a generic character when `assets/hero_*.png` are absent.
+GitHub Pages: https://jongchan200-glitch.github.io/hell-drop/
 
-## Controls
+- `index.html`을 시작 파일로 사용한다.
+- `style.css`와 `game.js`를 같은 폴더에 둔다.
+- `assets/*.webp`는 기존 V4.2 원본 PNG를 고화질 WebP로 변환한 그래픽 리소스다.
+- 원본 PNG 6장과 코틀린 V4.2 백업은 Google Drive에 별도로 보존한다.
 
-- Mobile: **hold the left button** for cape braking; **tap the right button** to leap from one wall to the other.
-- Desktop: **Space** = brake while held, **Right Arrow** = jump, **Enter** = start/restart.
-- A time orb is collected only on its wall. Hazards must be dodged by switching walls. Best depth is stored in browser local storage.
+## WEB 0.2 복원
 
-## Origin / preserved V4.2 rules
+- 기존 캐릭터의 인트로, 낙하, 브레이크, 좌우 점프, 충돌 이미지 적용.
+- 기존 시작 화면의 인물 설정·소개 및 제목 문구 복원.
+- 게임 규칙은 V4.2의 홀드형 브레이크와 벽 점프를 유지한다.
+- 충돌, 점프, 시간 아이템, 지층, 로컬 최고 기록을 지원한다.
+- 이후 논의된 탭 가속 방식과 신규 설정은 아직 미구현이다.
 
-- Intro, fall, collision/game over, retry; fixed time limit of 10s, time pickup increases it; 2,000m difficulty tiers and seven 5,000m environments; obstacles are seeded per attempt, do not reshuffle each frame; collision uses a swept depth check.
-- Physics constants trace to the V4.2 backup; this web build is an independent translation, not a verified byte-equivalent native build.
-- A **later proposed** mechanic (cape normally open, tap repeatedly to accelerate) is **not yet implemented**; it will be a separate reviewed change.
-- Difficulty preset menu, online rankings, revive tickets, shared/free coins, ads and backend are also not implemented.
+## 개발 상태
 
-## Privacy
+현재 웹 테스트 버전이다. 데스크톱 Chromium 모바일 환경에서 이미지 로딩, 시작, 벽 점프, 브레이크 및 JS 오류를 검증했다. 갤럭시 실기기와 사용자 최종 승인은 별도 진행한다. 이전 정상 WEB 0.1은 GitHub 커밋 이력에 보존된다.
 
-Original V4.2 sprites and documentation were from a private family prototype and may be identifying. They have **not** been published to this GitHub repository. Do not add personal names, school information, family photos, API secrets, or original private sprites to the public history. Public builds use only the generic fallback artwork.
+## 그래픽
 
-## Development status
-
-Local Chromium smoke test: start, stage transition, wall jump, cape braking, and console error checks passed. Original sprite version was also tested locally but remains private. Real Galaxy hands-on test and user acceptance remain pending. No Play Store release.
-
-Project Google Drive handoff is maintained separately and describes older V3/V4/V4.1/V4.2 native backups and future plans.
-
-## Web preview
-
-GitHub Pages source: `main` branch, `/ (root)`. Once deployment succeeds, the browser test URL is https://jongchan200-glitch.github.io/hell-drop/ . This is a work-in-progress preview, not the final approved release.
+시안의 이름, 학교, 캐릭터 정보는 사용자가 공개 허용한 가상 설정이다. 다만 제3자의 실존 인물 정보와 비밀키는 저장하지 않는다.
