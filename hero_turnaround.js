@@ -5,7 +5,7 @@
   'use strict';
   const SOURCES={
     front:'assets/hero_intro.webp?v=11-frontback',
-    back:'assets/hero_back.webp?v=11-frontback'
+    back:'assets/hero_back_fixed.webp?v=12-backfix'
   };
   function mount(actor,opts={}){
     if(!actor)return null;

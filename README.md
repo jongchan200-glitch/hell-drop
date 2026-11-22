@@ -33,3 +33,10 @@
 - On horizontal swipe (32px threshold), alternate **front ↔ back** only. No angled view, faux mesh, deformation, or 360-degree claim. Keyboard arrows/Enter alternate; Home restores front.
 - Gameplay sprites and original character files are unchanged; no changes to BGM, gameplay physics, user levels/coins/records, settings, or simulator.
 - This is a two-view illustrated toggle, not genuine 3D. Real-device visual QA is pending user review. The older WEB 0.9/1.0 implementations remain in Git history for rollback.
+
+
+## WEB 1.2 TEST — original front + corrected back artwork (2026-11-23)
+- User-reported regression: WEB 1.1 reused a synthetic rear image with hair streaks over the face and shoes facing toward the camera. That image was NOT quality-checked before publishing.
+- The home front remains unchanged: `assets/hero_intro.webp` (original approved character art). Replaced only the **home back view** reference with new transparent artwork `assets/hero_back_fixed.webp`: naturally arranged rear-facing wavy hair, red-and-gold cape, tan cargo pants and rear-facing sneaker heel/toe geometry.
+- QA before commit: reviewed corrected transparent art against screenshot of approved front side-by-side; inspected alpha/background edges, lower-body shape and shoe heels. This is an illustrated rear view, not a 3D mesh; pose is an artistic approximation. A real browser screenshot and Galaxy touch validation still need to be explicitly confirmed.
+- Swipe operation remains strictly front/back, no side pictures. Gameplay, sound, coins, level, records and simulator unchanged. `assets/hero_back.webp` (previous defective asset) preserved only for history, not loaded by the new preview.
