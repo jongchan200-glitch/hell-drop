@@ -1,6 +1,6 @@
 'use strict';
 /*
- * HELL FALL WEB 0.4 — storm cadence, canonical art, local progression,
+ * HELL FALL WEB 0.6 — thumb-friendly three-tap cadence, reversible controls,
  * future commerce / reward / zone music infrastructure. V4.2 game world preserved.
  * All character states use the curated original V4.2 sprite set only.
  * Original high-score key stays unchanged for continuity.
@@ -15,7 +15,7 @@
   let lastReward={distance:0,foundCoins:0,bonus:0,levelUps:0,level:sys.profile.level,newBalance:sys.profile.coins};
   const T = {
     LIMIT:10, MAX:1560, START:124, GLIDE:112, GLIDE_TIER:8, BOOST_SPEED:510,
-    BOOST_TIER:35, MIN_TAP_INTERVAL:.055, TAP_RATE_BASE:1.0, TAP_RATE_RANGE:8,
+    BOOST_TIER:35, MIN_TAP_INTERVAL:.055, TAP_RATE_BASE:.65, TAP_RATE_RANGE:2.15,
     RISE_RESPONSE:1.2, FALL_RESPONSE:4.8, HOP_SECONDS:.155, ZONE_LENGTH:5000
   };
   const ZONES=['지표면 · 지하 동굴','깊은 암반층','마그마 지대','맨틀 지대','외핵','내핵','지옥의 심연'];
@@ -71,7 +71,7 @@
   function posX(g,p=g.hopProgress){return wallX(g.hopFrom)*(1-smooth(p))+wallX(g.wall)*smooth(p);}
   function rngSeed(seed){let x=(seed>>>0)||1;return()=>{x=(x+0x6D2B79F5)>>>0;let t=x;t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return ((t^(t>>>14))>>>0)/4294967296;};}
   function makeGame(stage='READY'){return{seed:(Math.random()*1000000000)|0,stage,depth:0,speed:T.START,timeLeft:T.LIMIT,elapsed:0,introElapsed:0,boost:0,fold:0,lastTapAt:-1,tapPulse:0,tapCount:0,tapIntervals:[],cadence:0,wall:'L',hopFrom:'L',hopProgress:1,hopVisual:1,obstacles:[],timeGates:[],coinGates:[],runCoins:0,nextObstacle:370,nextTimeGate:1400,nextCoin:210,coinNumber:0,obstacleNumber:0,gateNumber:0,gateFlash:0,zoneFlash:0,lastBonus:0,failure:''};}
-  function start(intro){s=makeGame(intro?'INTRO':'PLAYING');lastReward={distance:0,foundCoins:0,bonus:0,levelUps:0,level:sys.profile.level,newBalance:sys.profile.coins};heldKeys.clear();sys.audio.unlock();sys.audio.playZone(intro?-1:0);sys.audio.effect('start');updateUI();}
+  function start(intro){applyControlSide();s=makeGame(intro?'INTRO':'PLAYING');lastReward={distance:0,foundCoins:0,bonus:0,levelUps:0,level:sys.profile.level,newBalance:sys.profile.coins};heldKeys.clear();sys.audio.unlock();sys.audio.playZone(intro?-1:0);sys.audio.effect('start');updateUI();}
   function finish(msg){if(s.stage==='OVER')return;s.stage='OVER';s.failure=msg;if(s.depth>best){best=s.depth;saveRecord(best);}lastReward=sys.awardRun(s.depth,s.runCoins);sys.audio.effect(lastReward.levelUps>0?'level':'hit');sys.audio.playZone(-1);heldKeys.clear();boostBtn.classList.remove('active');updateUI();}
   function tapAccelerate(){
     if(s.stage!=='PLAYING')return;
@@ -92,11 +92,12 @@
     const old=s.depth,tier=tierOf(old);
     // Recent inter-tap rhythm controls the gauge. Slow tapping holds a low
     // storm, and successive higher levels demand increasingly faster rhythms.
-    // 2 taps never fill the gauge; ~9 taps/second is required near the peak.
+    // Full boost is reachable with a comfortable sustained ~3 taps/second.
+    // Allow one thumb-tap interval of grace before fading, not auto-repeat on hold.
     const interval=s.tapIntervals.length?s.tapIntervals.reduce((a,b)=>a+b,0)/s.tapIntervals.length:0;
     const rawRate=interval>0?Math.min(13,1/interval):0;
     const silence=s.lastTapAt<0?999:s.elapsed-s.lastTapAt;
-    const anticipation=interval>0?Math.min(.30,interval*.84):.12;
+    const anticipation=interval>0?Math.min(.45,Math.max(.31,interval*1.13)):.12;
     const rate=rawRate*Math.exp(-Math.max(0,silence-anticipation)*5.2);
     const demand=Math.max(0,Math.min(1,(rate-T.TAP_RATE_BASE)/T.TAP_RATE_RANGE));
     const targetBoost=Math.pow(demand,1.55);
@@ -489,6 +490,9 @@
     sys.audio.fade(dt);
     draw();drawVortex();updateUI();requestAnimationFrame(frame);
   }
+  function applyControlSide(){
+    controls.classList.toggle('boost-right',sys.profile.settings.boostSide==='right');
+  }
   $('start').addEventListener('click',()=>start(s.stage==='READY'));
   $('backHome').addEventListener('click',()=>{s=makeGame('READY');sys.audio.playZone(-1);updateUI();});
   boostBtn.addEventListener('pointerdown',e=>{if(s.stage!=='PLAYING')return;e.preventDefault();tapAccelerate();});
@@ -510,17 +514,25 @@
     else if(type==='shop')html=`<div class="banner">🪙 내 코인 <b>${fmt(prof.coins)}</b></div><div class="info-card"><strong>가속 장비</strong>돌개 강화·속도 유지 등 장비 슬롯<br><span class="muted">효과·가격·판매 여부는 아직 결정 전이야.</span></div><div class="info-card"><strong>꾸미기 · 새 캐릭터</strong>구매한 물품은 보관함에 저장하는 구조가 준비돼 있어.<br><span class="muted">아직 실제 판매 아이템은 없어.</span></div>`;
     else if(type==='earn')html=`<div class="banner">🪙 현재 코인 <b>${fmt(prof.coins)}</b><br><small>게임 중 수집 · 누적 레벨업 · 선택형 광고 · 코인 구매</small></div><div class="info-card"><strong>무료로 얻기</strong>게임에서 코인 줍기 / 누적 낙하로 레벨업</div><div class="info-card"><strong>▶ 보상형 광고</strong><span class="muted">광고 서비스 연동 전이어서 현재 시청·코인 지급을 사용할 수 없어.</span></div><div class="info-card"><strong>코인 구매</strong><span class="muted">현금 결제는 추후 설계·심사 후 연결할 예정이야. 현재 결제 기능 없음.</span></div>`;
     else if(type==='records')html=`<div class="banner">🏆 최고 낙하 <b>${fmt(Math.floor(best))}m</b></div><div class="info-card"><strong>누적 낙하</strong>${fmt(prof.totalDepth)}m · Lv.${prof.level}<br><span class="muted">다음 레벨까지 ${fmt(prog.next-prog.within)}m</span></div><div class="info-card"><strong>플레이 횟수</strong>${fmt(prof.runs)}판 완료</div><div class="info-card"><strong>획득 코인 기록</strong>게임에서 수집 ${fmt(prof.worldCoins)}코인 · 현재 보유 ${fmt(prof.coins)}코인</div>`;
-    else if(type==='settings')html=`<div class="info-card"><strong>🔊 음악 음량</strong><label for="musicRange">BGM <span id="musicValue">${Math.round(prof.settings.music*100)}%</span><input id="musicRange" type="range" min="0" max="100" value="${Math.round(prof.settings.music*100)}"></label><label for="sfxRange">효과음 <span id="sfxValue">${Math.round(prof.settings.sfx*100)}%</span><input id="sfxRange" type="range" min="0" max="100" value="${Math.round(prof.settings.sfx*100)}"></label></div><div class="info-card"><strong>🎵 지층별 클래식 편곡 슬롯</strong><span class="muted">준비된 음악이 연결되면 지층 변경 시 약 2초 동안 자연스럽게 교체돼.</span><ul class="slot-list">${sys.MUSIC_SLOTS.map((v,i)=>`<li><span>${i===0?'홈':i+'구역'} · ${esc(v.name)}</span><span>${v.ready?'음원 연결':'음원 대기'}</span></li>`).join('')}</ul></div>`;
+    else if(type==='settings')html=`<div class="info-card"><strong>🎮 가속·벽점프 버튼 위치</strong><span class="muted">휴대폰을 잡고 연타하기 편한 손으로 가속 버튼을 옮길 수 있어. 선택은 자동 저장돼.</span><div class="control-layout-choices" role="group" aria-label="가속 버튼 방향"><button type="button" class="control-layout-choice" data-boost-side="left" aria-pressed="${prof.settings.boostSide!=='right'}">🌪️ 가속 왼쪽<br><small>점프 오른쪽</small></button><button type="button" class="control-layout-choice" data-boost-side="right" aria-pressed="${prof.settings.boostSide==='right'}">🌪️ 가속 오른쪽<br><small>점프 왼쪽</small></button></div></div><div class="info-card"><strong>🔊 음악 음량</strong><label for="musicRange">BGM <span id="musicValue">${Math.round(prof.settings.music*100)}%</span><input id="musicRange" type="range" min="0" max="100" value="${Math.round(prof.settings.music*100)}"></label><label for="sfxRange">효과음 <span id="sfxValue">${Math.round(prof.settings.sfx*100)}%</span><input id="sfxRange" type="range" min="0" max="100" value="${Math.round(prof.settings.sfx*100)}"></label></div><div class="info-card"><strong>🎵 지층별 클래식 편곡 슬롯</strong><span class="muted">준비된 음악이 연결되면 지층 변경 시 약 2초 동안 자연스럽게 교체돼.</span><ul class="slot-list">${sys.MUSIC_SLOTS.map((v,i)=>`<li><span>${i===0?'홈':i+'구역'} · ${esc(v.name)}</span><span>${v.ready?'음원 연결':'음원 대기'}</span></li>`).join('')}</ul></div>`;
     $('drawerBody').innerHTML=html;$('drawer').classList.remove('hidden');
-    if(type==='settings')for(const [key,id] of [['music','musicRange'],['sfx','sfxRange']]){
-      $(id).addEventListener('input',e=>{sys.setting(key,Number(e.target.value)/100);$(key+'Value').textContent=e.target.value+'%';});
+    if(type==='settings'){
+      for(const [key,id] of [['music','musicRange'],['sfx','sfxRange']]){
+        $(id).addEventListener('input',e=>{sys.setting(key,Number(e.target.value)/100);$(key+'Value').textContent=e.target.value+'%';});
+      }
+      $('drawerBody').querySelectorAll('[data-boost-side]').forEach(button=>{
+        button.addEventListener('click',()=>{
+          sys.setting('boostSide',button.dataset.boostSide);applyControlSide();
+          $('drawerBody').querySelectorAll('[data-boost-side]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.boostSide===sys.profile.settings.boostSide)));
+        });
+      });
     }
   }
   document.querySelectorAll('[data-panel]').forEach(button=>button.addEventListener('click',()=>openPanel(button.dataset.panel)));
   $('drawerClose').addEventListener('click',()=>$('drawer').classList.add('hidden'));
   $('drawer').addEventListener('click',e=>{if(e.target===$('drawer'))$('drawer').classList.add('hidden')});
   document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('drawer').classList.contains('hidden'))$('drawer').classList.add('hidden')});
-  fit();updateUI();requestAnimationFrame(frame);
+  applyControlSide();fit();updateUI();requestAnimationFrame(frame);
   // Expose read-only simple debug state for local test harnesses, never gameplay rewards.
-  window.HellFallTest={snapshot:()=>({stage:s.stage,depth:s.depth,speed:s.speed,timeLeft:s.timeLeft,wall:s.wall,hopProgress:s.hopProgress,hopVisual:s.hopVisual,boost:s.boost,fold:s.fold,cadence:s.cadence,tapCount:s.tapCount,runCoins:s.runCoins,hazards:s.obstacles.length,gates:s.timeGates.length,profile:{...sys.profile}}),start:()=>start(false)};
+  window.HellFallTest={snapshot:()=>({stage:s.stage,depth:s.depth,speed:s.speed,timeLeft:s.timeLeft,wall:s.wall,hopProgress:s.hopProgress,hopVisual:s.hopVisual,boost:s.boost,fold:s.fold,cadence:s.cadence,tapCount:s.tapCount,runCoins:s.runCoins,hazards:s.obstacles.length,gates:s.timeGates.length,boostSide:sys.profile.settings.boostSide,profile:{...sys.profile}}),start:()=>start(false)};
 })();

@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#090e1b">
   <meta name="description" content="지옥 낙하 — V4.2 가족 테스트 원본 분위기 복원판">
   <title>지옥 낙하 · HELL FALL</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=06-thumb">
 </head>
 <body>
   <main class="shell">
@@ -57,7 +57,7 @@
             <p class="hero-meta">동옥초등학교 · 키 160cm 조금 안 됨</p>
             <p class="hero-secret">몸무게: 비밀 🤫</p>
             <p class="hero-trait">특징: 아침에 세수 안 함! 😂</p>
-            <p class="instructions">망토: 더 빠르게 연타할수록 토네이도가 성장!<br>멈추면 빠르게 줄어들고 망토가 다시 펼쳐져<br>벽 점프: 반대편 벽으로 휙!</p>
+            <p class="instructions">망토: 초당 약 3회 연타로 최고 가속!<br>멈추면 빠르게 줄어들고 망토가 다시 펼쳐져<br>벽 점프: 반대편 벽으로 휙!</p>
             <div class="home-progress"><div class="home-progress-top"><span id="homeProgressText">누적 낙하 0m</span><span id="homeNextText">다음 레벨까지 2,400m</span></div><div class="home-progress-track"><div id="homeProgressFill"></div></div></div>
           </div>
           <div id="overCopy" class="hidden">
@@ -77,17 +77,17 @@
             <button data-panel="records">🏅 기록</button>
             <button data-panel="settings">⚙️ 설정</button>
           </nav>
-          <p class="footnote">PC: 스페이스 연타(가속) · →(점프) · Enter(시작)</p>
+          <p class="footnote">⚙️ 설정에서 가속 버튼을 오른쪽으로 바꿀 수 있어!<br>PC: 스페이스 연타(가속) · →(점프) · Enter(시작)</p>
         </div>
       </div>
       <section id="drawer" class="drawer hidden" aria-label="게임 부가 메뉴" role="dialog" aria-modal="true">
         <div class="drawer-card"><div class="drawer-head"><h2 id="drawerTitle">메뉴</h2><button id="drawerClose" type="button" aria-label="닫기">✕</button></div><div id="drawerBody" class="drawer-body"></div></div>
       </section>
-      <div class="version">WEB 0.5 · MOTION RIG</div>
+      <div class="version">WEB 0.6 · THUMB CONTROLS</div>
     </section>
     <aside class="outside-note">연타로 토네이도 성장 · 누적 레벨과 코인은 이 브라우저에 저장돼요.</aside>
   </main>
-  <script src="systems.js" defer></script>
-  <script src="game.js?v=05-motion" defer></script>
+  <script src="systems.js?v=06-thumb" defer></script>
+  <script src="game.js?v=06-thumb" defer></script>
 </body>
 </html>

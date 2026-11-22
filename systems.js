@@ -16,12 +16,12 @@
   const ITEM_CATALOG=[]; // Future in-game items: {id,name,price,type,description,effect}
   const clamp=(v,a,b)=>Math.max(a,Math.min(b,Number.isFinite(+v)?+v:a));
   const int=(v)=>Math.max(0,Math.floor(Number(v)||0));
-  function newProfile(){return {coins:0,totalDepth:0,level:1,runs:0,worldCoins:0,inventory:[],settings:{music:.26,sfx:.32},claimed:[]};}
+  function newProfile(){return {coins:0,totalDepth:0,level:1,runs:0,worldCoins:0,inventory:[],settings:{music:.26,sfx:.32,boostSide:'left'},claimed:[]};}
   function load(){let obj={};try{obj=JSON.parse(localStorage.getItem(KEY)||'{}')||{}}catch(_){/* blocked */}
     const p={...newProfile(),...obj};p.coins=int(p.coins);p.totalDepth=int(p.totalDepth);p.runs=int(p.runs);p.worldCoins=int(p.worldCoins);
     p.inventory=Array.isArray(p.inventory)?p.inventory.filter(x=>typeof x==='string').slice(0,200):[];
     p.claimed=Array.isArray(p.claimed)?p.claimed.filter(x=>typeof x==='string').slice(0,200):[];
-    p.settings={music:clamp(obj?.settings?.music??.26,0,1),sfx:clamp(obj?.settings?.sfx??.32,0,1)};
+    p.settings={music:clamp(obj?.settings?.music??.26,0,1),sfx:clamp(obj?.settings?.sfx??.32,0,1),boostSide:obj?.settings?.boostSide==='right'?'right':'left'};
     p.level=levelFromDepth(p.totalDepth);return p;
   }
   let profile=load();
@@ -40,7 +40,10 @@
     if(profile.coins<item.price)return {ok:false,reason:'코인이 부족해요'};
     profile.coins-=item.price;profile.inventory.push(id);save();return {ok:true,item};
   }
-  function setting(name,value){if(!['music','sfx'].includes(name))return;profile.settings[name]=clamp(value,0,1);save();}
+  function setting(name,value){
+    if(name==='boostSide'){profile.settings.boostSide=value==='right'?'right':'left';save();return;}
+    if(!['music','sfx'].includes(name))return;profile.settings[name]=clamp(value,0,1);save();
+  }
   const audio={ctx:null,lastTapSound:0,bgm:null,previous:null,activeTrack:-1,fadeTime:0,
     async unlock(){const C=window.AudioContext||window.webkitAudioContext;if(!C)return;
       if(!this.ctx)this.ctx=new C();if(this.ctx.state==='suspended')try{await this.ctx.resume()}catch(_){/* muted */}},
