@@ -559,52 +559,17 @@
   $('drawerClose').addEventListener('click',closePanel);
   $('drawer').addEventListener('click',e=>{if(e.target===$('drawer'))closePanel()});
   document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('drawer').classList.contains('hidden'))closePanel()});
-  // Lobby: authentic original portrait + lightweight 2D perspective preview.
-  // A single frontal drawing cannot show a truthful 3D rear view; user can
-  // inspect left/right three-quarter style angles, ready for future pose assets.
+  // WEB 0.9: Home-only WebGL sculpt; BGM / audio, gameplay and records unchanged.
   (function setupLobbyCharacter(){
-    const actor=$('lobbyCharacter'),turn=$('lobbyTurn'),embers=$('lobbyEmbers');
-    let yaw=0,pointerId=null,lastX=0,lastMove=0,suppressClick=false;
-    const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
-    function render(){
-      turn.style.setProperty('--hero-yaw',yaw.toFixed(1)+'deg');
-      turn.style.setProperty('--hero-shift',(-yaw*.13).toFixed(1)+'px');
-      turn.style.setProperty('--hero-tilt',(yaw*.018).toFixed(2)+'deg');
-      actor.setAttribute('aria-valuenow',String(Math.round(yaw)));
-      actor.setAttribute('aria-valuetext',Math.abs(yaw)<4?'정면':(yaw>0?'오른쪽 ':'왼쪽 ')+Math.round(Math.abs(yaw))+'도');
-    }
-    actor.addEventListener('pointerdown',e=>{
-      if(s.stage!=='READY'||(e.pointerType==='mouse'&&e.button!==0))return;
-      pointerId=e.pointerId;lastX=e.clientX;lastMove=0;
-      actor.classList.add('is-dragging');actor.setPointerCapture(e.pointerId);
-    });
-    actor.addEventListener('pointermove',e=>{
-      if(e.pointerId!==pointerId)return;
-      const dx=e.clientX-lastX;lastX=e.clientX;lastMove+=Math.abs(dx);
-      yaw=clamp(yaw+dx*.48,-55,55);render();
-      if(lastMove>4&&e.cancelable)e.preventDefault();
-    });
-    const release=e=>{
-      if(e.pointerId!==pointerId)return;
-      pointerId=null;actor.classList.remove('is-dragging');
-      if(actor.hasPointerCapture(e.pointerId))actor.releasePointerCapture(e.pointerId);
-      if(lastMove<7){yaw=Math.abs(yaw)>8?0:30;render();}
-    };
-    actor.addEventListener('pointerup',release);
-    actor.addEventListener('pointercancel',release);
-    actor.addEventListener('lostpointercapture',()=>{pointerId=null;actor.classList.remove('is-dragging')});
-    actor.addEventListener('keydown',e=>{
-      if(e.key==='ArrowLeft'||e.key==='ArrowRight'||e.key==='Home'){
-        e.preventDefault();yaw=e.key==='Home'?0:clamp(yaw+(e.key==='ArrowLeft'?-14:14),-55,55);render();
-      }
-    });
+    const actor=$('lobbyCharacter'), embers=$('lobbyEmbers');
+    if(window.HellFallLobby3D)window.HellFallLobby3D.mount(actor,{isHome:()=>s.stage==='READY'});
     const frag=document.createDocumentFragment();
     for(let i=0;i<22;i++){
-      const dot=document.createElement('i');const x=6+(i*37+31)%88,y=22+(i*23+17)%77;
+      const dot=document.createElement('i'),x=6+(i*37+31)%88,y=22+(i*23+17)%77;
       dot.style.cssText=`--x:${x}%;--y:${y}%;--size:${1+i%3}px;--dur:${4.2+(i%6)*.83}s;--delay:-${(i*17)%41/4}s;--drift:${(i%2?1:-1)*(14+i%5*11)}px`;
       frag.appendChild(dot);
     }
-    embers.appendChild(frag);render();
+    embers.appendChild(frag);
   })();
   applyControlSide();fit();updateUI();requestAnimationFrame(frame);
   // Expose read-only simple debug state for local test harnesses, never gameplay rewards.
