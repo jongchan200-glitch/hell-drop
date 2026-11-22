@@ -1,28 +1,24 @@
-# 지옥 낙하 · HELL FALL
+# 지옥 낙하 · HELL FALL WEB 0.3
 
-V4.2 안드로이드 백업을 바탕으로 만든 모바일 웹앱 복원판.
+## Current live build
+- Public site: https://jongchan200-glitch.github.io/hell-drop/
+- v0.3 — rhythmic fold-to-dive gameplay implemented; original V4.2 art and profile kept.
+- Left button `망토 접기`: each distinct tap folds the cape and adds speed. Holding is one tap only. The cape unfolds and the fall slows naturally when tapping ends.
+- Right button `벽 점프`: swap walls once on press, with the original short hop.
+- Visuals: original V4.2 glide/jump/intro/impact sprites, plus two newly generated consistent illustrated phases `assets/hero_fold.webp`, `assets/hero_dive.webp`. Animated crossfade by cape fold, enhanced speed airflow, and a fold meter.
+- Maintains 10-second clock, depth zones, collision and time gates, highscores under the original `hell_fall_web_v42_best` localStorage key.
+- This is a web test build, not user-approved final release. Actual Galaxy gameplay balancing remains to be evaluated.
 
-## 실행
+## Controls
+Touch: rapid TAP left to accelerate; tap right to switch walls. Stop tapping to slow. Hold does **not** continuously accelerate.
+Keyboard: tap Space repeatedly to accelerate, Right Arrow to jump, Enter to start/retry.
 
-GitHub Pages: https://jongchan200-glitch.github.io/hell-drop/
+## Source and backups
+- Main branch remains the **single** live source, with GitHub Pages `main / (root)` published.
+- Earlier v0.2 full source is preserved in Git history. The V4.2 native backup is preserved in Google Drive.
+- All artworks in this repository have been authorized for publication by their creator.
+- Gameplay music, advertisement/coins, online rankings, and Android packaging remain unimplemented.
 
-- `index.html`을 시작 파일로 사용한다.
-- `style.css`와 `game.js`를 같은 폴더에 둔다.
-- `assets/*.webp`는 기존 V4.2 원본 PNG를 고화질 WebP로 변환한 그래픽 리소스다.
-- 원본 PNG 6장과 코틀린 V4.2 백업은 Google Drive에 별도로 보존한다.
-
-## WEB 0.2 복원
-
-- 기존 캐릭터의 인트로, 낙하, 브레이크, 좌우 점프, 충돌 이미지 적용.
-- 기존 시작 화면의 인물 설정·소개 및 제목 문구 복원.
-- 게임 규칙은 V4.2의 홀드형 브레이크와 벽 점프를 유지한다.
-- 충돌, 점프, 시간 아이템, 지층, 로컬 최고 기록을 지원한다.
-- 이후 논의된 탭 가속 방식과 신규 설정은 아직 미구현이다.
-
-## 개발 상태
-
-현재 웹 테스트 버전이다. 데스크톱 Chromium 모바일 환경에서 이미지 로딩, 시작, 벽 점프, 브레이크 및 JS 오류를 검증했다. 갤럭시 실기기와 사용자 최종 승인은 별도 진행한다. 이전 정상 WEB 0.1은 GitHub 커밋 이력에 보존된다.
-
-## 그래픽
-
-시안의 이름, 학교, 캐릭터 정보는 사용자가 공개 허용한 가상 설정이다. 다만 제3자의 실존 인물 정보와 비밀키는 저장하지 않는다.
+## Testing
+- Node syntax check and Chromium mobile-viewport automated tests: startup, sprite loading, idle speed, one tap, press-and-hold exactly one event, fast multi-tap speed boost, relaxation, wall jump, no JS errors.
+- Real-world phone timing, difficulty and user approval remain pending.

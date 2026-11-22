@@ -1,16 +1,20 @@
 'use strict';
 /*
- * HELL FALL WEB RESTORE 0.1 — playable browser translation of V4.2 Kotlin game.
- * Original V4.2 mechanics: hold cape to brake, press to switch walls.
- * Future proposed rapid-tap acceleration is NOT included here yet.
- * Restored build now uses the original V4.2 character art sprites and intro profile.
+ * HELL FALL WEB 0.3 — V4.2 art restored and new rapid-tap mantle gameplay.
+ * Default: cape spread and slow descent. Each distinct touch folds cape and accelerates.
+ * Holding is exactly ONE touch; releasing the input makes the cape reopen smoothly.
+ * Switch walls with the right button. All user progress remains in the existing key.
  */
 (function () {
   const $ = (id) => document.getElementById(id);
   const canvas = $('scene'), ctx = canvas.getContext('2d', { alpha: false });
   const gameRoot = $('game'), hud = $('hud'), controls = $('controls'), overlay = $('overlay');
-  const brakeBtn = $('brake'), jumpBtn = $('jump'), toast = $('toast');
-  const T = { LIMIT:10, MIN:92, MAX:1560, START:132, GRAVITY:152, CAPE_DECEL:570, CAPE_TAP_BRAKE:38, HOP_SECONDS:.155, ZONE_LENGTH:5000 };
+  const boostBtn = $('boost'), jumpBtn = $('jump'), toast = $('toast');
+  const T = {
+    LIMIT:10, MAX:1560, START:124, GLIDE:112, GLIDE_TIER:8, BOOST_SPEED:510,
+    BOOST_TIER:35, TAP_GAIN:.235, BOOST_DECAY:.45, BOOST_GRACE:.14,
+    HOP_SECONDS:.155, ZONE_LENGTH:5000
+  };
   const ZONES=['지표면 · 지하 동굴','깊은 암반층','마그마 지대','맨틀 지대','외핵','내핵','지옥의 심연'];
   const PALETTES=[
     {shadow:'#14151c',wall:'#352d32',facet:'#61504c',glow:'#ff974e',sky:'#0c101a'},
@@ -23,9 +27,9 @@
   ];
   const COLORS={mint:'#6be1cd',gold:'#f8cc78',cream:'#ffe9d2',red:'#ff4f61',orange:'#f6924f'};
   const TYPE_BY_ZONE=[['ROOT','ROCK','TIMBER','ROOT'],['ROCK','CRYSTAL','ROCK','CRYSTAL'],['LAVA','ROCK','LAVA'],['PRESSURE','LAVA','CRYSTAL'],['METAL','PRESSURE','METAL'],['CORE','METAL','CRYSTAL'],['CHAIN','CORE','CHAIN']];
-  let W=400,H=800,clock=0,lastFrame=0,s=makeGame(),best=readRecord(),heldKeys=new Set(),brakeTouches=new Set();
+  let W=400,H=800,clock=0,lastFrame=0,s=makeGame(),best=readRecord(),heldKeys=new Set();
   const images={};
-  const IMAGE_FILES={falling:'hero_fall',braking:'hero_cape',jumpLeft:'hero_jump_left',jumpRight:'hero_jump_right',intro:'hero_intro',dizzy:'hero_hit'};
+  const IMAGE_FILES={falling:'hero_fall',braking:'hero_cape',fold:'hero_fold',dive:'hero_dive',jumpLeft:'hero_jump_left',jumpRight:'hero_jump_right',intro:'hero_intro',dizzy:'hero_hit'};
   Object.entries(IMAGE_FILES).forEach(([key,file])=>{
     const img=new Image(); img.onload=()=>{images[key]=img;if(key==='intro')showPortrait(img);};
     img.onerror=()=>{}; img.src='assets/'+file+'.webp';
@@ -41,15 +45,28 @@
   function smooth(t){t=Math.max(0,Math.min(1,t));return t*t*(3-2*t);}
   function posX(g,p=g.hopProgress){return wallX(g.hopFrom)*(1-smooth(p))+wallX(g.wall)*smooth(p);}
   function rngSeed(seed){let x=(seed>>>0)||1;return()=>{x=(x+0x6D2B79F5)>>>0;let t=x;t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return ((t^(t>>>14))>>>0)/4294967296;};}
-  function makeGame(stage='READY'){return{seed:(Math.random()*1000000000)|0,stage,depth:0,speed:T.START,timeLeft:T.LIMIT,elapsed:0,introElapsed:0,capeOpen:false,wall:'L',hopFrom:'L',hopProgress:1,obstacles:[],timeGates:[],nextObstacle:370,nextTimeGate:1400,obstacleNumber:0,gateNumber:0,gateFlash:0,zoneFlash:0,lastBonus:0,failure:''};}
-  function start(intro){s=makeGame(intro?'INTRO':'PLAYING');brakeTouches.clear();heldKeys.clear();updateUI();}
-  function finish(msg){s.stage='OVER';s.failure=msg;if(s.depth>best){best=s.depth;saveRecord(best);}brakeTouches.clear();heldKeys.clear();brakeBtn.classList.remove('active');updateUI();}
-  function isBraking(){return brakeTouches.size>0||heldKeys.has('Space');}
+  function makeGame(stage='READY'){return{seed:(Math.random()*1000000000)|0,stage,depth:0,speed:T.START,timeLeft:T.LIMIT,elapsed:0,introElapsed:0,boost:0,fold:0,lastTapAt:-1,tapPulse:0,tapCount:0,wall:'L',hopFrom:'L',hopProgress:1,obstacles:[],timeGates:[],nextObstacle:370,nextTimeGate:1400,obstacleNumber:0,gateNumber:0,gateFlash:0,zoneFlash:0,lastBonus:0,failure:''};}
+  function start(intro){s=makeGame(intro?'INTRO':'PLAYING');heldKeys.clear();updateUI();}
+  function finish(msg){s.stage='OVER';s.failure=msg;if(s.depth>best){best=s.depth;saveRecord(best);}heldKeys.clear();boostBtn.classList.remove('active');updateUI();}
+  function tapAccelerate(){
+    if(s.stage!=='PLAYING')return;
+    // A pointerdown or non-repeat keydown is one tap; holding is never repeated.
+    s.boost=Math.min(1,s.boost+T.TAP_GAIN);
+    s.lastTapAt=s.elapsed;
+    s.tapPulse=1;
+    s.tapCount++;
+    boostBtn.classList.remove('tap-burst');void boostBtn.offsetWidth;boostBtn.classList.add('tap-burst');
+  }
   function jump(){if(s.stage!=='PLAYING'||s.hopProgress<1)return;s.hopFrom=s.wall;s.wall=otherWall(s.wall);s.hopProgress=0;jumpBtn.classList.add('active');}
   function advance(dt){
-    const old=s.depth,tier=tierOf(old),cap=Math.min(T.MAX,312+tier*76),capeHeld=isBraking();
-    const brakeKick=capeHeld&&!s.capeOpen?T.CAPE_TAP_BRAKE:0;
-    const nextSpeed=capeHeld?Math.max(T.MIN,s.speed-brakeKick-T.CAPE_DECEL*dt):Math.min(cap,s.speed+(T.GRAVITY+tier*11.2)*dt);
+    const old=s.depth,tier=tierOf(old);
+    // During silence the red cape automatically opens, increasing drag.
+    // A quick rhythm of distinct taps is required to sustain high speed.
+    const boost=Math.max(0,s.boost-((s.elapsed-s.lastTapAt)>=T.BOOST_GRACE?T.BOOST_DECAY*dt:0));
+    const target=Math.min(T.MAX,T.GLIDE+tier*T.GLIDE_TIER+(T.BOOST_SPEED+tier*T.BOOST_TIER)*Math.pow(boost,1.15));
+    const response=target>s.speed?4.25:2.6;
+    const nextSpeed=s.speed+(target-s.speed)*(1-Math.exp(-response*dt));
+    const fold=s.fold+(boost-s.fold)*(1-Math.exp(-(boost>s.fold?9.5:3.9)*dt));
     const depth=old+(s.speed+nextSpeed)*.5*dt,hop=Math.min(1,s.hopProgress+dt/T.HOP_SECONDS);
     let remain=Math.max(0,s.timeLeft-dt),glow=Math.max(0,s.gateFlash-dt),bonus=s.lastBonus;
     const zoneFlash=zoneOf(depth)>zoneOf(old)?2.1:Math.max(0,s.zoneFlash-dt);
@@ -86,7 +103,7 @@
       const p=Math.min(1,s.hopProgress+dt*along/T.HOP_SECONDS);
       if(Math.abs(posX(s,p)-wallX(o.wall))<.18){crashed=true;break;}
     }
-    Object.assign(s,{capeOpen:capeHeld,speed:nextSpeed,depth,timeLeft:remain,elapsed:s.elapsed+dt,hopProgress:hop,gateFlash:glow,zoneFlash,lastBonus:bonus});
+    Object.assign(s,{boost,fold,tapPulse:Math.max(0,s.tapPulse-dt*3.3),speed:nextSpeed,depth,timeLeft:remain,elapsed:s.elapsed+dt,hopProgress:hop,gateFlash:glow,zoneFlash,lastBonus:bonus});
     if(hop>=1)jumpBtn.classList.remove('active');
     if(crashed)finish('지층 장애물에 부딪혔어!');else if(remain<=0)finish('시간이 다 됐어!');
   }
@@ -107,7 +124,7 @@
     $('timeCaption').classList.toggle('alert',s.timeLeft<3);
     $('speedLabel').textContent='속도 '+Math.floor(s.speed)+' m/s · 난이도 '+(tierOf(s.depth)+1);
     $('timeFill').style.width=(100*s.timeLeft/T.LIMIT)+'%';$('timeFill').classList.toggle('danger',s.timeLeft<3);
-    brakeBtn.classList.toggle('active',isBraking());$('brakeHint').textContent=isBraking()?'제동 중':'짧게 탁 / 길게 꾹';
+    boostBtn.classList.toggle('active',s.tapPulse>.6);$('boostHint').textContent=s.boost>.8?'⚡ 초고속 하강!':s.boost>.38?'망토 접는 중 · 가속!':'연타할수록 빨라져요';$('boostFill').style.width=(s.fold*100).toFixed(1)+'%';
     toast.classList.add('hidden');toast.classList.remove('mint');
     if(playing && s.zoneFlash>0){toast.textContent=ZONES[zoneOf(s.depth)]+' 진입!';toast.style.opacity=String(Math.min(1,s.zoneFlash/1.5));toast.classList.remove('hidden');}
     if(playing && s.gateFlash>0){toast.textContent='⏱ +'+s.lastBonus.toFixed(1)+'초!';toast.style.opacity=String(Math.min(1,s.gateFlash/1.1));toast.classList.remove('hidden');toast.classList.add('mint');}
@@ -153,14 +170,15 @@
       const x=W*(.265+rndHalf(i)*.47),y=(i*103+s.depth*ppm*(.3+(i%3)*.13))%(H+90*u)-45*u,r=(1.4+i%3)*u;
       const c=z===0?'#d5a56c':z===1?'#86c8e1':p.glow;disk(x,y,r*2.6,c+'18');disk(x,y,r,c+'b0');
     }
-    for(let i=0;i<Math.min(35,5+Math.floor(s.speed/62));i++){
+    for(let i=0;i<Math.min(45,Math.floor(3+s.boost*28+s.speed/130));i++){
       const x=W*(.27+((i*41%100)/100)*.46),y=(i*131+s.depth*ppm*(1+i%4*.14))%(H+200*u)-90*u;
-      line([[x,y],[x,y-(30+s.speed*.15+(i%4)*9)*u]],p.glow+'78',Math.max(1,u)*(1+i%3));
+      line([[x,y],[x,y-(24+s.speed*.16+(i%4)*9)*u]],s.boost>.7?'#b9ecff9a':p.glow+'78',Math.max(1,u)*(1+i%3));
     }
     for(const g of s.timeGates){if(g.collected)continue;const y=charY+(g.depth-s.depth)*ppm;if(y>-85*u&&y<H+100*u)drawGate(g,y,u);}
     for(const o of s.obstacles){const y=charY+(o.depth-s.depth)*ppm;if(y>-100*u&&y<H+105*u)drawHazard(o,y,u);}
     const arc=Math.sin(Math.min(1,s.hopProgress)*Math.PI)*15*u;
-    drawHero(posX(s)*W,charY-arc,u,s.capeOpen,s.elapsed,s.speed,s.stage==='OVER',s.hopProgress<1,s.hopFrom);
+    drawSpeedWind(posX(s)*W,charY-arc,u);
+    drawHero(posX(s)*W,charY-arc,u,s.fold,s.elapsed,s.speed,s.stage==='OVER',s.hopProgress<1,s.hopFrom);
     if(s.speed>670){ctx.fillStyle='#ff4f6115';ctx.fillRect(0,0,W,H);}
     if(s.gateFlash>.72){ctx.fillStyle='#6be1cd20';ctx.fillRect(0,0,W,H);}
   }
@@ -208,12 +226,61 @@
     line([[-11*u,35*u],[-19*u,54*u]],'#493447',10*u);line([[12*u,35*u],[23*u,53*u]],'#493447',10*u);
     ctx.restore();
   }
-  function drawHero(x,y,u,braking,elapsed,speed,dead,hopping,hopFrom){
-    const key=dead?'dizzy':hopping?(hopFrom==='L'?'jumpLeft':'jumpRight'):braking?'braking':'falling';
-    const img=images[key],size=(braking?166:hopping?142:dead?139:127)*u;
-    if(img?.naturalWidth){ctx.drawImage(img,x-size/2,y-size*.53+Math.sin(elapsed*15)*2*u,size,size);}else drawFallbackHero(x,y,u,braking,elapsed,dead,hopping,hopFrom);
+  function drawSpeedWind(x,y,u){
+    const strength=s.boost;
+    if(strength<.13)return;
+    ctx.save();ctx.translate(x,y);
+    // Air flows UP relative to a fast-descending character: curved speed wakes.
+    const count=Math.round(2+strength*6);
+    for(let i=0;i<count;i++){
+      const side=i%2===0?-1:1, spread=(50+(i%4)*15)*u, raise=(65+(i%3)*27)*u;
+      ctx.beginPath();
+      ctx.moveTo(side*spread,50*u);
+      ctx.bezierCurveTo(side*(spread+13*u),8*u,side*(spread-17*u),-raise,side*(spread+6*u),-raise-22*u);
+      ctx.strokeStyle=`rgba(156,226,255,${.13+strength*(.24+(i%3)*.08)})`;
+      ctx.lineWidth=(1.2+strength*.9)*u;ctx.stroke();
+    }
+    if(strength>.67){
+      ctx.beginPath();ctx.ellipse(0,0,(80+strength*12)*u,94*u,0,0,Math.PI*2);
+      ctx.strokeStyle=`rgba(138,236,255,${(strength-.67)*.35})`;ctx.lineWidth=2.5*u;ctx.stroke();
+    }
+    ctx.restore();
+  }
+  function paintSprite(img,x,y,width,height,alpha){
+    if(!img?.naturalWidth || alpha<=0)return false;
+    ctx.save();ctx.globalAlpha*=alpha;
+    ctx.drawImage(img,x-width/2,y-height*.52,width,height);
+    ctx.restore();return true;
+  }
+  function drawHero(x,y,u,fold,elapsed,speed,dead,hopping,hopFrom){
+    y+=Math.sin(elapsed*(10+fold*12))*(1.2+fold*1.6)*u;
+    if(dead){
+      if(!paintSprite(images.dizzy,x,y,139*u,139*u,1))drawFallbackHero(x,y,u,false,elapsed,true,false,hopFrom);
+    }else if(hopping){
+      const key=hopFrom==='L'?'jumpLeft':'jumpRight';
+      if(!paintSprite(images[key],x,y,142*u,142*u,1))drawFallbackHero(x,y,u,false,elapsed,false,true,hopFrom);
+    }else{
+      // Cross-fade between full spread, half-fold, and full dive; no abrupt swapping.
+      const a=Math.max(0,Math.min(1,fold));
+      const glide=images.braking,half=images.fold,fast=images.dive;
+      if(a<=.52){
+        const t=a/.52;
+        const good=paintSprite(glide,x,y,169*u,169*u,1-t);
+        paintSprite(half,x,y,134*u,191*u,t);
+        if(!good && !half?.naturalWidth)drawFallbackHero(x,y,u,true,elapsed,false,false,hopFrom);
+      }else{
+        const t=(a-.52)/.48;
+        paintSprite(half,x,y,134*u,191*u,1-t);
+        if(!paintSprite(fast,x,y,114*u,208*u,t) && !half?.naturalWidth)drawFallbackHero(x,y,u,false,elapsed,false,false,hopFrom);
+      }
+      // Momentary fabric snap/swoosh follows every new tap.
+      if(s.tapPulse>.03){
+        ctx.save();ctx.globalAlpha=s.tapPulse*.36;
+        ctx.beginPath();ctx.arc(x,y-25*u,(85+20*(1-s.tapPulse))*u,Math.PI*.23,Math.PI*.82);
+        ctx.strokeStyle='#ffbf7d';ctx.lineWidth=2.5*u;ctx.stroke();ctx.restore();
+      }
+    }
     if(hopping&&!dead){const trail=hopFrom==='L'?-1:1;line([[x+37*u*trail,y+12*u],[x+71*u*trail,y+24*u]],'#ffffff77',3*u);}
-    if(!braking&&speed>600&&!dead)line([[x+18*u,y-66*u],[x+23*u,y-91*u]],'#f9bb65aa',2.4*u);
   }
   function introScene(seconds){
     const u=W/400,groundY=H*.58;ctx.fillStyle=gradient(0,0,0,H,[[0,'#241937'],[.58,'#693c4d'],[1,'#a55e50']]);ctx.fillRect(0,0,W,H);
@@ -234,17 +301,17 @@
     draw();updateUI();requestAnimationFrame(frame);
   }
   $('start').addEventListener('click',()=>start(s.stage==='READY'));
-  brakeBtn.addEventListener('pointerdown',e=>{if(s.stage!=='PLAYING')return;e.preventDefault();brakeTouches.add(e.pointerId);brakeBtn.setPointerCapture(e.pointerId);});
-  for(const ev of ['pointerup','pointercancel','lostpointercapture'])brakeBtn.addEventListener(ev,e=>{brakeTouches.delete(e.pointerId);});
+  boostBtn.addEventListener('pointerdown',e=>{if(s.stage!=='PLAYING')return;e.preventDefault();tapAccelerate();});
+  // No pointerup/hold listener: holding does not generate additional acceleration.
   jumpBtn.addEventListener('pointerdown',e=>{if(s.stage!=='PLAYING')return;e.preventDefault();jump();jumpBtn.setPointerCapture(e.pointerId);});
   jumpBtn.addEventListener('pointerup',e=>{if(jumpBtn.hasPointerCapture(e.pointerId))jumpBtn.releasePointerCapture(e.pointerId);});
   document.addEventListener('keydown',e=>{if(['Space','ArrowRight','Enter'].includes(e.code)){e.preventDefault();if(e.repeat||heldKeys.has(e.code))return;heldKeys.add(e.code);
-    if(e.code==='ArrowRight')jump();else if(e.code==='Enter'&&(s.stage==='READY'||s.stage==='OVER'))start(s.stage==='READY');}});
+    if(e.code==='Space')tapAccelerate();else if(e.code==='ArrowRight')jump();else if(e.code==='Enter'&&(s.stage==='READY'||s.stage==='OVER'))start(s.stage==='READY');}});
   document.addEventListener('keyup',e=>heldKeys.delete(e.code));
-  window.addEventListener('blur',()=>{heldKeys.clear();brakeTouches.clear();});
-  document.addEventListener('visibilitychange',()=>{if(document.hidden){heldKeys.clear();brakeTouches.clear();lastFrame=0;}});
+  window.addEventListener('blur',()=>{heldKeys.clear();});
+  document.addEventListener('visibilitychange',()=>{if(document.hidden){heldKeys.clear();lastFrame=0;}});
   window.addEventListener('resize',fit);if(window.ResizeObserver)new ResizeObserver(fit).observe(gameRoot);
   fit();updateUI();requestAnimationFrame(frame);
   // Expose read-only simple debug state for local test harnesses, never gameplay rewards.
-  window.HellFallTest={snapshot:()=>({stage:s.stage,depth:s.depth,speed:s.speed,timeLeft:s.timeLeft,wall:s.wall,hopProgress:s.hopProgress,hazards:s.obstacles.length,gates:s.timeGates.length}),start:()=>start(false)};
+  window.HellFallTest={snapshot:()=>({stage:s.stage,depth:s.depth,speed:s.speed,timeLeft:s.timeLeft,wall:s.wall,hopProgress:s.hopProgress,boost:s.boost,fold:s.fold,tapCount:s.tapCount,hazards:s.obstacles.length,gates:s.timeGates.length}),start:()=>start(false)};
 })();

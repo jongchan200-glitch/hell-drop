@@ -3,3 +3,12 @@
 @media(max-height:660px){.menu{padding:13px 18px}.portrait{height:120px}.hero-name{font-size:20px}.hero-meta,.hero-secret,.hero-trait,.instructions{font-size:12px}.start-button{min-height:44px}.controls{bottom:calc(15px + env(safe-area-inset-bottom))}.stone-button{min-height:87px}.button-icon{font-size:25px}.hud{padding-top:9px}.time-track{margin-top:6px}}
 @media(min-width:650px){.game{height:min(920px,calc(100svh - 48px));border-radius:22px}.outside-note{font-size:11px}}
 @media(prefers-reduced-motion:reduce){*{transition-duration:0ms!important}}
+
+/* WEB 0.3: rapid-tap accelerator replaces the original brake. */
+.stone-button.boost{border-color:#59e1d4;background:linear-gradient(156deg,#36666c 0%,#176b78 46%,#0d2436 100%);padding-bottom:4px;position:relative}
+.stone-button.boost .button-icon{filter:drop-shadow(0 1px 5px #c5fffc77)}
+.stone-button.boost.active{filter:brightness(1.36)}
+.stone-button.tap-burst{animation:tapFlash .18s ease-out}
+.fold-meter{display:block;height:4px;background:#062e3a;border-radius:99px;width:70%;overflow:hidden;margin-top:4px}
+.fold-meter>span{display:block;height:100%;width:0;background:linear-gradient(90deg,#6be1cd,#e9fca2,#ffb05b);border-radius:inherit;transition:width .09s linear}
+@keyframes tapFlash{0%{filter:brightness(1.55)}100%{filter:brightness(1)}}

@@ -22,17 +22,18 @@
           <div class="hud-col hud-right">
             <span class="hud-kicker mint" id="timeCaption">TIME</span>
             <strong class="hud-value" id="timeLabel">10.0</strong>
-            <span class="hud-note" id="speedLabel">속도 132 m/s · 난이도 1</span>
+            <span class="hud-note" id="speedLabel">속도 124 m/s · 난이도 1</span>
           </div>
         </div>
         <div class="time-track"><div class="time-fill" id="timeFill"></div></div>
       </header>
       <div id="toast" class="toast hidden" role="status"></div>
       <div id="controls" class="controls hidden" aria-label="게임 조작 버튼">
-        <button type="button" id="brake" class="stone-button brake" aria-label="보자기 브레이크">
-          <span class="button-icon" aria-hidden="true">🪂</span>
-          <strong>보자기 브레이크</strong>
-          <small id="brakeHint">짧게 탁 / 길게 꾹</small>
+        <button type="button" id="boost" class="stone-button boost" aria-label="망토 접기 연타 가속">
+          <span class="button-icon" aria-hidden="true">⚡</span>
+          <strong>망토 접기</strong>
+          <small id="boostHint">연타할수록 빨라져요</small>
+          <span class="fold-meter" aria-hidden="true"><span id="boostFill"></span></span>
         </button>
         <button type="button" id="jump" class="stone-button jump" aria-label="벽 점프">
           <span class="button-icon" aria-hidden="true">👟</span>
@@ -50,7 +51,7 @@
             <p class="hero-meta">동옥초등학교 · 키 160cm 조금 안 됨</p>
             <p class="hero-secret">몸무게: 비밀 🤫</p>
             <p class="hero-trait">특징: 아침에 세수 안 함! 😂</p>
-            <p class="instructions">보자기: 짧게 탁! / 길게 꾹 브레이크<br>벽 점프: 반대편 벽으로 휙!</p>
+            <p class="instructions">망토: 왼쪽을 연타하면 접히며 가속!<br>터치를 멈추면 펼쳐지며 감속<br>벽 점프: 반대편 벽으로 휙!</p>
           </div>
           <div id="overCopy" class="hidden">
             <p class="failure" id="failure">추락 종료!</p>
@@ -58,12 +59,12 @@
             <p class="final-best" id="finalBest">최고 기록 0 m</p>
           </div>
           <button type="button" class="start-button" id="start">지옥으로 뛰어들기!</button>
-          <p class="footnote">PC: 스페이스(브레이크) · →(점프) · Enter(시작)</p>
+          <p class="footnote">PC: 스페이스 연타(가속) · →(점프) · Enter(시작)</p>
         </div>
       </div>
-      <div class="version">WEB RESTORE 0.2 · V4.2 ORIGINAL ART</div>
+      <div class="version">WEB 0.3 · TAP TO DIVE</div>
     </section>
-    <aside class="outside-note">원본 V4.2 아트·문구 복원 진행판 · 기록은 이 브라우저에 저장돼요.</aside>
+    <aside class="outside-note">기본 활강 · 연타 가속 · 벽 점프 | 최고 기록은 이 브라우저에 저장돼요.</aside>
   </main>
   <script src="game.js" defer></script>
 </body>
