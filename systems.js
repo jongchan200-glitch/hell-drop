@@ -59,7 +59,7 @@
     if(name==='boostSide'){profile.settings.boostSide=value==='right'?'right':'left';save();return;}
     if(!['music','sfx'].includes(name))return;profile.settings[name]=clamp(value,0,1);save();
   }
-  const audio={ctx:null,lastTapSound:0,bgm:null,previous:null,activeTrack:-1,fadeTime:0,
+  const audio={ctx:null,lastTapSound:0,bgm:null,mode:'off',trackIndex:0,previewIndex:-1,
     async unlock(){const C=window.AudioContext||window.webkitAudioContext;if(!C)return;
       if(!this.ctx)this.ctx=new C();if(this.ctx.state==='suspended')try{await this.ctx.resume()}catch(_){/* muted */}},
     effect(name){const ctx=this.ctx;if(!ctx||ctx.state!=='running'||profile.settings.sfx===0)return;
@@ -69,22 +69,47 @@
       const [f1,f2,duration,amount]=params[name]||params.tap;
       try{const os=ctx.createOscillator(),gain=ctx.createGain();os.type=name==='hit'?'triangle':'sine';os.frequency.setValueAtTime(f1,now);os.frequency.exponentialRampToValueAtTime(Math.max(50,f2),now+duration);gain.gain.setValueAtTime(.00001,now);gain.gain.exponentialRampToValueAtTime(Math.max(.0001,profile.settings.sfx*amount),now+.01);gain.gain.exponentialRampToValueAtTime(.00001,now+duration);os.connect(gain).connect(ctx.destination);os.start(now);os.stop(now+duration+.02)}catch(_){/* no device audio */}
     },
-    playZone(zone){const idx=Math.max(0,Math.min(7,zone+1));if(idx===this.activeTrack)return;
-      const slot=MUSIC_SLOTS[idx];this.activeTrack=idx;this.fadeTime=0;
-      // A fast double switch should not leave a third track playing behind the scenes.
-      if(this.previous){this.previous.pause();this.previous=null;}
-      this.previous=this.bgm;this.bgm=null;
-      if(slot?.ready){try{
-        const track=new Audio(slot.file);track.loop=true;track.preload='metadata';track.volume=0;
-        track.setAttribute('playsinline','');track.play().catch(()=>{});this.bgm=track;
-      }catch(_){/* audio disabled */}}
+    // One media element survives game-over and retry; only a natural track end advances.
+    _ensureElement(){
+      if(this.bgm)return this.bgm;
+      const el=new Audio();el.loop=false;el.preload='auto';el.setAttribute('playsinline','');
+      el.addEventListener('ended',()=>{
+        if(this.mode==='game'){
+          this.trackIndex=(this.trackIndex+1)%7;
+          this._playCatalog(this.trackIndex+1);
+        }else if(this.mode==='preview')this.stopPreview();
+      });
+      this.bgm=el;return el;
     },
-    fade(dt){this.fadeTime+=dt;const t=clamp(this.fadeTime/2.2,0,1);
-      if(this.bgm)this.bgm.volume=clamp(profile.settings.music*t,0,1);
-      if(this.previous){this.previous.volume=clamp(profile.settings.music*(1-t),0,1);if(t>=1){this.previous.pause();this.previous=null}}
+    _playCatalog(catalogIndex){
+      const slot=MUSIC_SLOTS[catalogIndex];
+      if(!slot?.ready||!slot.file)return;
+      const el=this._ensureElement();
+      el.pause();el.src=slot.file;el.load();
+      el.volume=clamp(profile.settings.music,0,1);
+      if(!document.hidden)el.play().catch(()=>{});
     },
-    stop(){this.activeTrack=-1;if(this.bgm){this.bgm.pause();this.bgm=null}if(this.previous){this.previous.pause();this.previous=null}},
-    visibility(hidden){if(hidden){this.bgm?.pause();this.previous?.pause()}else if(this.bgm)this.bgm.play().catch(()=>{})}
+    startGamePlaylist(){
+      if(this.mode==='game')return; // retry without restarting the current song
+      this.mode='game';this.previewIndex=-1;this.trackIndex=0;
+      this._playCatalog(1);
+    },
+    preview(catalogIndex){
+      if(catalogIndex<1){this.stopPreview();return;}
+      if(this.mode==='game')return;
+      this.mode='preview';this.previewIndex=catalogIndex;
+      this._playCatalog(catalogIndex);
+    },
+    stopPreview(){if(this.mode==='preview')this.stop();},
+    fade(){if(this.bgm)this.bgm.volume=clamp(profile.settings.music,0,1);},
+    stop(){
+      this.mode='off';this.previewIndex=-1;this.trackIndex=0;
+      if(this.bgm){this.bgm.pause();this.bgm.removeAttribute('src');this.bgm.load();}
+    },
+    visibility(hidden){
+      if(hidden)this.bgm?.pause();
+      else if(this.mode!=='off'&&this.bgm)this.bgm.play().catch(()=>{});
+    }
   };
   // The actual reward provider must validate the completed impression before calling this.
   // No fake ad credits, real-money checkout, or automatic reward bypass exists in v0.4.

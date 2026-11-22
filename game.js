@@ -69,8 +69,8 @@
   function posX(g,p=g.hopProgress){return wallX(g.hopFrom)*(1-smooth(p))+wallX(g.wall)*smooth(p);}
   function rngSeed(seed){let x=(seed>>>0)||1;return()=>{x=(x+0x6D2B79F5)>>>0;let t=x;t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return ((t^(t>>>14))>>>0)/4294967296;};}
   function makeGame(stage='READY'){return{seed:(Math.random()*1000000000)|0,stage,depth:0,speed:T.START,timeLeft:T.LIMIT,elapsed:0,introElapsed:0,boost:0,fold:0,lastTapAt:-1,tapPulse:0,tapCount:0,tapIntervals:[],cadence:0,wall:'L',hopFrom:'L',hopProgress:1,hopVisual:1,obstacles:[],timeGates:[],coinGates:[],runCoins:0,nextObstacle:370,nextTimeGate:1400,nextCoin:210,coinNumber:0,obstacleNumber:0,gateNumber:0,gateFlash:0,zoneFlash:0,lastBonus:0,failure:''};}
-  function start(){applyControlSide();s=makeGame('PLAYING');lastReward={distance:0,foundCoins:0,bonus:0,levelUps:0,level:sys.profile.level,newBalance:sys.profile.coins};heldKeys.clear();sys.audio.unlock();sys.audio.playZone(0);sys.audio.effect('start');updateUI();}
-  function finish(msg){if(s.stage==='OVER')return;s.stage='OVER';s.failure=msg;if(s.depth>best){best=s.depth;saveRecord(best);}lastReward=sys.awardRun(s.depth,s.runCoins);sys.audio.effect(lastReward.levelUps>0?'level':'hit');sys.audio.playZone(-1);heldKeys.clear();boostBtn.classList.remove('active');updateUI();}
+  function start(){applyControlSide();s=makeGame('PLAYING');lastReward={distance:0,foundCoins:0,bonus:0,levelUps:0,level:sys.profile.level,newBalance:sys.profile.coins};heldKeys.clear();sys.audio.unlock();sys.audio.startGamePlaylist();sys.audio.effect('start');updateUI();}
+  function finish(msg){if(s.stage==='OVER')return;s.stage='OVER';s.failure=msg;if(s.depth>best){best=s.depth;saveRecord(best);}lastReward=sys.awardRun(s.depth,s.runCoins);sys.audio.effect(lastReward.levelUps>0?'level':'hit');heldKeys.clear();boostBtn.classList.remove('active');updateUI();}
   function tapAccelerate(){
     if(s.stage!=='PLAYING')return;
     // Cadence—not lifetime tap count—controls the continuously moving storm.
@@ -216,12 +216,41 @@
     ctx.fillStyle=gradient(0,0,0,H,[[0,p.sky],[.52,p.shadow],[1,p.sky]]);ctx.fillRect(0,0,W,H);
     const g=ctx.createRadialGradient(W*.5,H*.65,6,W*.5,H*.68,H*.7);g.addColorStop(0,p.glow+'25');g.addColorStop(1,'#00000000');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
     ctx.fillStyle='#00000055';ctx.beginPath();ctx.roundRect(W*.255,-20*u,W*.49,H+40*u,110*u);ctx.fill();
+    // World-anchored craggy rock faces: visual-only, existing collision lanes unchanged.
+    const reliefStep=42*u,reliefTravel=s.depth*ppm*.64;
+    const reliefScroll=reliefTravel%reliefStep,reliefBase=Math.floor(reliefTravel/reliefStep);
     for(let side=0;side<2;side++){
-      const left=side===0,boundary=W*(left?.231:.769);
-      ctx.fillStyle=gradient(left?0:W*.76,0,left?W*.24:W,0,[[0,left?p.shadow:p.facet],[.5,p.wall],[1,left?p.facet:p.shadow]]);
-      ctx.fillRect(left?0:W*.76,0,W*.24,H);
-      line([[boundary,0],[boundary,H]],p.shadow,9*u);
-      line([[boundary+(left?-4:4)*u,0],[boundary+(left?-4:4)*u,H]],p.glow,2*u);
+      const left=side===0,edge=W*(left?.232:.768),sign=left?1:-1;
+      const outer=left?0:W,points=[];
+      for(let i=-2;i<=Math.ceil(H/reliefStep)+3;i++){
+        const row=i+reliefBase,y=i*reliefStep-reliefScroll;
+        const n=Math.sin(row*17.53+side*38.1)*.5+.5;
+        const k=Math.sin(row*5.31+side*15.7)*.5+.5;
+        points.push([edge+sign*(3+n*9)*u,y]);
+        points.push([edge+sign*(1+k*10)*u,y+reliefStep*.52]);
+      }
+      ctx.beginPath();ctx.moveTo(outer,-reliefStep*3);
+      for(const [x,y] of points)ctx.lineTo(x,y);
+      ctx.lineTo(outer,H+reliefStep*3);ctx.closePath();
+      ctx.fillStyle=gradient(left?0:W*.76,0,left?W*.24:W,0,
+        [[0,left?p.shadow:p.facet],[.45,p.wall],[1,left?p.facet:p.shadow]]);
+      ctx.fill();
+      ctx.beginPath();points.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));
+      ctx.strokeStyle='#0b0d17';ctx.lineWidth=5*u;ctx.stroke();
+      ctx.strokeStyle=p.glow+'68';ctx.lineWidth=1.55*u;ctx.stroke();
+      // Irregular angular stone planes, fissures, and mineral pinpoints.
+      const textureStep=91*u,travel=reliefTravel*.84,offset=travel%textureStep;
+      const baseRow=Math.floor(travel/textureStep);
+      for(let i=-1;i<=Math.ceil(H/textureStep)+2;i++){
+        const t=i+baseRow,y=i*textureStep-offset,wobble=Math.sin(t*4.73+side*7.9);
+        const cx=W*(left?.113:.887)+wobble*8*u;
+        polygon([[cx-19*u,y-17*u],[cx+12*u,y-27*u],[cx+26*u,y+5*u],
+          [cx-4*u,y+35*u],[cx-21*u,y+18*u]],p.facet+'51',p.shadow+'a0',1.5*u);
+        polygon([[cx-19*u,y-17*u],[cx+12*u,y-27*u],[cx+2*u,y+6*u]],p.facet+'67');
+        line([[cx-9*u,y+2*u],[cx+4*u,y+10*u],[cx-2*u,y+27*u]],p.shadow+'ba',1.5*u);
+        line([[cx-13*u,y-18*u],[cx+10*u,y-26*u]],p.glow+'39',1.1*u);
+        if((t+side)%3===0)disk(cx+8*u,y+21*u,1.7*u,p.glow+'8a');
+      }
     }
     const step=94*u,scroll=(s.depth*ppm*.64)%step,layers=Math.ceil(H/step)+4;
     for(let i=-2;i<=layers;i++){
@@ -269,31 +298,76 @@
     disk(0,0,27*u,'#ffd46d28');disk(0,0,17*u,'#ffd46d');disk(0,0,13*u,'#a75b20');
     disk(0,0,9*u,'#ffe6a6');txt('✦',0,5*u,15*u,'#b67827');ctx.restore();
   }
-  function drawHazard(o,y,u){const dir=o.wall==='L'?1:-1,base=W*(dir>0?.206:.794),z=zoneOf(o.depth),p=PALETTES[z];
+  function drawHazard(o,y,u){
+    // All danger types keep existing depth, hit detection and reach. Only paint is changed.
+    const dir=o.wall==='L'?1:-1,base=W*(dir>0?.206:.794),z=zoneOf(o.depth),p=PALETTES[z];
     const X=v=>base+dir*v*u,Y=v=>y+v*u;
-    let glow='#ff8a31';if(['CRYSTAL'].includes(o.type))glow='#74e8ff';if(o.type==='CORE')glow='#fff4a3';if(o.type==='CHAIN')glow='#db83ff';if(o.type==='METAL')glow='#ffd083';
-    disk(X(36),y,60*u,glow+'20');
+    let glow='#ff8a31';
+    if(o.type==='CRYSTAL')glow='#74e8ff';
+    if(o.type==='CORE')glow='#fff4a3';
+    if(o.type==='CHAIN')glow='#db83ff';
+    if(o.type==='METAL')glow='#ffd083';
+    disk(X(36),y,56*u,glow+'1c');
     if(o.type==='ROOT'){
-      ctx.beginPath();ctx.moveTo(X(-15),Y(-32));ctx.bezierCurveTo(X(28),Y(-40),X(63),Y(0),X(92),Y(-12));ctx.bezierCurveTo(X(51),Y(13),X(70),Y(48),X(15),Y(29));ctx.strokeStyle='#090e16';ctx.lineWidth=20*u;ctx.stroke();ctx.strokeStyle='#b76c3b';ctx.lineWidth=11*u;ctx.stroke();ctx.strokeStyle='#ff9e42';ctx.lineWidth=4*u;ctx.stroke();disk(X(45),Y(-11),5*u,'#ffcf75');
-    } else if(o.type==='TIMBER'){
-      polygon([[X(-10),Y(-39)],[X(85),Y(-30)],[X(90),Y(28)],[X(-12),Y(32)]],gradient(0,y-40*u,0,y+40*u,[[0,'#9a4835'],[1,'#261d26']]),'#080e16',7*u);
-      for(let i=0;i<3;i++)line([[X(10+i*28),Y(-27)],[X(17+i*27),Y(25)]],glow,3*u);
-    } else if(['ROCK','PRESSURE'].includes(o.type)){
-      polygon([[X(-13),Y(-35)],[X(27),Y(-49)],[X(83),Y(-15)],[X(96),Y(13)],[X(37),Y(41)],[X(-14),Y(29)]],'#2c2429','#0a1018',9*u);
-      polygon([[X(-13),Y(-35)],[X(27),Y(-49)],[X(83),Y(-15)],[X(96),Y(13)],[X(37),Y(41)],[X(-14),Y(29)]],'#2c2429',glow,3*u);
-      polygon([[X(9),Y(-31)],[X(65),Y(-17)],[X(36),Y(17)]],p.facet);
-      line([[X(18),Y(-6)],[X(57),Y(29)],[X(62),Y(1)]],glow,4*u);disk(X(66),Y(-18),4*u,glow);
-    } else if(['CRYSTAL','CORE','METAL'].includes(o.type)){
+      ctx.beginPath();ctx.moveTo(X(-15),Y(-32));
+      ctx.bezierCurveTo(X(22),Y(-43),X(57),Y(-10),X(93),Y(-14));
+      ctx.bezierCurveTo(X(55),Y(8),X(70),Y(42),X(14),Y(28));
+      ctx.strokeStyle='#12151a';ctx.lineWidth=22*u;ctx.stroke();
+      ctx.strokeStyle='#864e37';ctx.lineWidth=13*u;ctx.stroke();
+      ctx.strokeStyle='#d78949';ctx.lineWidth=7*u;ctx.stroke();
+      line([[X(3),Y(-33)],[X(37),Y(-13)],[X(64),Y(13)]],glow+'bd',2*u);
+      line([[X(34),Y(-9)],[X(55),Y(-30)],[X(71),Y(-36)]],'#b76c3b',5*u);
+      line([[X(43),Y(4)],[X(64),Y(23)],[X(81),Y(22)]],'#e49b57',4*u);
+      disk(X(71),Y(-36),4*u,'#ffcf75');
+    }else if(o.type==='TIMBER'){
+      polygon([[X(-12),Y(-37)],[X(14),Y(-42)],[X(46),Y(-36)],[X(85),Y(-29)],
+        [X(91),Y(24)],[X(70),Y(31)],[X(32),Y(26)],[X(-15),Y(33)]],
+        gradient(0,y-42*u,0,y+34*u,[[0,'#9b603e'],[.55,'#54362f'],[1,'#271d24']]),'#080e16',6*u);
+      for(let i=0;i<3;i++){
+        const a=13+i*27;
+        line([[X(a),Y(-32)],[X(a+6),Y(22)]],'#281d25',4*u);
+        line([[X(a+3),Y(-30)],[X(a+9),Y(18)]],glow+'9e',1.5*u);
+        disk(X(a+2),Y(-21),2.4*u,'#e7b081');
+      }
+      line([[X(-7),Y(-32)],[X(49),Y(-33)],[X(83),Y(-25)]],'#e6ae705b',2*u);
+    }else if(o.type==='ROCK'||o.type==='PRESSURE'){
+      const chips=[[X(-13),Y(-32)],[X(4),Y(-44)],[X(25),Y(-49)],[X(45),Y(-42)],
+        [X(76),Y(-23)],[X(95),Y(1)],[X(89),Y(16)],[X(62),Y(36)],
+        [X(34),Y(43)],[X(3),Y(29)],[X(-15),Y(25)]];
+      polygon(chips,gradient(X(20),Y(-49),X(72),Y(39),
+        [[0,p.facet],[.48,'#342a30'],[1,'#151923']]),'#0a1018',7*u);
+      polygon([[X(-13),Y(-32)],[X(25),Y(-49)],[X(43),Y(-15)],[X(3),Y(11)]],p.facet+'b9');
+      polygon([[X(43),Y(-15)],[X(76),Y(-23)],[X(95),Y(1)],[X(64),Y(22)]],p.wall);
+      polygon([[X(3),Y(11)],[X(43),Y(-15)],[X(62),Y(36)],[X(34),Y(43)]],p.shadow);
+      line([[X(2),Y(-30)],[X(43),Y(-15)],[X(64),Y(22)]],glow,2.4*u);
+      line([[X(28),Y(35)],[X(42),Y(19)],[X(62),Y(22)]],p.facet,2*u);
+      disk(X(77),Y(-15),3*u,glow);
+    }else if(o.type==='CRYSTAL'||o.type==='CORE'||o.type==='METAL'){
       const col=o.type==='CRYSTAL'?'#78e1f0':o.type==='METAL'?'#ffc581':'#ffe3a0';
-      for(let i=-1;i<=1;i++){const cy=i*22,reach=o.type==='METAL'?95-Math.abs(i)*10:75+((i+2)%2)*18;
-        polygon([[X(-10),Y(cy-16)],[X(reach),Y(cy-5)],[X(-7),Y(cy+17)]],col,'#fffbe6',1.5*u);line([[X(8),Y(cy)],[X(reach*.65),Y(cy-5)]],p.shadow+'ad',2*u);}
-    } else if(o.type==='LAVA'){
-      disk(X(29),y,39*u,'#6e2628');disk(X(56),y,62*u,'#ff72362e');
-      polygon([[X(-8),Y(-38)],[X(40),Y(-42)],[X(91),Y(-8)],[X(88),Y(16)],[X(47),Y(43)],[X(-8),Y(37)]],'#f34f30','#ffd071',2*u);
-      polygon([[X(13),Y(-24)],[X(77),Y(0)],[X(51),Y(29)],[X(18),Y(29)]],'#ffdc79');
-    } else if(o.type==='CHAIN'){
-      for(let i=-2;i<=2;i++){ctx.beginPath();ctx.ellipse(X(9+i%2*10),y+i*22*u,10*u,12*u,0,0,2*Math.PI);ctx.strokeStyle='#b280c6';ctx.lineWidth=4*u;ctx.stroke();}
-      polygon([[X(21),Y(-28)],[X(96),Y(-5)],[X(62),Y(34)],[X(33),Y(17)]],'#352442','#c48ced',3*u);
+      for(let i=-1;i<=1;i++){
+        const cy=i*22,reach=o.type==='METAL'?94-Math.abs(i)*9:75+((i+2)%2)*18;
+        polygon([[X(-10),Y(cy-16)],[X(reach),Y(cy-5)],[X(-7),Y(cy+17)]],col,'#fffbe6',1.5*u);
+        polygon([[X(-6),Y(cy-12)],[X(reach*.7),Y(cy-5)],[X(5),Y(cy-1)]],p.facet+'a5');
+        line([[X(4),Y(cy-7)],[X(37),Y(cy-1)],[X(16),Y(cy+11)]],p.shadow+'c0',1.6*u);
+      }
+    }else if(o.type==='LAVA'){
+      disk(X(44),y,59*u,'#ff723625');
+      polygon([[X(-9),Y(-33)],[X(17),Y(-43)],[X(41),Y(-39)],[X(70),Y(-22)],
+        [X(92),Y(-6)],[X(86),Y(18)],[X(52),Y(42)],[X(19),Y(33)],[X(-9),Y(36)]],
+        '#3b2730','#0a1018',6*u);
+      polygon([[X(2),Y(-28)],[X(35),Y(-32)],[X(71),Y(-4)],[X(61),Y(9)],
+        [X(43),Y(0)],[X(18),Y(24)]],'#d54d32');
+      line([[X(14),Y(-24)],[X(31),Y(-15)],[X(47),Y(5)],[X(65),Y(-2)]],'#ffca65',5*u);
+      line([[X(31),Y(29)],[X(48),Y(20)],[X(63),Y(23)]],'#ff893a',3*u);
+    }else if(o.type==='CHAIN'){
+      for(let i=-2;i<=2;i++){
+        ctx.beginPath();ctx.ellipse(X(9+i%2*10),y+i*22*u,10*u,12*u,0,0,2*Math.PI);
+        ctx.strokeStyle='#b280c6';ctx.lineWidth=4*u;ctx.stroke();
+      }
+      polygon([[X(21),Y(-28)],[X(63),Y(-33)],[X(96),Y(-5)],[X(71),Y(20)],
+        [X(62),Y(34)],[X(33),Y(17)]],'#352442','#c48ced',3*u);
+      polygon([[X(29),Y(-22)],[X(65),Y(-28)],[X(71),Y(2)]],p.facet+'ad');
+      line([[X(42),Y(16)],[X(66),Y(6)],[X(77),Y(13)]],glow,1.6*u);
     }
   }
   function drawFallbackHero(x,y,u,braking,elapsed,dead,hopping,hopFrom){
@@ -489,22 +563,15 @@
     let dt=lastFrame?Math.min(.05,Math.max(0,(now-lastFrame)/1000)):0;
     lastFrame=now;clock+=dt;
     if(s.stage==='PLAYING')advance(dt);
-    if(s.stage==='PLAYING')sys.audio.playZone(zoneOf(s.depth));
     sys.audio.fade(dt);
     draw();drawVortex();updateUI();requestAnimationFrame(frame);
   }
   function applyControlSide(){
     controls.classList.toggle('boost-right',sys.profile.settings.boostSide==='right');
   }
-  // On mobile, the first tap unlocks lobby audio. Starting PLAY goes directly to
-  // the zone track; touching the character or menus starts the calm lobby theme.
-  document.addEventListener('pointerdown',e=>{
-    if(s.stage!=='READY'||e.target.closest('#start'))return;
-    sys.audio.unlock();sys.audio.playZone(-1);
-  },{capture:true,passive:true,once:true});
   $('start').addEventListener('click',()=>start());
   $('restart').addEventListener('click',()=>start());
-  $('backHome').addEventListener('click',()=>{s=makeGame('READY');sys.audio.playZone(-1);$('drawer').classList.add('hidden');updateUI();});
+  $('backHome').addEventListener('click',()=>{sys.audio.stop();s=makeGame('READY');$('drawer').classList.add('hidden');updateUI();});
   boostBtn.addEventListener('pointerdown',e=>{if(s.stage!=='PLAYING')return;e.preventDefault();tapAccelerate();});
   // No pointerup/hold listener: holding does not generate additional acceleration.
   jumpBtn.addEventListener('pointerdown',e=>{if(s.stage!=='PLAYING')return;e.preventDefault();jump();jumpBtn.setPointerCapture(e.pointerId);});
@@ -524,7 +591,7 @@
     else if(type==='shop')html=`<div class="banner">🪙 내 코인 <b>${fmt(prof.coins)}</b></div><div class="info-card"><strong>가속 장비</strong>돌개 강화·속도 유지 등 장비 슬롯<br><span class="muted">효과·가격·판매 여부는 아직 결정 전이야.</span></div><div class="info-card"><strong>꾸미기 · 새 캐릭터</strong>구매한 물품은 보관함에 저장하는 구조가 준비돼 있어.<br><span class="muted">아직 실제 판매 아이템은 없어.</span></div>`;
     else if(type==='earn')html=`<div class="banner">🪙 현재 코인 <b>${fmt(prof.coins)}</b><br><small>게임 중 수집 · 누적 레벨업 · 선택형 광고 · 코인 구매</small></div><div class="info-card"><strong>무료로 얻기</strong>게임에서 코인 줍기 / 누적 낙하로 레벨업</div><div class="info-card"><strong>▶ 보상형 광고</strong><span class="muted">광고 서비스 연동 전이어서 현재 시청·코인 지급을 사용할 수 없어.</span></div><div class="info-card"><strong>코인 구매</strong><span class="muted">현금 결제는 추후 설계·심사 후 연결할 예정이야. 현재 결제 기능 없음.</span></div>`;
     else if(type==='records')html=`<div class="banner">🏆 최고 낙하 <b>${fmt(Math.floor(best))}m</b></div><div class="info-card"><strong>누적 낙하</strong>${fmt(prof.totalDepth)}m · Lv.${prof.level}<br><span class="muted">다음 레벨까지 ${fmt(prog.next-prog.within)}m</span></div><div class="info-card"><strong>플레이 횟수</strong>${fmt(prof.runs)}판 완료</div><div class="info-card"><strong>획득 코인 기록</strong>게임에서 수집 ${fmt(prof.worldCoins)}코인 · 현재 보유 ${fmt(prof.coins)}코인</div>`;
-    else if(type==='settings')html=`<div class="info-card"><strong>🎮 가속·벽점프 버튼 위치</strong><span class="muted">휴대폰을 잡고 연타하기 편한 손으로 가속 버튼을 옮길 수 있어. 선택은 자동 저장돼.</span><div class="control-layout-choices" role="group" aria-label="가속 버튼 방향"><button type="button" class="control-layout-choice" data-boost-side="left" aria-pressed="${prof.settings.boostSide!=='right'}">🌪️ 가속 왼쪽<br><small>점프 오른쪽</small></button><button type="button" class="control-layout-choice" data-boost-side="right" aria-pressed="${prof.settings.boostSide==='right'}">🌪️ 가속 오른쪽<br><small>점프 왼쪽</small></button></div></div><div class="info-card"><strong>🔊 음악 음량</strong><label for="musicRange">BGM <span id="musicValue">${Math.round(prof.settings.music*100)}%</span><input id="musicRange" type="range" min="0" max="100" value="${Math.round(prof.settings.music*100)}"></label><label for="sfxRange">효과음 <span id="sfxValue">${Math.round(prof.settings.sfx*100)}%</span><input id="sfxRange" type="range" min="0" max="100" value="${Math.round(prof.settings.sfx*100)}"></label></div><div class="info-card"><strong>🎵 지층별 클래식 편곡 미리듣기</strong><span class="muted">리듬게임에서 만든 음악 8곡을 연결했어. 아래 ▶ 버튼을 누르면 해당 곡이 재생되고, 닫으면 홈 음악으로 돌아가.</span><ul class="slot-list music-preview-list">${sys.MUSIC_SLOTS.map((v,i)=>`<li><span>${i===0?'홈':i+'구역'} · ${esc(v.title||v.name)}</span><button type="button" data-music-preview="${i}" aria-label="${esc(v.title||v.name)} 미리듣기">▶</button></li>`).join('')}</ul></div>`;
+    else if(type==='settings')html=`<div class="info-card"><strong>🎮 가속·벽점프 버튼 위치</strong><span class="muted">휴대폰을 잡고 연타하기 편한 손으로 가속 버튼을 옮길 수 있어. 선택은 자동 저장돼.</span><div class="control-layout-choices" role="group" aria-label="가속 버튼 방향"><button type="button" class="control-layout-choice" data-boost-side="left" aria-pressed="${prof.settings.boostSide!=='right'}">🌪️ 가속 왼쪽<br><small>점프 오른쪽</small></button><button type="button" class="control-layout-choice" data-boost-side="right" aria-pressed="${prof.settings.boostSide==='right'}">🌪️ 가속 오른쪽<br><small>점프 왼쪽</small></button></div></div><div class="info-card"><strong>🔊 음악 음량</strong><label for="musicRange">BGM <span id="musicValue">${Math.round(prof.settings.music*100)}%</span><input id="musicRange" type="range" min="0" max="100" value="${Math.round(prof.settings.music*100)}"></label><label for="sfxRange">효과음 <span id="sfxValue">${Math.round(prof.settings.sfx*100)}%</span><input id="sfxRange" type="range" min="0" max="100" value="${Math.round(prof.settings.sfx*100)}"></label></div><div class="info-card"><strong>🎵 게임 음악 미리듣기</strong><span class="muted">게임에서 7곡이 순서대로 이어져. 홈은 무음이며 ▶는 선택한 곡의 미리듣기야.</span><ul class="slot-list music-preview-list">${sys.MUSIC_SLOTS.slice(1).map((v,i)=>`<li><span>${(i+1)+'번 곡'} · ${esc(v.title||v.name)}</span><button type="button" data-music-preview="${i+1}" aria-label="${esc(v.title||v.name)} 미리듣기">▶</button></li>`).join('')}</ul></div>`;
     $('drawerBody').innerHTML=html;$('drawer').classList.remove('hidden');
     if(type==='settings'){
       for(const [key,id] of [['music','musicRange'],['sfx','sfxRange']]){
@@ -539,9 +606,8 @@
       $('drawerBody').querySelectorAll('[data-music-preview]').forEach(button=>{
         button.addEventListener('click',()=>{
           const idx=Number(button.dataset.musicPreview);
-          const target=idx-1;
-          const playingSame=sys.audio.activeTrack===idx;
-          sys.audio.unlock();sys.audio.playZone(playingSame?-1:target);
+          const playingSame=sys.audio.mode==='preview'&&sys.audio.previewIndex===idx;
+          sys.audio.unlock();sys.audio.preview(playingSame?-1:idx);
           $('drawerBody').querySelectorAll('[data-music-preview]').forEach(b=>{
             const selected=!playingSame&&Number(b.dataset.musicPreview)===idx;
             b.textContent=selected?'■':'▶';
@@ -554,7 +620,7 @@
   document.querySelectorAll('[data-panel]').forEach(button=>button.addEventListener('click',()=>openPanel(button.dataset.panel)));
   function closePanel(){
     $('drawer').classList.add('hidden');
-    sys.audio.playZone(s.stage==='PLAYING'?zoneOf(s.depth):-1);
+    sys.audio.stopPreview();
   }
   $('drawerClose').addEventListener('click',closePanel);
   $('drawer').addEventListener('click',e=>{if(e.target===$('drawer'))closePanel()});

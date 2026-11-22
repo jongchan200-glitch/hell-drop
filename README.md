@@ -47,3 +47,12 @@
 - Existing profile with the exact legacy 26% default is migrated to 7% once using `settings.musicDefaultRevision`; custom stored BGM values other than the old default are preserved and any subsequently selected value is retained. Older manually selected 26% cannot be distinguished from an untouched default.
 - No changes to the soundtrack list, crossfade, track transitions, game logic, coins, character, settings except the default BGM value, or the simulator.
 - This is intentionally only the first volume experiment. Whether automatic music selection should persist across home/play/game over will be reviewed separately after user listening feedback.
+
+
+## WEB 1.4 — cave terrain, compact controls and uninterrupted game music (2026-11-23)
+- Visual cave walls are jagged, layered rock with fissures, facets, embedded mineral specks and shaded cliff edges instead of rulers. Hazard art now has angular rock faces, fractured timber and molten cracks; all original collision logic, wall switching and obstacle placements remain intact.
+- Bottom controls visually shrink from a 109px minimum height to 62px (58px on shorter devices), with translucent backplates so approaching hazards remain more visible. Both actions and handedness setting remain unchanged.
+- STORM moves from the far lower-right to a small left-side overlay vertically centered near the hero (35% screen height). Parametric spiral animation remains the same.
+- Game soundtrack is now a seven-track playlist (zone_01 through zone_07), only active during a game session. Game over, immediate retry, and passing into any new zone NEVER interrupt or restart the current track. On natural end, the next song starts; song 7 wraps to song 1. Leaving via Home stops and resets the playlist; there is no automatic home soundtrack. Seven tracks can still be previewed deliberately inside settings while not in an active session.
+- Original default BGM=7%, SFX unchanged, local coins/level/record untouched. Existing two-view character and independent simulator untouched.
+- QA: JavaScript parse checks for both changed modules, audio mocked-media tests (off until play, 7% default, preserve timestamp on retry, track advance + wrap, stop and preview), initial 100-frame deterministic mocked 390x844 canvas gameplay smoke test (spawning 11 obstacles, no JS errors) before the commit. Manual visual and audio verification on the real Galaxy remains pending.
