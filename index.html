@@ -9,6 +9,7 @@
   <link rel="preload" href="assets/lobby_abyss.webp" as="image">
   <link rel="preload" href="assets/hero_intro.webp" as="image">
   <link rel="stylesheet" href="style.css?v=09-3d">
+  <link rel="stylesheet" href="hero_turnaround.css?v=10a">
 </head>
 <body>
   <svg class="svg-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
@@ -91,7 +92,7 @@
             </div>
             <div class="showcase-ground" aria-hidden="true"></div>
             <div class="character-identity"><span class="identity-diamond">✦</span><b>우서이</b><i></i><span>첫 번째 탐험가</span></div>
-            <div class="character-turn-tip"><span>‹</span> 좌우로 밀어 360° 돌려보기 <span>›</span></div>
+            <div class="character-turn-tip"><span>‹</span> 좌우로 밀어 방향별 모습 보기 <span>›</span></div>
           </div>
           <div class="lobby-bottom">
             <div class="lobby-summary"><div><small>PERSONAL BEST</small><strong><svg><use href="#icon-trophy"></use></svg><span id="homeBest">0</span><i>m</i></strong></div><div class="summary-divider"></div><div><small>TOTAL DESCENT</small><strong><svg><use href="#icon-spark"></use></svg><span id="homeTotal">0</span><i>m</i></strong></div></div>
@@ -127,12 +128,12 @@
       <section id="drawer" class="drawer hidden" aria-label="게임 부가 메뉴" role="dialog" aria-modal="true">
         <div class="drawer-card"><div class="drawer-head"><h2 id="drawerTitle">메뉴</h2><button id="drawerClose" type="button" aria-label="닫기">✕</button></div><div id="drawerBody" class="drawer-body"></div></div>
       </section>
-      <div class="version">WEB 0.9 · 3D + CLASSIC BGM</div>
+      <div class="version">WEB 1.0 TEST · NEW CHARACTER + CLASSIC BGM</div>
     </section>
     <aside class="outside-note">연타로 토네이도 성장 · 누적 레벨과 코인은 이 브라우저에 저장돼요.</aside>
   </main>
   <script src="systems.js?v=09-3d" defer></script>
-  <script src="hero_3d.js?v=09-3d" defer></script>
+  <script src="hero_turnaround.js?v=10a" defer></script>
   <script src="game.js?v=09-3d" defer></script>
 </body>
 </html>

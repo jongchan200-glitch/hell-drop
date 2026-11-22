@@ -19,3 +19,10 @@
 - 자체 렌더러 `hero_3d.js`, 메시 `assets/hero_sculpt.bin.gz`, 추정 뒷면 `assets/hero_back.webp`; 저성능 또는 WebGL2 미지원 환경은 원본 정면 정지 이미지를 사용. 종이 회전은 폴백에서도 삭제.
 - 모바일 390×844, 360×640, 430×932 브라우저 렌더링 및 좌우 드래그, 설정과 게임 시작 확인.
 - 중요: **V0.8 클래식 BGM 8곡·지층별 전환·설정 미리듣기**, 효과음, 저장된 코인·기록, 인게임 물리, 별도 AI 시뮬레이터 유지.
+
+
+## WEB 1.0 TEST — New Character Review (2026-11-23)
+- User review build. The home-lobby distorted WEB 0.9 sculpt is temporarily replaced with a **four-view illustrated turnaround** based on the newly approved appearance reference (front, 3/4, side, rear). The left viewpoints are mirrored previews, **not a true 3D or rigged character**. Swipe horizontally through 360 degrees to see directional illustrations; no faux 3D mesh stretching.
+- Added `hero_turnaround.js`, `hero_turnaround.css`, `assets/turn_*.webp`. The original `hero_3d.js`, `assets/hero_sculpt.bin.gz`, and original sprites remain available for rollback/comparison. Current gameplay sprites remain unchanged.
+- Existing gameplay, music 8 tracks, settings, records/coins (localStorage), and independent simulator are untouched.
+- Requires user Galaxy review; do not treat this as approved or final 3D. Next version may need true multi-view sculpted rig/model.

@@ -1,0 +1,9 @@
+/* WEB 1.0 character review: four drawn viewpoints, not a deformable mesh. */
+.lobby-character.is-turnaround-ready .lobby-turn,
+.lobby-character.is-turnaround-ready .lobby-3d-canvas{display:none!important}
+.turnaround-stage{position:absolute;inset:0;z-index:2;display:flex;align-items:flex-end;justify-content:center;pointer-events:none;opacity:0;transition:opacity .2s ease}
+.lobby-character.is-turnaround-ready .turnaround-stage{opacity:1}
+.turnaround-pose{position:absolute;display:block;bottom:0;left:50%;width:auto;height:100%;max-width:100%;object-fit:contain;object-position:center bottom;opacity:0;transform:translateX(-50%);transition:opacity .15s ease-in-out;user-select:none;pointer-events:none;-webkit-user-drag:none;filter:drop-shadow(0 12px 7px #06020a99)}
+.turnaround-pose.turnaround-mirror{transform:translateX(-50%) scaleX(-1)}
+.turnaround-pose.is-selected{opacity:1}
+@media(prefers-reduced-motion:reduce){.turnaround-pose{transition:none}}
