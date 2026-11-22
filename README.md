@@ -28,3 +28,7 @@ Original V4.2 sprites and documentation were from a private family prototype and
 Local Chromium smoke test: start, stage transition, wall jump, cape braking, and console error checks passed. Original sprite version was also tested locally but remains private. Real Galaxy hands-on test and user acceptance remain pending. No Play Store release.
 
 Project Google Drive handoff is maintained separately and describes older V3/V4/V4.1/V4.2 native backups and future plans.
+
+## Web preview
+
+GitHub Pages source: `main` branch, `/ (root)`. Once deployment succeeds, the browser test URL is https://jongchan200-glitch.github.io/hell-drop/ . This is a work-in-progress preview, not the final approved release.
