@@ -34,7 +34,7 @@
   const images={};
   const capeRig={core:null,left:null,right:null,ready:false};
   // Only the original V4.2 reference family; no generated replacement faces.
-  const IMAGE_FILES={falling:'hero_fall',braking:'hero_cape',jumpLeft:'hero_jump_left',jumpRight:'hero_jump_right',intro:'hero_intro',dizzy:'hero_hit',uiji:'uiji_intro'};
+  const IMAGE_FILES={falling:'hero_fall',braking:'hero_cape',jumpLeft:'hero_jump_left',jumpRight:'hero_jump_right',intro:'hero_intro',dizzy:'hero_hit',uiji:'uiji_intro',uijiMotion:'uiji_motion_atlas'};
   Object.entries(IMAGE_FILES).forEach(([key,file])=>{
     const img=new Image(); img.onload=()=>{images[key]=img;if(key==='braking')prepareCapeRig(img);};
     img.onerror=()=>{}; img.src='assets/'+file+'.webp';
@@ -497,23 +497,113 @@
     ctx.beginPath();ctx.arc(wx,sy,(14+phase*45)*u,-Math.PI*.64,Math.PI*.68);ctx.stroke();
     ctx.restore();
   }
-  // New boy is drawn from his approved cutout, without altering the existing heroine rig.
+  // WEB 1.7: 36 pre-rendered hand-approved chibi frames from the same visual
+  // identity. 12 frames per pose, with subframe interpolation at the display's
+  // actual refresh rate. The cape, hair and shoes move independently within
+  // each baked frame, rather than wobbling an unchanged standing portrait.
+  const UIJI_FRAME=384,UIJI_COLS=6,UIJI_FRAMES=12;
+  const clamp01=v=>Math.max(0,Math.min(1,v));
+  function uijiPoseState(fold,speed){
+    // One face at a time while folding: avoids the double-face ghosting seen
+    // in earlier image-dissolve experiments.  Cape contracts smoothly first.
+    const action=smooth(clamp01((fold-.18)/.54));
+    const closed=action>=.5;
+    const frantic=closed?smooth(clamp01((speed-600)/220)):0;
+    const contract=1-.16*(1-Math.abs(action-.5)*2);
+    return {open:closed?0:1,folded:closed?1-frantic:0,frantic,contract};
+  }
+  function drawUijiAtlasPose(atlas,mode,phase,alpha,u,elapsed){
+    if(alpha<=.003)return;
+    const position=((phase%UIJI_FRAMES)+UIJI_FRAMES)%UIJI_FRAMES;
+    const first=Math.floor(position),frac=smooth(position-first);
+    // The cape-open silhouette is wider. Folding contracts the cape instead
+    // of simply hiding it; the folded face is deliberately more determined.
+    const w=(mode===0?175:mode===1?155:162)*u;
+    const h=(mode===0?175:mode===1?171:173)*u;
+    const bob=Math.sin(elapsed*(mode===2?13:7)+mode)*(.7+mode*.32)*u;
+    function cell(i,opacity){
+      if(opacity<.003)return;
+      const index=mode*UIJI_FRAMES+i;
+      const col=index%UIJI_COLS,row=Math.floor(index/UIJI_COLS);
+      ctx.save();ctx.globalAlpha*=opacity;
+      ctx.drawImage(atlas,col*UIJI_FRAME,row*UIJI_FRAME,UIJI_FRAME,UIJI_FRAME,
+        -w/2,bob-h*.52,w,h);
+      ctx.restore();
+    }
+    cell(first,alpha*(1-frac));
+    cell((first+1)%UIJI_FRAMES,alpha*frac);
+  }
   function drawUiji(x,y,u,fold,elapsed,speed,dead,hopping,hopFrom){
-    const img=images.uiji;
-    if(!img?.naturalWidth){drawFallbackHero(x,y,u,false,elapsed,dead,hopping,hopFrom);return;}
-    const w=116*u,h=170*u;
-    const tilt=dead?1.0:hopping?((hopFrom==='L'?1:-1)*(.1+Math.sin(s.hopVisual*Math.PI)*.27))
-      :Math.sin(elapsed*3.7)*(.018+fold*.035);
-    ctx.save();ctx.translate(x,y);ctx.rotate(tilt);
-    if(hopping&&hopFrom==='R')ctx.scale(-1,1);
-    if(dead)ctx.globalAlpha=.77;
-    ctx.drawImage(img,-w/2,-h*.53,w,h);
-    ctx.restore();
-    if(!dead&&s.tapPulse>.04){
-      ctx.save();ctx.globalAlpha=s.tapPulse*.25;
-      ctx.strokeStyle='#79dff0';ctx.lineWidth=2.5*u;
-      ctx.beginPath();ctx.arc(x,y-18*u,(62+18*(1-s.tapPulse))*u,0,Math.PI*2);
-      ctx.stroke();ctx.restore();
+    const atlas=images.uijiMotion;
+    if(!atlas?.naturalWidth){
+      // No regression when image has not yet downloaded.
+      const standby=images.uiji;
+      if(!paintSprite(standby,x,y,116*u,170*u,1))
+        drawFallbackHero(x,y,u,false,elapsed,dead,hopping,hopFrom);
+      return;
+    }
+    const p=hopping?clamp01(s.hopVisual):1;
+    const side=hopFrom==='L'?1:-1;
+    const wind=clamp01((speed-112)/650);
+    const weights=dead?{open:0,folded:0,frantic:1}:uijiPoseState(fold,speed);
+    const jumpPulse=hopping?Math.sin(Math.PI*p):0;
+    const kick=hopping?side*((-.27+.48*smooth(p))*(1-smooth(clamp01((p-.72)/.28)))):0;
+    const tilt=dead?side*.88:(Math.sin(elapsed*(4.1+wind*6))*(.015+wind*.025)+kick);
+    const squash=hopping?1+(.095*(1-smooth(clamp01(p/.20))))-.07*jumpPulse:1;
+    const shiver=weights.frantic*1.45*Math.sin(elapsed*26)*u;
+    const yBounce=Math.sin(elapsed*(6.2+wind*5.5))*(1.2+wind*.9)*u;
+    const frameTime=elapsed*(9.5+wind*5.5);
+    function actorAt(dx=0,dy=0,opacity=1){
+      ctx.save();ctx.translate(x+dx+shiver,y+dy+yBounce);ctx.rotate(tilt);
+      if(hopping&&hopFrom==='R')ctx.scale(-1,1);
+      ctx.scale(squash*(weights.contract||1)*(1+wind*.021*Math.sin(elapsed*11)),
+        (1-.015*wind*Math.sin(elapsed*9))/squash);
+      // Each mode has a 12-frame loop, interpolated at 60+ Hz.
+      drawUijiAtlasPose(atlas,0,frameTime,opacity*weights.open,u,elapsed);
+      drawUijiAtlasPose(atlas,1,frameTime*1.09+2,opacity*weights.folded,u,elapsed);
+      drawUijiAtlasPose(atlas,2,frameTime*1.23+5,opacity*weights.frantic,u,elapsed);
+      ctx.restore();
+    }
+    // Light, close motion echoes appear only during active wall kicks or
+    // extreme speed; they do not obscure the face with persistent ghosting.
+    if(!dead&&(jumpPulse>.08||wind>.82)){
+      const blur=jumpPulse*.16+Math.max(0,wind-.82)*.25;
+      actorAt(-side*(9+11*jumpPulse)*u,5*u,blur);
+    }
+    actorAt(0,0,dead?.76:1);
+    if(hopping){
+      drawWallKickImpact(u,side,p,y);
+      if(p>.64){
+        const land=(p-.64)/.36;
+        ctx.save();ctx.strokeStyle='rgba(251,220,151,'+((1-land)*.30)+')';
+        ctx.lineWidth=2.3*u;ctx.beginPath();
+        ctx.arc(x,y+18*u,(19+26*land)*u,0,Math.PI*2);
+        ctx.stroke();ctx.restore();
+      }
+    }
+    if(dead){
+      // A little cartoon "seeing stars" reaction after a lethal fall.
+      ctx.save();
+      ctx.globalAlpha=.75;
+      const t=clock*4.1;
+      for(let i=0;i<3;i++){
+        const a=t+i*Math.PI*2/3;
+        const xx=x+Math.cos(a)*43*u, yy=y-55*u+Math.sin(a)*12*u;
+        ctx.fillStyle=i===0?'#ffe7a2':'#b8d9ff';
+        ctx.beginPath();ctx.arc(xx,yy,3.5*u,0,Math.PI*2);ctx.fill();
+      }
+      ctx.restore();
+    }else if(weights.frantic>.18){
+      // Exaggerated speed/panic accent, synced to the actual in-game speed.
+      ctx.save();ctx.globalAlpha=weights.frantic*(.25+.15*Math.sin(elapsed*15)**2);
+      ctx.strokeStyle='#9ceaff';ctx.lineWidth=2.1*u;
+      for(let i=0;i<3;i++){
+        const sideSign=i%2?1:-1;
+        const xx=x+sideSign*(70+i*7)*u;
+        ctx.beginPath();ctx.moveTo(xx,y-85*u+i*10*u);
+        ctx.lineTo(xx+sideSign*9*u,y-104*u+i*10*u);ctx.stroke();
+      }
+      ctx.restore();
     }
   }
   // Helmet is an independent overlay shared by all character IDs.
@@ -712,7 +802,7 @@
       <div class="character-selection">${list}</div>
       <div class="info-card"><strong>함께 사용하는 장비</strong>
         <span class="muted">착용 헬멧: ${equipped?equipped.name:'없음'} · 캐릭터 변경 시에도 유지</span><br>
-        <span class="muted">우서이는 앞·뒷모습, 우이지는 승인된 정면 일러스트를 보여 줘.</span></div>
+        <span class="muted">우서이는 기존 망토 애니메이션 유지. 우이지는 게임에서 36프레임 낙하·가속·패닉 모션, 홈에서는 정면 일러스트를 보여 줘.</span></div>
       <div class="info-card"><strong>다음 레벨까지</strong>${fmt(prog.next-prog.within)}m</div>`;
   }
   function shopPanelHTML(prof,fmt){
