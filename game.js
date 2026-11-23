@@ -14,10 +14,14 @@
   const vortexCanvas=$('vortexCanvas'), vortexCtx=vortexCanvas.getContext('2d');
   let lastReward={distance:0,foundCoins:0,bonus:0,levelUps:0,level:sys.profile.level,newBalance:sys.profile.coins};
   const T = {
-    LIMIT:10, MAX:1560, START:124, GLIDE:112, GLIDE_TIER:8, BOOST_SPEED:510,
+    LIMIT:42, MAX:1560, START:124, GLIDE:112, GLIDE_TIER:8, BOOST_SPEED:510,
     BOOST_TIER:35, MIN_TAP_INTERVAL:.055, TAP_RATE_BASE:.8, TAP_RATE_RANGE:4.0,
     RISE_RESPONSE:1.2, FALL_RESPONSE:6.7, HOP_SECONDS:.155, ZONE_LENGTH:5000
   };
+  const CHECKPOINT_GAPS=[1450,1600,1800,2000,2250,2500,2800];
+  const CHECKPOINT_BONUS=[14,12,10,8,7,6,5];
+  const CLOCK_GAPS=[900,1050,1160,1260,1400,1510,1670];
+  const CLOCK_BONUS=[5,5,5,4,4,3,3];
   const ZONES=['지표면 · 지하 동굴','깊은 암반층','마그마 지대','맨틀 지대','외핵','내핵','지옥의 심연'];
   const PALETTES=[
     {shadow:'#14151c',wall:'#352d32',facet:'#61504c',glow:'#ff974e',sky:'#0c101a'},
@@ -68,7 +72,7 @@
   function smooth(t){t=Math.max(0,Math.min(1,t));return t*t*(3-2*t);}
   function posX(g,p=g.hopProgress){return wallX(g.hopFrom)*(1-smooth(p))+wallX(g.wall)*smooth(p);}
   function rngSeed(seed){let x=(seed>>>0)||1;return()=>{x=(x+0x6D2B79F5)>>>0;let t=x;t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return ((t^(t>>>14))>>>0)/4294967296;};}
-  function makeGame(stage='READY'){return{seed:(Math.random()*1000000000)|0,stage,depth:0,speed:T.START,timeLeft:T.LIMIT,elapsed:0,introElapsed:0,boost:0,fold:0,lastTapAt:-1,tapPulse:0,tapCount:0,tapIntervals:[],cadence:0,wall:'L',hopFrom:'L',hopProgress:1,hopVisual:1,obstacles:[],timeGates:[],coinGates:[],runCoins:0,nextObstacle:370,nextTimeGate:1400,nextCoin:210,coinNumber:0,obstacleNumber:0,gateNumber:0,gateFlash:0,zoneFlash:0,lastBonus:0,failure:'',bubbleLeft:0,bubbleColor:null,bubbleName:'',helmetId:null,helmetCharges:0,invuln:0,shieldFlash:0,runCharacter:'useoi',quickSlots:[null,null]};}
+  function makeGame(stage='READY'){return{seed:(Math.random()*1000000000)|0,stage,depth:0,speed:T.START,timeLeft:T.LIMIT,elapsed:0,introElapsed:0,boost:0,fold:0,lastTapAt:-1,tapPulse:0,tapCount:0,tapIntervals:[],cadence:0,wall:'L',hopFrom:'L',hopProgress:1,hopVisual:1,obstacles:[],timeGates:[],checkpointGates:[],coinGates:[],runCoins:0,nextObstacle:370,nextTimeGate:900,nextCheckpoint:1450,nextCoin:210,coinNumber:0,obstacleNumber:0,gateNumber:0,checkpointNumber:0,gateFlash:0,checkpointFlash:0,zoneFlash:0,lastBonus:0,lastCheckpointBonus:0,failure:'',bubbleLeft:0,bubbleColor:null,bubbleName:'',helmetId:null,helmetCharges:0,invuln:0,shieldFlash:0,runCharacter:'useoi',quickSlots:[null,null]};}
   function start(){
     applyControlSide();s=makeGame('PLAYING');
     // A bubble is a single-use purchase. Helmets are persistent owned equipment,
@@ -133,48 +137,76 @@
     // Visual kick has ~24 rendered frames at 60 FPS; physics collision timing stays unchanged.
     const hopVisual=Math.min(1,s.hopVisual+dt/.40);
     let remain=Math.max(0,s.timeLeft-dt),glow=Math.max(0,s.gateFlash-dt),bonus=s.lastBonus;
+    let checkpointGlow=Math.max(0,s.checkpointFlash-dt),checkpointBonus=s.lastCheckpointBonus;
     const zoneFlash=zoneOf(depth)>zoneOf(old)?2.1:Math.max(0,s.zoneFlash-dt);
-    s.timeGates=s.timeGates.filter(g=>g.depth>=old-80);
-    while(s.nextTimeGate<depth+2500){
-      const r=rngSeed(s.seed+8099+s.gateNumber*97),wall=r()<.5?'L':'R';
-      s.timeGates.push({depth:s.nextTimeGate,wall});
-      const localTier=tierOf(s.nextTimeGate);
-      s.nextTimeGate+=1260+Math.min(450,localTier*38)+r()*220;s.gateNumber++;
-    }
     const traveled=Math.max(.001,depth-old);
-    for(const g of s.timeGates){
-      if(!(old<g.depth&&depth>=g.depth))continue;
+    // Automatic, full-width TIME LINES: every player receives a checkpoint bonus.
+    // Generate well ahead of hazards so no lethal obstacle can overlap the line.
+    s.checkpointGates=s.checkpointGates.filter(g=>g.depth>=old-100);
+    while(s.nextCheckpoint<depth+3650){
+      const z=zoneOf(s.nextCheckpoint);
+      s.checkpointGates.push({depth:s.nextCheckpoint,bonus:CHECKPOINT_BONUS[z],collected:false});
+      s.nextCheckpoint+=CHECKPOINT_GAPS[z];s.checkpointNumber++;
+    }
+    // Round clocks are OPTIONAL +3/+4/+5-second collectibles, not checkpoints.
+    // Generate before hazards and reject slots too close to automatic time lines.
+    s.timeGates=s.timeGates.filter(g=>g.depth>=old-100);
+    while(s.nextTimeGate<depth+3350){
+      const r=rngSeed(s.seed+8099+s.gateNumber*97),wall=r()<.5?'L':'R';
+      const d=s.nextTimeGate,z=zoneOf(d);
+      if(!s.checkpointGates.some(g=>Math.abs(g.depth-d)<200)){
+        s.timeGates.push({depth:d,wall,bonus:CLOCK_BONUS[z],collected:false});
+      }
+      s.nextTimeGate+=CLOCK_GAPS[z]+r()*200;s.gateNumber++;
+    }
+    // Hazards avoid BOTH types of time reward. Their collision rules are unchanged.
+    s.obstacles=s.obstacles.filter(o=>o.depth>=old-100);
+    while(s.nextObstacle<depth+2850){
+      const r=rngSeed(s.seed+1823+s.obstacleNumber*901),oDepth=s.nextObstacle;
+      const wall=r()<.5?'L':'R';
+      const kinds=TYPE_BY_ZONE[zoneOf(oDepth)],type=kinds[Math.floor(r()*kinds.length)],variant=Math.floor(r()*5);
+      const clearOfTime=s.checkpointGates.every(g=>Math.abs(g.depth-oDepth)>=165)
+        &&s.timeGates.every(g=>Math.abs(g.depth-oDepth)>=155);
+      if(clearOfTime)s.obstacles.push({depth:oDepth,wall,type,variant});
+      const dangerTier=tierOf(oDepth),localTop=Math.min(T.MAX,312+dangerTier*76);
+      const minSpacing=localTop*(.47-Math.min(7,dangerTier)*.013);
+      s.nextObstacle+=minSpacing+35+r()*(88-Math.min(55,dangerTier*3));s.obstacleNumber++;
+    }
+    // Collectible coins spawn last, where both hazards and time rewards are known.
+    s.coinGates=s.coinGates.filter(c=>c.depth>=old-100);
+    while(s.nextCoin<depth+2450){
+      const r=rngSeed(s.seed+52617+s.coinNumber*383),d=s.nextCoin;
+      const wall=s.coinNumber===0?'L':(r()<.5?'L':'R');
+      const clear=s.checkpointGates.every(g=>Math.abs(g.depth-d)>=135)
+        &&s.timeGates.every(g=>Math.abs(g.depth-d)>=145)
+        &&s.obstacles.every(o=>Math.abs(o.depth-d)>=160);
+      if(clear)s.coinGates.push({depth:d,wall,value:s.coinNumber===0?2:1+Math.floor(r()*3)});
+      s.nextCoin+=790+r()*470;s.coinNumber++;
+    }
+    for(const g of s.checkpointGates){
+      if(g.collected||!(old<g.depth&&depth>=g.depth))continue;
       const along=Math.max(0,Math.min(1,(g.depth-old)/traveled));
+      if(s.timeLeft<=dt*along)continue; // no rescue after already running out
+      checkpointBonus=g.bonus;remain=Math.min(T.LIMIT,remain+g.bonus);
+      checkpointGlow=1.25;g.collected=true;sys.audio.effect('checkpoint');
+    }
+    for(const g of s.timeGates){
+      if(g.collected||!(old<g.depth&&depth>=g.depth))continue;
+      const along=Math.max(0,Math.min(1,(g.depth-old)/traveled));
+      if(s.timeLeft<=dt*along)continue;
       const p=Math.min(1,s.hopProgress+dt*along/T.HOP_SECONDS);
       if(Math.abs(posX(s,p)-wallX(g.wall))<=.12){
-        bonus=3.25-Math.min(.65,tier*.04);remain=Math.min(T.LIMIT,remain+bonus);glow=1.2;g.collected=true;sys.audio.effect('clock');
+        bonus=g.bonus;remain=Math.min(T.LIMIT,remain+bonus);
+        glow=1.2;g.collected=true;sys.audio.effect('clock');
       }
-    }
-    // Optional in-run collectible coins. Earned coins commit once on game-over.
-    s.coinGates=s.coinGates.filter(c=>c.depth>=old-100);
-    while(s.nextCoin<depth+2350){
-      const r=rngSeed(s.seed+52617+s.coinNumber*383);const wall=s.coinNumber===0?'L':(r()<.5?'L':'R');
-      if(!s.timeGates.some(g=>Math.abs(g.depth-s.nextCoin)<125) &&
-         !s.obstacles.some(o=>Math.abs(o.depth-s.nextCoin)<105)){
-        s.coinGates.push({depth:s.nextCoin,wall,value:s.coinNumber===0?2:1+Math.floor(r()*3)});
-      }
-      s.nextCoin+=790+r()*470;s.coinNumber++;
     }
     for(const coin of s.coinGates){
       if(coin.collected||!(old<coin.depth&&depth>=coin.depth))continue;
       const at=Math.max(0,Math.min(1,(coin.depth-old)/traveled));
       const p=Math.min(1,s.hopProgress+dt*at/T.HOP_SECONDS);
-      if(Math.abs(posX(s,p)-wallX(coin.wall))<.14){coin.collected=true;s.runCoins+=coin.value;sys.audio.effect('coin')}
-    }
-    s.obstacles=s.obstacles.filter(o=>o.depth>=old-90);
-    while(s.nextObstacle<depth+2600){
-      const r=rngSeed(s.seed+1823+s.obstacleNumber*901),oDepth=s.nextObstacle;
-      const wall=r()<.5?'L':'R';
-      const kinds=TYPE_BY_ZONE[zoneOf(oDepth)],type=kinds[Math.floor(r()*kinds.length)],variant=Math.floor(r()*5);
-      if(!s.timeGates.some(g=>Math.abs(g.depth-oDepth)<95))s.obstacles.push({depth:oDepth,wall,type,variant});
-      const dangerTier=tierOf(oDepth),localTop=Math.min(T.MAX,312+dangerTier*76);
-      const minSpacing=localTop*(.47-Math.min(7,dangerTier)*.013);
-      s.nextObstacle+=minSpacing+35+r()*(88-Math.min(55,dangerTier*3));s.obstacleNumber++;
+      if(Math.abs(posX(s,p)-wallX(coin.wall))<.14){
+        coin.collected=true;s.runCoins+=coin.value;sys.audio.effect('coin');
+      }
     }
     let crashed=false,helmetCharges=s.helmetCharges;
     let invuln=Math.max(0,s.invuln-dt);
@@ -199,7 +231,7 @@
       }
       crashed=true;break;
     }
-    Object.assign(s,{boost,fold,cadence:rate,tapPulse:Math.max(0,s.tapPulse-dt*3.3),speed:nextSpeed,depth,timeLeft:remain,elapsed:s.elapsed+dt,hopProgress:hop,hopVisual,gateFlash:glow,zoneFlash,lastBonus:bonus,bubbleLeft,helmetCharges,invuln,shieldFlash});
+    Object.assign(s,{boost,fold,cadence:rate,tapPulse:Math.max(0,s.tapPulse-dt*3.3),speed:nextSpeed,depth,timeLeft:remain,elapsed:s.elapsed+dt,hopProgress:hop,hopVisual,gateFlash:glow,checkpointFlash:checkpointGlow,zoneFlash,lastBonus:bonus,lastCheckpointBonus:checkpointBonus,bubbleLeft,helmetCharges,invuln,shieldFlash});
     if(hop>=1)jumpBtn.classList.remove('active');
     if(crashed)finish('지층 장애물에 부딪혔어!');else if(remain<=0)finish('시간이 다 됐어!');
   }
@@ -250,17 +282,18 @@
     $('depthLabel').innerHTML=Math.floor(s.depth)+' <small>m</small>';
     $('recordLabel').textContent='최고 '+Math.floor(Math.max(best,s.depth))+' m';
     $('timeLabel').textContent=s.timeLeft.toFixed(1);
-    $('timeLabel').style.color=s.timeLeft<5?COLORS.red:'white';
-    $('timeCaption').classList.toggle('alert',s.timeLeft<3);
+    $('timeLabel').style.color=s.timeLeft<8?COLORS.red:'white';
+    $('timeCaption').classList.toggle('alert',s.timeLeft<6);
     $('speedLabel').textContent='속도 '+Math.floor(s.speed)+' m/s · 난이도 '+(tierOf(s.depth)+1);
     $('timeFill').style.width=(100*s.timeLeft/T.LIMIT)+'%';
-    $('timeFill').classList.toggle('danger',s.timeLeft<3);
+    $('timeFill').classList.toggle('danger',s.timeLeft<6);
     boostBtn.classList.toggle('active',s.tapPulse>.6);
     $('boostHint').textContent=s.boost>.84?'🌪️ 폭풍 유지!':s.boost>.39?'더 빠르게!':'빠르게 연타!';
     $('vortexState').textContent=s.boost>.93?'폭풍 최고!':s.boost>.65?'격렬한 돌개':s.boost>.26?'회오리 성장':s.boost>.045?'바람 발생':'바람 대기';
     toast.classList.add('hidden');toast.classList.remove('mint');
     if(playing && s.zoneFlash>0){toast.textContent=ZONES[zoneOf(s.depth)]+' 진입!';toast.style.opacity=String(Math.min(1,s.zoneFlash/1.5));toast.classList.remove('hidden');}
-    if(playing && s.gateFlash>0){toast.textContent='⏱ +'+s.lastBonus.toFixed(1)+'초!';toast.style.opacity=String(Math.min(1,s.gateFlash/1.1));toast.classList.remove('hidden');toast.classList.add('mint');}
+    if(playing && s.checkpointFlash>0){toast.textContent='⏱ 타임 라인 +'+s.lastCheckpointBonus+'초!';toast.style.opacity=String(Math.min(1,s.checkpointFlash));toast.classList.remove('hidden');toast.classList.add('mint');}
+    if(playing && s.gateFlash>0){toast.textContent='⏱ 아이템 +'+s.lastBonus.toFixed(0)+'초!';toast.style.opacity=String(Math.min(1,s.gateFlash/1.1));toast.classList.remove('hidden');toast.classList.add('mint');}
   }
   function fit(){const bounds=gameRoot.getBoundingClientRect();if(!bounds.width||!bounds.height)return;W=bounds.width;H=bounds.height;const dpr=Math.min(window.devicePixelRatio||1,2.5);canvas.width=Math.round(W*dpr);canvas.height=Math.round(H*dpr);ctx.setTransform(dpr,0,0,dpr,0,0);}
   function gradient(x0,y0,x1,y1,stops){const g=ctx.createLinearGradient(x0,y0,x1,y1);stops.forEach(([t,c])=>g.addColorStop(t,c));return g;}
@@ -336,6 +369,7 @@
       const x=W*(.27+((i*41%100)/100)*.46),y=(i*131+s.depth*ppm*(1+i%4*.14))%(H+200*u)-90*u;
       line([[x,y],[x,y-(24+s.speed*.16+(i%4)*9)*u]],s.boost>.7?'#b9ecff9a':p.glow+'78',Math.max(1,u)*(1+i%3));
     }
+    for(const g of s.checkpointGates){if(g.collected)continue;const y=charY+(g.depth-s.depth)*ppm;if(y>-65*u&&y<H+70*u)drawCheckpoint(g,y,u);}
     for(const g of s.timeGates){if(g.collected)continue;const y=charY+(g.depth-s.depth)*ppm;if(y>-85*u&&y<H+100*u)drawGate(g,y,u);}
     for(const o of s.obstacles){const y=charY+(o.depth-s.depth)*ppm;if(y>-100*u&&y<H+105*u)drawHazard(o,y,u);}
     for(const coin of s.coinGates){if(coin.collected)continue;const y=charY+(coin.depth-s.depth)*ppm;if(y>-80*u&&y<H+90*u)drawCoin(coin,y,u);}
@@ -345,12 +379,22 @@
     drawHelmet(posX(s)*W,charY-arc,u);
     drawBubble(posX(s)*W,charY-arc,u);
     if(s.speed>670){ctx.fillStyle='#ff4f6115';ctx.fillRect(0,0,W,H);}
-    if(s.gateFlash>.72){ctx.fillStyle='#6be1cd20';ctx.fillRect(0,0,W,H);}
+    if(s.gateFlash>.72||s.checkpointFlash>.7){ctx.fillStyle='#6be1cd20';ctx.fillRect(0,0,W,H);}
+  }
+  function drawCheckpoint(g,y,u){
+    const x0=W*.247,x1=W*.753,t=(Math.sin(s.elapsed*5)+1)/2;
+    const beam=ctx.createLinearGradient(x0,y,x1,y);
+    beam.addColorStop(0,'#6be1cd40');beam.addColorStop(.5,'#a7fff5ee');beam.addColorStop(1,'#6be1cd40');
+    ctx.fillStyle='#092e31b0';ctx.fillRect(x0,y-17*u,x1-x0,34*u);
+    ctx.fillStyle=beam;ctx.fillRect(x0,y-2.5*u,x1-x0,5*u);
+    disk(x0,y,8*u,'#6be1cdbb');disk(x1,y,8*u,'#6be1cdbb');
+    txt('TIME LINE  +'+g.bonus+'s',W*.5,y-7*u,12*u,'#e3fff6');
+    if(t>.5){ctx.strokeStyle='#b1fff43b';ctx.lineWidth=2*u;ctx.strokeRect(x0,y-19*u,x1-x0,38*u);}
   }
   function drawGate(g,y,u){const x=wallX(g.wall)*W,p=(Math.sin(s.elapsed*8)+1)/2;
     disk(x,y,43*u,`rgba(107,225,205,${.10+p*.08})`);disk(x,y,27*u,'#6be1cd35');disk(x,y,20*u,'#1a4d4b');
     ctx.beginPath();ctx.arc(x,y,18*u,0,Math.PI*2);ctx.strokeStyle=COLORS.mint;ctx.lineWidth=4*u;ctx.stroke();
-    line([[x,y-10*u],[x,y],[x+9*u,y+5*u]],COLORS.cream,3.3*u);disk(x,y,3*u,COLORS.cream);txt('+TIME',x,y-37*u,11*u,COLORS.mint);
+    line([[x,y-10*u],[x,y],[x+9*u,y+5*u]],COLORS.cream,3.3*u);disk(x,y,3*u,COLORS.cream);txt('+'+g.bonus+'s',x,y-37*u,11*u,COLORS.mint);
   }
   function drawCoin(coin,y,u){
     const x=wallX(coin.wall)*W;
@@ -1135,5 +1179,5 @@
   })();
   applyControlSide();fit();updateUI();requestAnimationFrame(frame);
   // Expose read-only simple debug state for local test harnesses, never gameplay rewards.
-  window.HellFallTest={snapshot:()=>({stage:s.stage,depth:s.depth,speed:s.speed,timeLeft:s.timeLeft,wall:s.wall,hopProgress:s.hopProgress,hopVisual:s.hopVisual,boost:s.boost,fold:s.fold,cadence:s.cadence,tapCount:s.tapCount,runCoins:s.runCoins,hazards:s.obstacles.length,gates:s.timeGates.length,boostSide:sys.profile.settings.boostSide,bubbleLeft:s.bubbleLeft,helmetCharges:s.helmetCharges,helmetId:s.helmetId,shieldFlash:s.shieldFlash,quickSlots:s.quickSlots.slice(),character:sys.profile.selectedCharacter,profile:{...sys.profile}}),start:()=>start(false)};
+  window.HellFallTest={snapshot:()=>({stage:s.stage,depth:s.depth,speed:s.speed,timeLeft:s.timeLeft,wall:s.wall,hopProgress:s.hopProgress,hopVisual:s.hopVisual,boost:s.boost,fold:s.fold,cadence:s.cadence,tapCount:s.tapCount,runCoins:s.runCoins,hazards:s.obstacles.length,gates:s.timeGates.length,checkpoints:s.checkpointGates.length,checkpointFlash:s.checkpointFlash,lastCheckpointBonus:s.lastCheckpointBonus,boostSide:sys.profile.settings.boostSide,bubbleLeft:s.bubbleLeft,helmetCharges:s.helmetCharges,helmetId:s.helmetId,shieldFlash:s.shieldFlash,quickSlots:s.quickSlots.slice(),character:sys.profile.selectedCharacter,profile:{...sys.profile}}),start:()=>start(false)};
 })();

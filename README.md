@@ -1,3 +1,11 @@
+## WEB 1.9 — Progressive TIME LINE balance (2026-11-23)
+
+- Each run begins with 42.0 seconds. Full-width TIME LINE checkpoints grant automatic +14/+12/+10/+8/+7/+6/+5 seconds by zone. Checkpoint spacing increases from 1,450 m to 2,800 m as the depth increases.
+- Round clock pickups remain optional. Reaching the correct wall grants +5 seconds early, +4 in the middle, +3 late. Both rewards cap at 42 s. No time can be granted after expiry.
+- Spawn ordering reserves safe space around time lines, clocks, coins and hazards; time bonuses can be collected without overlapping a lethal obstacle. Existing hazard collision and item purchase/wardrobe mechanics remain.
+- Level-up thresholds grow more slowly; existing players keep earned levels and coins. Saved data is migrated once using a legacy level baseline. SFX peak strengths reduced without modifying user-selected volume or BGM.
+- WEB 1.9 gameplay balance is beta. Galaxy physical playtest required before final approval. Existing 8-minute standalone simulator is not synchronized with this beta gameplay yet.
+
 # 지옥 낙하 WEB 0.8 — 리듬게임 클래식 편곡 BGM 연결
 
 실행: https://jongchan200-glitch.github.io/hell-drop/
@@ -88,7 +96,7 @@
 - Important: his HOME portrait remains the approved standing illustration and has no unapproved backward-facing fake image; only gameplay falling sprites are new. The original heroine's hand-cut cape rig and all of her existing artwork remain untouched.
 - QA before commit: atlas verified as 6×6 RGBA (1.32MB), contact-sheet visual inspection of all three poses, syntax test of modified game JS; simulated 390×844 gameplay and draw of open, folded, panic, jump and dead animations with actual 9-argument canvas drawImage atlas coordinates; real Galaxy listening/visual confirmation remains pending.
 
-
+ 
 ## WEB 1.8 TEST — swipe character wardrobe, per-character gear, manually activated item buttons, crisp Uiji motion (2026-11-23)
 - Character drawer redesigned from two side-by-side character cards into a large SINGLE centered character with swipe-left/right carousel, explicit arrow buttons, active "✓ 사용 중", and pagination dots; switching hero is persisted to the existing profile without affecting coins, levels or record. The visual art is the existing approved original.
 - Below the selected hero is its own wearable/consumable closet. Two **character-specific** item quick slots support mobile pointer drag/drop, desktop HTML drag/drop and accessible tap-item-then-tap-slot. A clear/unequip × control restores the slot; it never decreases stock. All owned consumable quantities remain **global inventory** and are only decremented upon deliberate in-game activation, not on purchase, character selection, wardrobe equip or starting a run.

@@ -30,7 +30,7 @@
   ];
   const clamp=(v,a,b)=>Math.max(a,Math.min(b,Number.isFinite(+v)?+v:a));
   const int=(v)=>Math.max(0,Math.floor(Number(v)||0));
-  function newProfile(){return {coins:0,totalDepth:0,level:1,runs:0,worldCoins:0,inventory:[],selectedCharacter:'useoi',equippedHelmet:null,armedBubble:null,wardrobes:{},consumables:{},settings:{music:DEFAULT_MUSIC,sfx:.32,boostSide:'left',musicDefaultRevision:2},claimed:[]};}
+  function newProfile(){return {coins:0,totalDepth:0,level:1,levelMigration:2,levelBaseDepth:0,levelBaseLevel:1,runs:0,worldCoins:0,inventory:[],selectedCharacter:'useoi',equippedHelmet:null,armedBubble:null,wardrobes:{},consumables:{},settings:{music:DEFAULT_MUSIC,sfx:.32,boostSide:'left',musicDefaultRevision:2},claimed:[]};}
   function load(){let obj={};try{obj=JSON.parse(localStorage.getItem(KEY)||'{}')||{}}catch(_){/* blocked */}
     const p={...newProfile(),...obj};p.coins=int(p.coins);p.totalDepth=int(p.totalDepth);p.runs=int(p.runs);p.worldCoins=int(p.worldCoins);
     p.inventory=Array.isArray(p.inventory)?p.inventory.filter(x=>typeof x==='string').slice(0,200):[];
@@ -77,16 +77,41 @@
       boostSide:oldSettings.boostSide==='right'?'right':'left',
       musicDefaultRevision:2
     };
-    p.level=levelFromDepth(p.totalDepth);return p;
+    // Existing players keep their earned level. Slow progression starts from
+    // their current saved total instead of silently downgrading old accounts.
+    const savedLevel=Math.max(1,Math.min(999,int(obj?.level)||legacyLevelFromDepth(p.totalDepth)));
+    p.levelMigration=2;
+    if(obj?.levelMigration===2){
+      p.levelBaseDepth=Math.min(p.totalDepth,int(obj.levelBaseDepth));
+      p.levelBaseLevel=Math.max(1,int(obj.levelBaseLevel)||1);
+    }else{
+      p.levelBaseDepth=p.totalDepth;
+      p.levelBaseLevel=Math.max(savedLevel,legacyLevelFromDepth(p.totalDepth));
+    }
+    p.level=computeLevelProgress(p.totalDepth,p.levelBaseDepth,p.levelBaseLevel).level;
+    return p;
   }
   let profile=load();
   function save(){try{localStorage.setItem(KEY,JSON.stringify(profile));return true}catch(_){return false}}
-  function threshold(level){const n=Math.max(0,level-1);return 2400+n*1700+n*n*190;}
-  function levelFromDepth(distance){let lv=1,remain=int(distance);while(lv<1000&&remain>=threshold(lv)){remain-=threshold(lv);lv++}return lv;}
-  function levelProgress(distance){let remain=int(distance);for(let lv=1;lv<1000;lv++){const need=threshold(lv);if(remain<need)return {level:lv,within:remain,next:need,ratio:remain/need};remain-=need}return {level:1000,within:0,next:1,ratio:1};}
+  function legacyThreshold(level){const n=Math.max(0,level-1);return 2400+n*1700+n*n*190;}
+  function legacyLevelFromDepth(distance){let lv=1,remain=int(distance);while(lv<1000&&remain>=legacyThreshold(lv)){remain-=legacyThreshold(lv);lv++;}return lv;}
+  // New-player thresholds are intentionally substantially slower; retained
+  // old-level baselines prevent a level reset on existing installations.
+  function threshold(level){const n=Math.max(0,level-1);return 7500+n*4000+n*n*420;}
+  function computeLevelProgress(distance,baseDepth=0,baseLevel=1){
+    let remain=Math.max(0,int(distance)-int(baseDepth));
+    for(let lv=Math.max(1,int(baseLevel));lv<1000;lv++){
+      const need=threshold(lv);
+      if(remain<need)return {level:lv,within:remain,next:need,ratio:remain/need};
+      remain-=need;
+    }
+    return {level:1000,within:0,next:1,ratio:1};
+  }
+  function levelFromDepth(distance){return computeLevelProgress(distance).level;}
+  function levelProgress(distance){return computeLevelProgress(distance,profile.levelBaseDepth,profile.levelBaseLevel);}
   function awardRun(distance,foundCoins){distance=int(distance);foundCoins=int(foundCoins);const old=profile.level;
     profile.totalDepth+=distance;profile.runs++;profile.worldCoins+=foundCoins;
-    profile.level=levelFromDepth(profile.totalDepth);
+    profile.level=levelProgress(profile.totalDepth).level;
     let bonus=0;for(let lv=old+1;lv<=profile.level;lv++)bonus+=8+4*lv;
     profile.coins+=foundCoins+bonus;save();return {distance,foundCoins,bonus,levelUps:profile.level-old,level:profile.level,newBalance:profile.coins};
   }
@@ -181,7 +206,7 @@
     effect(name){const ctx=this.ctx;if(!ctx||ctx.state!=='running'||profile.settings.sfx===0)return;
       const now=ctx.currentTime;if(name==='tap'&&now-this.lastTapSound<.13)return;
       if(name==='tap')this.lastTapSound=now;
-      const params={tap:[305,180,.045,.17],jump:[430,650,.17,.27],coin:[840,1170,.19,.32],clock:[720,910,.22,.29],hit:[205,69,.28,.33],level:[540,1060,.34,.30],start:[470,685,.19,.23]};
+      const params={tap:[305,180,.045,.12],jump:[430,650,.15,.19],coin:[740,990,.17,.22],clock:[680,900,.20,.22],checkpoint:[520,850,.27,.24],hit:[205,69,.26,.24],level:[540,1060,.32,.22],start:[470,685,.19,.18]};
       const [f1,f2,duration,amount]=params[name]||params.tap;
       try{const os=ctx.createOscillator(),gain=ctx.createGain();os.type=name==='hit'?'triangle':'sine';os.frequency.setValueAtTime(f1,now);os.frequency.exponentialRampToValueAtTime(Math.max(50,f2),now+duration);gain.gain.setValueAtTime(.00001,now);gain.gain.exponentialRampToValueAtTime(Math.max(.0001,profile.settings.sfx*amount),now+.01);gain.gain.exponentialRampToValueAtTime(.00001,now+duration);os.connect(gain).connect(ctx.destination);os.start(now);os.stop(now+duration+.02)}catch(_){/* no device audio */}
     },
