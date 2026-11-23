@@ -22,15 +22,15 @@
   ];
   // Beta balance: the exact prices can be adjusted without changing saved purchases.
   const ITEM_CATALOG=[
-    {id:'bubble_10',name:'노란 버블 보호막',kind:'bubble',price:20,seconds:10,color:'#ffe579',icon:'🟡',description:'다음 판 시작부터 10초간 장애물 방어'},
-    {id:'bubble_20',name:'초록 버블 보호막',kind:'bubble',price:45,seconds:20,color:'#72f3a3',icon:'🟢',description:'다음 판 시작부터 20초간 장애물 방어'},
-    {id:'bubble_30',name:'빨간 버블 보호막',kind:'bubble',price:80,seconds:30,color:'#ff7787',icon:'🔴',description:'다음 판 시작부터 30초간 장애물 방어'},
+    {id:'bubble_10',name:'노란 버블 보호막',kind:'bubble',price:20,seconds:10,color:'#ffe579',icon:'🟡',description:'플레이 중 사용하면 10초 보호'},
+    {id:'bubble_20',name:'초록 버블 보호막',kind:'bubble',price:45,seconds:20,color:'#72f3a3',icon:'🟢',description:'플레이 중 사용하면 20초 보호'},
+    {id:'bubble_30',name:'빨간 버블 보호막',kind:'bubble',price:80,seconds:30,color:'#ff7787',icon:'🔴',description:'플레이 중 사용하면 30초 보호'},
     {id:'helmet_basic',name:'탐험가 헬멧',kind:'helmet',price:160,hits:1,icon:'🪖',description:'장착 시 매 판 충돌 1회 방어'},
     {id:'helmet_frog',name:'개구리 헬멧',kind:'helmet',price:320,hits:2,icon:'🐸',description:'장착 시 매 판 충돌 2회 방어'}
   ];
   const clamp=(v,a,b)=>Math.max(a,Math.min(b,Number.isFinite(+v)?+v:a));
   const int=(v)=>Math.max(0,Math.floor(Number(v)||0));
-  function newProfile(){return {coins:0,totalDepth:0,level:1,runs:0,worldCoins:0,inventory:[],selectedCharacter:'useoi',equippedHelmet:null,armedBubble:null,consumables:{},settings:{music:DEFAULT_MUSIC,sfx:.32,boostSide:'left',musicDefaultRevision:2},claimed:[]};}
+  function newProfile(){return {coins:0,totalDepth:0,level:1,runs:0,worldCoins:0,inventory:[],selectedCharacter:'useoi',equippedHelmet:null,armedBubble:null,wardrobes:{},consumables:{},settings:{music:DEFAULT_MUSIC,sfx:.32,boostSide:'left',musicDefaultRevision:2},claimed:[]};}
   function load(){let obj={};try{obj=JSON.parse(localStorage.getItem(KEY)||'{}')||{}}catch(_){/* blocked */}
     const p={...newProfile(),...obj};p.coins=int(p.coins);p.totalDepth=int(p.totalDepth);p.runs=int(p.runs);p.worldCoins=int(p.worldCoins);
     p.inventory=Array.isArray(p.inventory)?p.inventory.filter(x=>typeof x==='string').slice(0,200):[];
@@ -42,7 +42,27 @@
       const n=Number(obj?.consumables?.[item.id]);
       p.consumables[item.id]=Number.isFinite(n)?Math.max(0,Math.min(99,Math.floor(n))):0;
     }
-    p.armedBubble=ITEM_CATALOG.some(x=>x.kind==='bubble'&&x.id===obj?.armedBubble&&p.consumables[x.id]>0)?obj.armedBubble:null;
+    // Wardrobes are stored per character. Ownership (quantities) remains global;
+    // equipping does NOT spend a consumable, only pressing its in-game button does.
+    // Move old armed bubble / worn helmet to the previously selected character once.
+    const legacyChar=p.selectedCharacter;
+    p.wardrobes={};
+    for(const character of CHARACTER_CATALOG){
+      const old=obj?.wardrobes?.[character.id]||{};
+      const priorSlots=Array.isArray(old.quickSlots)?old.quickSlots:
+        (character.id===legacyChar&&Array.isArray(obj?.quickSlots)?obj.quickSlots:
+          (character.id===legacyChar?[obj?.armedBubble||null,null]:[null,null]));
+      const quickSlots=[0,1].map(i=>{
+        const candidate=priorSlots[i];
+        return ITEM_CATALOG.some(x=>x.id===candidate&&x.kind==='bubble'&&p.consumables[x.id]>0)?candidate:null;
+      });
+      const oldGear=old.gear||{};
+      const helmetCandidate=oldGear.helmet||(character.id===legacyChar?obj?.equippedHelmet:null);
+      const gear={helmet:null,cape:null,shoes:null,pants:null,top:null};
+      if(ITEM_CATALOG.some(x=>x.id===helmetCandidate&&x.kind==='helmet'&&p.inventory.includes(x.id)))gear.helmet=helmetCandidate;
+      p.wardrobes[character.id]={quickSlots,gear};
+    }
+    p.armedBubble=null;
     // Untouched old default 26%/7% -> new default 20%.
     // Preserve chosen music levels including 0% and 2%, coins, scores and SFX.
     const oldSettings=obj?.settings||{};
@@ -70,6 +90,9 @@
     let bonus=0;for(let lv=old+1;lv<=profile.level;lv++)bonus+=8+4*lv;
     profile.coins+=foundCoins+bonus;save();return {distance,foundCoins,bonus,levelUps:profile.level-old,level:profile.level,newBalance:profile.coins};
   }
+  function wardrobeOf(characterId){
+    return profile.wardrobes[characterId]||null;
+  }
   function purchase(id){
     const item=ITEM_CATALOG.find(x=>x.id===id);
     if(!item)return {ok:false,reason:'판매 준비 중'};
@@ -79,37 +102,63 @@
     profile.coins-=item.price;
     if(item.kind==='helmet'){
       profile.inventory.push(id);
-      profile.equippedHelmet=id; // shared across all present and future characters
     }else if(item.kind==='bubble'){
       profile.consumables[id]=(profile.consumables[id]||0)+1;
-      profile.armedBubble=id; // use one at the start of the next run
     }
+    // Purchasing only adds to the warehouse. It never auto-equips or activates.
     save();return {ok:true,item,coins:profile.coins};
   }
   function selectCharacter(id){
     if(!CHARACTER_CATALOG.some(c=>c.id===id))return false;
     profile.selectedCharacter=id;save();return true;
   }
-  function equipHelmet(id){
-    if(id!==null&&!ITEM_CATALOG.some(x=>x.id===id&&x.kind==='helmet'&&profile.inventory.includes(id)))return false;
-    profile.equippedHelmet=id;save();return true;
-  }
-  function armBubble(id){
-    if(id!==null&&!ITEM_CATALOG.some(x=>x.id===id&&x.kind==='bubble'&&profile.consumables[id]>0))return false;
-    profile.armedBubble=id;save();return true;
-  }
-  function startLoadout(){
-    const bubble=ITEM_CATALOG.find(x=>x.id===profile.armedBubble&&x.kind==='bubble'&&profile.consumables[x.id]>0);
-    if(bubble){
-      profile.consumables[bubble.id]--;
-      if(profile.consumables[bubble.id]===0)profile.armedBubble=null;
-      save();
+  function setCharacterSlot(characterId,index,itemId){
+    const wardrobe=wardrobeOf(characterId);
+    if(!wardrobe||!Number.isInteger(index)||index<0||index>1)return false;
+    if(itemId!==null){
+      const item=ITEM_CATALOG.find(x=>x.id===itemId&&x.kind==='bubble');
+      if(!item||(profile.consumables[itemId]||0)<1)return false;
+      const other=wardrobe.quickSlots[1-index];
+      if(other===itemId&&(profile.consumables[itemId]||0)<2)return false;
     }
-    const helmet=ITEM_CATALOG.find(x=>x.id===profile.equippedHelmet&&x.kind==='helmet'&&profile.inventory.includes(x.id));
+    wardrobe.quickSlots[index]=itemId;save();return true;
+  }
+  function setCharacterGear(characterId,slot,itemId){
+    const wardrobe=wardrobeOf(characterId);
+    if(!wardrobe||!['helmet','cape','shoes','pants','top'].includes(slot))return false;
+    if(itemId!==null){
+      const item=ITEM_CATALOG.find(x=>x.id===itemId&&profile.inventory.includes(itemId));
+      if(!item||(item.kind==='helmet'?'helmet':item.slot)!==slot)return false;
+    }
+    wardrobe.gear[slot]=itemId;save();return true;
+  }
+  function consumeCharacterSlot(characterId,index){
+    const wardrobe=wardrobeOf(characterId);
+    if(!wardrobe||characterId!==profile.selectedCharacter||!Number.isInteger(index)||index<0||index>1)
+      return {ok:false,reason:'잘못된 아이템 슬롯'};
+    const id=wardrobe.quickSlots[index],item=ITEM_CATALOG.find(x=>x.id===id&&x.kind==='bubble');
+    if(!item)return {ok:false,reason:'장착된 아이템이 없어'};
+    if((profile.consumables[id]||0)<=0)return {ok:false,reason:'아이템이 부족해'};
+    profile.consumables[id]--;
+    if(profile.consumables[id]===0){
+      // All characters share inventory. Empty slots return to the warehouse
+      // state when the final unit is consumed; no other character can use it.
+      for(const entry of Object.values(profile.wardrobes))
+        entry.quickSlots=entry.quickSlots.map(x=>x===id?null:x);
+    }
+    save();return {ok:true,item,remaining:profile.consumables[id]};
+  }
+  // Compatibility with old settings/store callers: always target active hero.
+  function equipHelmet(id){return setCharacterGear(profile.selectedCharacter,'helmet',id);}
+  function armBubble(id){return setCharacterSlot(profile.selectedCharacter,0,id);}
+  function startLoadout(){
+    const wardrobe=wardrobeOf(profile.selectedCharacter);
+    const id=wardrobe?.gear?.helmet;
+    const helmet=ITEM_CATALOG.find(x=>x.id===id&&x.kind==='helmet'&&profile.inventory.includes(x.id));
     return {
-      bubbleSeconds:bubble?.seconds||0,bubbleColor:bubble?.color||null,
-      bubbleName:bubble?.name||'',helmetId:helmet?.id||null,
-      helmetHits:helmet?.hits||0
+      bubbleSeconds:0,bubbleColor:null,bubbleName:'',
+      quickSlots:wardrobe?.quickSlots?.slice(0,2)||[null,null],
+      helmetId:helmet?.id||null,helmetHits:helmet?.hits||0
     };
   }
   function setting(name,value){
@@ -216,5 +265,5 @@
   };
   // The actual reward provider must validate the completed impression before calling this.
   // No fake ad credits, real-money checkout, or automatic reward bypass exists in v0.4.
-  window.HellSystems={profile,save,setting,awardRun,levelProgress,levelFromDepth,threshold,CHARACTER_CATALOG,ITEM_CATALOG,MUSIC_SLOTS,audio,purchase,selectCharacter,equipHelmet,armBubble,startLoadout};
+  window.HellSystems={profile,save,setting,awardRun,levelProgress,levelFromDepth,threshold,CHARACTER_CATALOG,ITEM_CATALOG,MUSIC_SLOTS,audio,purchase,selectCharacter,wardrobeOf,setCharacterSlot,setCharacterGear,consumeCharacterSlot,equipHelmet,armBubble,startLoadout};
 })();

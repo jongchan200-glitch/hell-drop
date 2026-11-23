@@ -291,3 +291,133 @@ html,body{height:100%;overflow:hidden}
   .shop-acts button{font-size:9px}
   .protection-badge{top:calc(92px + env(safe-area-inset-top));font-size:10px}
 }
+
+/* WEB 1.8: one-character swipe selector, per-character closet and two thumb-safe quick items. */
+.controls{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) clamp(94px,28vw,116px) minmax(0,1fr);
+  align-items:end;gap:7px;left:10px;right:10px;
+}
+.controls.boost-right{flex-direction:row}
+.controls #boost{order:1}
+.controls .item-quickbar{order:2}
+.controls #jump{order:3}
+.controls.boost-right #boost{order:3}
+.controls.boost-right #jump{order:1}
+.stone-button,.stone-button.boost,.stone-button.jump{
+  width:100%;height:62px;min-height:62px;max-height:62px;min-width:0;
+  grid-template-columns:27px minmax(0,1fr);padding:6px 5px;border-radius:15px;
+  column-gap:3px;
+}
+.stone-button strong{font-size:clamp(10px,2.9vw,12px);letter-spacing:-.055em;white-space:nowrap}
+.stone-button small{font-size:clamp(8px,2.3vw,10px);white-space:nowrap;letter-spacing:-.04em}
+.stone-button .button-icon{font-size:23px}
+.item-quickbar{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px;height:62px;min-width:0}
+.quick-item-btn{
+  position:relative;min-width:0;min-height:52px;width:100%;height:62px;
+  border-radius:13px;border:1.6px solid #efd595ab;
+  background:linear-gradient(145deg,#37585e8c,#151f2d85);
+  box-shadow:0 3px 8px #020610a0,inset 0 1px 5px #ffffff2e;
+  touch-action:manipulation;user-select:none;-webkit-user-select:none;
+  color:#fff6d7;display:grid;place-items:center;cursor:pointer;
+}
+.quick-item-btn:disabled{opacity:.67;cursor:default}
+.quick-item-btn:active:not(:disabled){transform:translateY(1px);filter:brightness(1.3)}
+.quick-item-btn.is-empty{border-color:#cad5d657;background:#18222a5e;color:#c2ced0}
+.quick-item-icon{font-size:clamp(19px,5.1vw,28px);line-height:1}
+.quick-item-count{
+  position:absolute;bottom:3px;right:3px;min-width:15px;text-align:center;
+  font-size:10px;font-weight:950;background:#10272cc9;color:#ffecb7;
+  border-radius:8px;padding:0 2px;
+}
+.wardrobe-root{display:flex;flex-direction:column;gap:8px}
+.wardrobe-carousel{
+  display:grid;grid-template-columns:34px minmax(0,1fr) 34px;gap:4px;
+  align-items:center;border-radius:18px;border:1px solid #cfb68b52;
+  background:radial-gradient(ellipse at 50% 55%,#5a395052,#16192780 75%);
+  touch-action:pan-y;user-select:none;
+}
+.wardrobe-arrow{
+  align-self:stretch;border:0;background:none;color:#f9d9a0;
+  font-size:24px;font-weight:900;cursor:pointer;
+}
+.wardrobe-arrow:active{color:#fff;transform:scale(1.06)}
+.wardrobe-portrait{min-width:0;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding:5px 2px 9px;gap:3px}
+.wardrobe-portrait img{height:clamp(154px,25vh,197px);max-width:100%;object-fit:contain;object-position:center bottom;filter:drop-shadow(0 5px 12px #03030a98);pointer-events:none}
+.wardrobe-portrait-footer{display:flex;justify-content:center;align-items:center;gap:7px;flex-wrap:wrap;font-size:17px}
+.wardrobe-portrait-footer strong{font-size:18px;color:#ffddb0}
+.wardrobe-active-tag{font-size:10px;background:#1a6f63b8;border:1px solid #93deafaa;border-radius:99px;padding:2px 6px;color:#e8fff4;font-weight:900}
+.wardrobe-equipped-badge{font-size:10px;color:#fff4dc;background:#77603d72;border:1px solid #d0ac6570;padding:2px 8px;border-radius:99px}
+.wardrobe-equipped-badge.is-empty{color:#b5b5b7;border-color:#aaa5a344;background:#29303b90}
+.wardrobe-dots{display:flex;justify-content:center;gap:9px}
+.wardrobe-dot{width:8px;height:8px;padding:0;border-radius:50%;border:0;background:#898496}
+.wardrobe-dot.is-selected{width:22px;background:#f0c178;border-radius:99px}
+.wardrobe-help{color:#c6bcc4;text-align:center;font-size:10px;margin:0 0 1px}
+.wardrobe-section{
+  padding:9px;border:1px solid #c1ae9253;border-radius:14px;
+  background:linear-gradient(135deg,#3a333e69,#1b273077);
+}
+.wardrobe-heading{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:5px;margin-bottom:9px}
+.wardrobe-heading strong{color:#f9d8a0;font-size:14px;font-weight:950}
+.wardrobe-heading small{font-size:10px;color:#b5cfcd}
+.wardrobe-quick-slots{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.wardrobe-item-slot,.wardrobe-gear-cell{position:relative;min-width:0}
+.wardrobe-target{
+  width:100%;height:67px;display:grid;grid-template-columns:39px minmax(0,1fr);
+  grid-template-rows:1fr 1fr;column-gap:4px;align-items:center;
+  border:1.4px dashed #d7d0b4a0;border-radius:12px;background:#101d2999;
+  color:#fff5e7;cursor:pointer;text-align:left;padding:8px 5px;
+}
+.wardrobe-target.is-equipped{border-style:solid;border-color:#ecc27cb8;background:#4c3c3f87}
+.wardrobe-target.is-drop-target,.wardrobe-gear-target.is-drop-target{outline:2px solid #75ebd9;outline-offset:2px}
+.wardrobe-slot-icon{font-size:24px;grid-row:1/span 2;text-align:center}
+.wardrobe-slot-label{font-size:11px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wardrobe-slot-count{font-size:9px;color:#bcd5ca}
+.wardrobe-remove{
+  position:absolute;top:-6px;right:-5px;width:23px;height:23px;border-radius:50%;
+  border:1px solid #ffccbc;background:#50292de9;color:#fff;z-index:2;
+  font-size:17px;line-height:20px;text-align:center;cursor:pointer;
+}
+.wardrobe-gear-slots{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px}
+.wardrobe-gear-target{
+  width:100%;min-width:0;min-height:64px;border:1px dashed #a9afb38a;
+  border-radius:10px;background:#111b2999;color:#e2dce1;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:1px;padding:4px 2px;cursor:pointer;
+}
+.wardrobe-gear-target.is-equipped{border-style:solid;border-color:#e5bc79;background:#49383c9c}
+.wardrobe-gear-target>span{font-size:20px;line-height:1.2}
+.wardrobe-gear-target strong{font-size:10px}
+.wardrobe-gear-target small{font-size:8px;line-height:1.2;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wardrobe-inventory{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.wardrobe-inventory-item{
+  position:relative;min-width:0;min-height:51px;border:1px solid #bbab89a1;
+  border-radius:10px;background:#33323cb0;color:#f8efde;
+  display:grid;grid-template-columns:30px minmax(0,1fr) auto;gap:3px;
+  align-items:center;text-align:left;padding:6px 5px;
+  touch-action:none;user-select:none;cursor:grab;
+}
+.wardrobe-inventory-item.is-picked{border:2px solid #7af6dc;background:#2269659e;cursor:grabbing}
+.inventory-icon{font-size:20px}.inventory-name{font-size:10px;font-weight:900;line-height:1.2}
+.inventory-count{font-size:10px;color:#d2e7ce}
+.wardrobe-empty-inventory{font-size:11px;color:#dbc8b9;grid-column:1/-1;padding:4px;margin:0}
+.wardrobe-hint{font-size:10px;color:#bde8db;margin:7px 0 0;line-height:1.3}
+.wardrobe-drag-ghost{
+  position:fixed;z-index:99999;transform:translate(-50%,-70%);
+  pointer-events:none;max-width:135px;white-space:nowrap;overflow:hidden;
+  padding:9px;border-radius:10px;border:2px solid #a3f4de;
+  background:#183538e8;color:#fff7d8;font-size:12px;font-weight:900;box-shadow:0 8px 20px #0009;
+}
+@media(max-width:350px){
+  .controls{left:7px;right:7px;gap:4px;grid-template-columns:minmax(0,1fr) 96px minmax(0,1fr)}
+  .stone-button,.stone-button.boost,.stone-button.jump{grid-template-columns:24px minmax(0,1fr);padding:5px 3px}
+  .stone-button strong{font-size:10px}.stone-button small{font-size:8px}
+  .wardrobe-section{padding:7px}
+}
+
+/* Wardrobe helmet preview: a vector overlay, independent of the inventory icon. */
+.wardrobe-portrait-art{position:relative;height:clamp(154px,25vh,197px);display:flex;justify-content:center;align-items:flex-end;width:100%}
+.wardrobe-portrait-art img{height:100%;width:auto;max-width:100%;object-fit:contain;object-position:center bottom}
+.wardrobe-helmet-art{position:absolute;top:0px;left:50%;width:clamp(66px,20vw,83px);height:auto;transform:translateX(-50%);filter:drop-shadow(0 2px 3px #000a);pointer-events:none}
+.wardrobe-helmet-art.useoi{top:1px;width:clamp(61px,18vw,75px)}
+.wardrobe-helmet-art.uiji{top:2px}

@@ -8,7 +8,7 @@
   <title>지옥 낙하 · HELL FALL</title>
   <link rel="preload" href="assets/lobby_abyss.webp" as="image">
   <link rel="preload" href="assets/hero_intro.webp" as="image">
-  <link rel="stylesheet" href="style.css?v=16-uiji-gear">
+  <link rel="stylesheet" href="style.css?v=18-wardrobe">
   <link rel="stylesheet" href="hero_turnaround.css?v=11-frontback">
 </head>
 <body>
@@ -53,6 +53,16 @@
           <span class="button-icon" aria-hidden="true">🌪️</span><strong>망토 접기</strong>
           <small id="boostHint">더 빠르게 연타!</small>
         </button>
+        <div class="item-quickbar" role="group" aria-label="게임 중 사용하는 아이템 슬롯 두 개">
+          <button type="button" id="quickItem0" class="quick-item-btn is-empty" aria-label="빈 아이템 슬롯 1" disabled>
+            <span id="quickItemIcon0" class="quick-item-icon">＋</span>
+            <span id="quickItemCount0" class="quick-item-count"></span>
+          </button>
+          <button type="button" id="quickItem1" class="quick-item-btn is-empty" aria-label="빈 아이템 슬롯 2" disabled>
+            <span id="quickItemIcon1" class="quick-item-icon">＋</span>
+            <span id="quickItemCount1" class="quick-item-count"></span>
+          </button>
+        </div>
         <button type="button" id="jump" class="stone-button jump" aria-label="벽 점프">
           <span class="button-icon" aria-hidden="true">👟</span><strong>벽 점프</strong><small>한 번 누르기</small>
         </button>
@@ -129,12 +139,12 @@
       <section id="drawer" class="drawer hidden" aria-label="게임 부가 메뉴" role="dialog" aria-modal="true">
         <div class="drawer-card"><div class="drawer-head"><h2 id="drawerTitle">메뉴</h2><button id="drawerClose" type="button" aria-label="닫기">✕</button></div><div id="drawerBody" class="drawer-body"></div></div>
       </section>
-      <div class="version">WEB 1.7 TEST · UIJI ANIMATIONS 36 FRAMES</div>
+      <div class="version">WEB 1.8 TEST · CHARACTER WARDROBE + QUICK ITEMS</div>
     </section>
     <aside class="outside-note">연타로 토네이도 성장 · 누적 레벨과 코인은 이 브라우저에 저장돼요.</aside>
   </main>
-  <script src="systems.js?v=16-uiji-gear" defer></script>
+  <script src="systems.js?v=18-wardrobe" defer></script>
   <script src="hero_turnaround.js?v=16-uiji-gear" defer></script>
-  <script src="game.js?v=17-uiji-motion" defer></script>
+  <script src="game.js?v=18-wardrobe" defer></script>
 </body>
 </html>
