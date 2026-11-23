@@ -34,7 +34,7 @@
   const images={};
   const capeRig={core:null,left:null,right:null,ready:false};
   // Only the original V4.2 reference family; no generated replacement faces.
-  const IMAGE_FILES={falling:'hero_fall',braking:'hero_cape',jumpLeft:'hero_jump_left',jumpRight:'hero_jump_right',intro:'hero_intro',dizzy:'hero_hit'};
+  const IMAGE_FILES={falling:'hero_fall',braking:'hero_cape',jumpLeft:'hero_jump_left',jumpRight:'hero_jump_right',intro:'hero_intro',dizzy:'hero_hit',uiji:'uiji_intro'};
   Object.entries(IMAGE_FILES).forEach(([key,file])=>{
     const img=new Image(); img.onload=()=>{images[key]=img;if(key==='braking')prepareCapeRig(img);};
     img.onerror=()=>{}; img.src='assets/'+file+'.webp';
@@ -68,8 +68,19 @@
   function smooth(t){t=Math.max(0,Math.min(1,t));return t*t*(3-2*t);}
   function posX(g,p=g.hopProgress){return wallX(g.hopFrom)*(1-smooth(p))+wallX(g.wall)*smooth(p);}
   function rngSeed(seed){let x=(seed>>>0)||1;return()=>{x=(x+0x6D2B79F5)>>>0;let t=x;t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return ((t^(t>>>14))>>>0)/4294967296;};}
-  function makeGame(stage='READY'){return{seed:(Math.random()*1000000000)|0,stage,depth:0,speed:T.START,timeLeft:T.LIMIT,elapsed:0,introElapsed:0,boost:0,fold:0,lastTapAt:-1,tapPulse:0,tapCount:0,tapIntervals:[],cadence:0,wall:'L',hopFrom:'L',hopProgress:1,hopVisual:1,obstacles:[],timeGates:[],coinGates:[],runCoins:0,nextObstacle:370,nextTimeGate:1400,nextCoin:210,coinNumber:0,obstacleNumber:0,gateNumber:0,gateFlash:0,zoneFlash:0,lastBonus:0,failure:''};}
-  function start(){applyControlSide();s=makeGame('PLAYING');lastReward={distance:0,foundCoins:0,bonus:0,levelUps:0,level:sys.profile.level,newBalance:sys.profile.coins};heldKeys.clear();sys.audio.unlock();sys.audio.startGamePlaylist();sys.audio.effect('start');updateUI();}
+  function makeGame(stage='READY'){return{seed:(Math.random()*1000000000)|0,stage,depth:0,speed:T.START,timeLeft:T.LIMIT,elapsed:0,introElapsed:0,boost:0,fold:0,lastTapAt:-1,tapPulse:0,tapCount:0,tapIntervals:[],cadence:0,wall:'L',hopFrom:'L',hopProgress:1,hopVisual:1,obstacles:[],timeGates:[],coinGates:[],runCoins:0,nextObstacle:370,nextTimeGate:1400,nextCoin:210,coinNumber:0,obstacleNumber:0,gateNumber:0,gateFlash:0,zoneFlash:0,lastBonus:0,failure:'',bubbleLeft:0,bubbleColor:null,bubbleName:'',helmetId:null,helmetCharges:0,invuln:0,shieldFlash:0};}
+  function start(){
+    applyControlSide();s=makeGame('PLAYING');
+    // A bubble is a single-use purchase. Helmets are persistent owned equipment,
+    // recharged to 1 or 2 collision blocks for every new run.
+    const loadout=sys.startLoadout();
+    s.bubbleLeft=loadout.bubbleSeconds;s.bubbleColor=loadout.bubbleColor;
+    s.bubbleName=loadout.bubbleName;s.helmetId=loadout.helmetId;
+    s.helmetCharges=loadout.helmetHits;
+    lastReward={distance:0,foundCoins:0,bonus:0,levelUps:0,level:sys.profile.level,newBalance:sys.profile.coins};
+    heldKeys.clear();sys.audio.unlock();sys.audio.startGamePlaylist();
+    sys.audio.effect('start');updateUI();
+  }
   function finish(msg){if(s.stage==='OVER')return;s.stage='OVER';s.failure=msg;if(s.depth>best){best=s.depth;saveRecord(best);}lastReward=sys.awardRun(s.depth,s.runCoins);sys.audio.effect(lastReward.levelUps>0?'level':'hit');heldKeys.clear();boostBtn.classList.remove('active');updateUI();}
   function tapAccelerate(){
     if(s.stage!=='PLAYING')return;
@@ -152,14 +163,30 @@
       const minSpacing=localTop*(.47-Math.min(7,dangerTier)*.013);
       s.nextObstacle+=minSpacing+35+r()*(88-Math.min(55,dangerTier*3));s.obstacleNumber++;
     }
-    let crashed=false;
+    let crashed=false,helmetCharges=s.helmetCharges;
+    let invuln=Math.max(0,s.invuln-dt);
+    let shieldFlash=Math.max(0,s.shieldFlash-dt);
+    const bubbleLeft=Math.max(0,s.bubbleLeft-dt);
     for(const o of s.obstacles){
       if(!(old<=o.depth+15&&depth>=o.depth-15))continue;
       const along=Math.max(0,Math.min(1,(o.depth-15-old)/traveled));
       const p=Math.min(1,s.hopProgress+dt*along/T.HOP_SECONDS);
-      if(Math.abs(posX(s,p)-wallX(o.wall))<.18){crashed=true;break;}
+      if(Math.abs(posX(s,p)-wallX(o.wall))>=.18)continue;
+      // Do not alter collision geometry: only intercept a fatal collision when
+      // an active purchased defense is present.
+      if(s.bubbleLeft-dt*along>0||invuln>0){
+        shieldFlash=Math.max(shieldFlash,.24);
+        continue;
+      }
+      if(helmetCharges>0){
+        helmetCharges--;
+        invuln=.75; // avoid an immediate second hit in the same obstacle cluster
+        shieldFlash=.64;
+        sys.audio.effect('hit');continue;
+      }
+      crashed=true;break;
     }
-    Object.assign(s,{boost,fold,cadence:rate,tapPulse:Math.max(0,s.tapPulse-dt*3.3),speed:nextSpeed,depth,timeLeft:remain,elapsed:s.elapsed+dt,hopProgress:hop,hopVisual,gateFlash:glow,zoneFlash,lastBonus:bonus});
+    Object.assign(s,{boost,fold,cadence:rate,tapPulse:Math.max(0,s.tapPulse-dt*3.3),speed:nextSpeed,depth,timeLeft:remain,elapsed:s.elapsed+dt,hopProgress:hop,hopVisual,gateFlash:glow,zoneFlash,lastBonus:bonus,bubbleLeft,helmetCharges,invuln,shieldFlash});
     if(hop>=1)jumpBtn.classList.remove('active');
     if(crashed)finish('지층 장애물에 부딪혔어!');else if(remain<=0)finish('시간이 다 됐어!');
   }
@@ -171,6 +198,11 @@
     $('lobby').classList.toggle('hidden',!ready);
     $('vortexGauge').classList.toggle('hidden',!playing);
     $('runBadge').classList.toggle('hidden',!playing);
+    const protection=[];
+    if(playing&&s.bubbleLeft>0)protection.push('🫧 '+s.bubbleLeft.toFixed(1)+'초');
+    if(playing&&s.helmetCharges>0)protection.push((s.helmetId==='helmet_frog'?'🐸':'🪖')+' '+s.helmetCharges+'회');
+    $('protectionBadge').textContent=protection.join('   ·   ');
+    $('protectionBadge').classList.toggle('hidden',protection.length===0);
     $('runCoinLabel').textContent=String(s.runCoins);
     const progress=sys.levelProgress(sys.profile.totalDepth);
     if(ready){
@@ -284,6 +316,8 @@
     const arc=Math.sin(Math.min(1,s.hopProgress)*Math.PI)*15*u;
     drawSpeedWind(posX(s)*W,charY-arc,u);
     drawHero(posX(s)*W,charY-arc,u,s.fold,s.elapsed,s.speed,s.stage==='OVER',s.hopVisual<1,s.hopFrom);
+    drawHelmet(posX(s)*W,charY-arc,u);
+    drawBubble(posX(s)*W,charY-arc,u);
     if(s.speed>670){ctx.fillStyle='#ff4f6115';ctx.fillRect(0,0,W,H);}
     if(s.gateFlash>.72){ctx.fillStyle='#6be1cd20';ctx.fillRect(0,0,W,H);}
   }
@@ -463,8 +497,75 @@
     ctx.beginPath();ctx.arc(wx,sy,(14+phase*45)*u,-Math.PI*.64,Math.PI*.68);ctx.stroke();
     ctx.restore();
   }
+  // New boy is drawn from his approved cutout, without altering the existing heroine rig.
+  function drawUiji(x,y,u,fold,elapsed,speed,dead,hopping,hopFrom){
+    const img=images.uiji;
+    if(!img?.naturalWidth){drawFallbackHero(x,y,u,false,elapsed,dead,hopping,hopFrom);return;}
+    const w=116*u,h=170*u;
+    const tilt=dead?1.0:hopping?((hopFrom==='L'?1:-1)*(.1+Math.sin(s.hopVisual*Math.PI)*.27))
+      :Math.sin(elapsed*3.7)*(.018+fold*.035);
+    ctx.save();ctx.translate(x,y);ctx.rotate(tilt);
+    if(hopping&&hopFrom==='R')ctx.scale(-1,1);
+    if(dead)ctx.globalAlpha=.77;
+    ctx.drawImage(img,-w/2,-h*.53,w,h);
+    ctx.restore();
+    if(!dead&&s.tapPulse>.04){
+      ctx.save();ctx.globalAlpha=s.tapPulse*.25;
+      ctx.strokeStyle='#79dff0';ctx.lineWidth=2.5*u;
+      ctx.beginPath();ctx.arc(x,y-18*u,(62+18*(1-s.tapPulse))*u,0,Math.PI*2);
+      ctx.stroke();ctx.restore();
+    }
+  }
+  // Helmet is an independent overlay shared by all character IDs.
+  function drawHelmet(x,y,u){
+    if(!s.helmetId||s.stage==='READY')return;
+    const boy=sys.profile.selectedCharacter==='uiji';
+    const cy=y-(boy?65:59)*u;
+    ctx.save();ctx.translate(x,cy);
+    if(s.helmetId==='helmet_frog'){
+      ctx.fillStyle='#66b746';ctx.strokeStyle='#184f32';ctx.lineWidth=3*u;
+      ctx.beginPath();ctx.ellipse(0,4*u,30*u,21*u,0,Math.PI,Math.PI*2);ctx.lineTo(30*u,8*u);
+      ctx.quadraticCurveTo(0,13*u,-30*u,8*u);ctx.closePath();ctx.fill();ctx.stroke();
+      for(const off of [-20,20]){
+        disk(off*u,-14*u,12*u,'#7ae65a');disk(off*u,-16*u,7*u,'#e6fff3');
+        disk((off+2)*u,-17*u,3*u,'#1d3945');
+      }
+      line([[-26*u,9*u],[26*u,9*u]],'#a1f079',2*u);
+    }else{
+      const steel=ctx.createLinearGradient(-27*u,-17*u,24*u,18*u);
+      steel.addColorStop(0,'#bec7cc');steel.addColorStop(.5,'#677882');steel.addColorStop(1,'#232d38');
+      ctx.beginPath();ctx.ellipse(0,2*u,30*u,22*u,0,Math.PI,Math.PI*2);
+      ctx.lineTo(30*u,10*u);ctx.quadraticCurveTo(0,15*u,-30*u,10*u);ctx.closePath();
+      ctx.fillStyle=steel;ctx.fill();ctx.strokeStyle='#1a2228';ctx.lineWidth=3*u;ctx.stroke();
+      polygon([[-32*u,9*u],[32*u,9*u],[24*u,15*u],[-24*u,15*u]],'#cba86a','#36363c',2*u);
+      disk(0,-6*u,5*u,'#f4cc7c');
+    }
+    if(s.helmetCharges===0){
+      line([[-13*u,-9*u],[0,4*u],[-8*u,13*u]],'#2e253c',2*u);
+    }
+    ctx.restore();
+  }
+  function drawBubble(x,y,u){
+    if(s.bubbleLeft<=0&&s.shieldFlash<=0)return;
+    const color=s.bubbleLeft>0?(s.bubbleColor||'#ffe579'):'#b5eaff';
+    const pulse=1+.024*Math.sin(s.elapsed*7);
+    ctx.save();ctx.translate(x,y-5*u);ctx.scale(pulse,pulse);
+    const g=ctx.createRadialGradient(-18*u,-31*u,8*u,0,0,110*u);
+    g.addColorStop(0,color+'05');g.addColorStop(.68,color+'13');g.addColorStop(1,color+'40');
+    ctx.beginPath();ctx.ellipse(0,0,77*u,93*u,0,0,Math.PI*2);
+    ctx.fillStyle=g;ctx.fill();
+    ctx.strokeStyle=color+(s.shieldFlash>0?'ee':'a3');
+    ctx.lineWidth=(s.shieldFlash>0?4:2.7)*u;ctx.stroke();
+    ctx.beginPath();ctx.ellipse(-19*u,-30*u,30*u,50*u,-.47,Math.PI*.9,Math.PI*1.47);
+    ctx.strokeStyle='#ffffff73';ctx.lineWidth=3.5*u;ctx.stroke();
+    disk(45*u,45*u,5*u,'#ffffff69');disk(-53*u,-22*u,2.5*u,'#ffffff7a');
+    ctx.restore();
+  }
   function drawHero(x,y,u,fold,elapsed,speed,dead,hopping,hopFrom){
     y+=Math.sin(elapsed*(10+fold*10))*(1.2+fold*1.5)*u;
+    if(sys.profile.selectedCharacter==='uiji'){
+      drawUiji(x,y,u,fold,elapsed,speed,dead,hopping,hopFrom);return;
+    }
     if(dead){
       if(!paintSprite(images.dizzy,x,y,139*u,139*u,1))drawFallbackHero(x,y,u,false,elapsed,true,false,hopFrom);
     }else if(hopping){
@@ -583,16 +684,103 @@
   document.addEventListener('visibilitychange',()=>{sys.audio.visibility(document.hidden);if(document.hidden){heldKeys.clear();lastFrame=0;}});
   window.addEventListener('resize',fit);if(window.ResizeObserver)new ResizeObserver(fit).observe(gameRoot);
   function esc(t){return String(t).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));}
+
+  // Gameplay level/coin history is global; visuals are freely interchangeable.
+  let lobbyCtrl=null;
+  function syncLobbyCharacter(){
+    const character=sys.CHARACTER_CATALOG.find(c=>c.id===sys.profile.selectedCharacter)||sys.CHARACTER_CATALOG[0];
+    $('homeCharacterName').textContent=character.name;
+    $('homeAvatar').src=character.front;
+    $('lobbyHero').src=character.front; // preserve correct selected image while sprite preloads
+    $('characterIdentityName').textContent=character.name;
+    $('characterIdentitySubtitle').textContent=character.description;
+    $('lobbyCharacter').setAttribute('aria-label',character.name+' 캐릭터');
+    lobbyCtrl?.setCharacter(character.id);
+  }
+  function characterPanelHTML(prof,prog,fmt){
+    const list=sys.CHARACTER_CATALOG.map((c,i)=>{
+      const selected=prof.selectedCharacter===c.id;
+      return `<button class="character-card ${selected?'is-selected':''}" type="button"
+        data-character="${c.id}" aria-pressed="${selected}">
+        <span class="character-card-art"><img src="${c.front}" alt=""></span>
+        <strong>${c.name}</strong><small>${c.description}</small>
+        <em>${selected?'✓ 사용 중':'선택하기'}</em>
+      </button>`;
+    }).join('');
+    const equipped=sys.ITEM_CATALOG.find(x=>x.id===prof.equippedHelmet);
+    return `<div class="banner">탐험가 선택 · 현재 Lv.${prof.level} · 누적 ${fmt(prof.totalDepth)}m</div>
+      <div class="character-selection">${list}</div>
+      <div class="info-card"><strong>함께 사용하는 장비</strong>
+        <span class="muted">착용 헬멧: ${equipped?equipped.name:'없음'} · 캐릭터 변경 시에도 유지</span><br>
+        <span class="muted">우서이는 앞·뒷모습, 우이지는 승인된 정면 일러스트를 보여 줘.</span></div>
+      <div class="info-card"><strong>다음 레벨까지</strong>${fmt(prog.next-prog.within)}m</div>`;
+  }
+  function shopPanelHTML(prof,fmt){
+    const bubbles=sys.ITEM_CATALOG.filter(x=>x.kind==='bubble');
+    const helmets=sys.ITEM_CATALOG.filter(x=>x.kind==='helmet');
+    function card(item){
+      const isBubble=item.kind==='bubble';
+      const owned=isBubble?(prof.consumables[item.id]||0):prof.inventory.includes(item.id);
+      const selected=isBubble?prof.armedBubble===item.id:prof.equippedHelmet===item.id;
+      const action=isBubble?(selected?'다음 판 사용 예약 ✓':'다음 판에 사용'):
+        (selected?'장착 중 ✓':'장착하기');
+      const color=isBubble?item.color:'#d4bc84';
+      return `<article class="shop-item">
+        <span class="shop-art" style="--item-color:${color}">${item.icon}</span>
+        <div class="shop-copy"><strong>${item.name}</strong><small>${item.description}</small>
+        <span>${isBubble?'보유 '+owned+'개':owned?'영구 보유':'미구매'}</span></div>
+        <div class="shop-acts">
+          <button type="button" data-buy="${item.id}" ${!isBubble&&owned?'disabled':''}>🪙 ${fmt(item.price)}</button>
+          ${owned?`<button type="button" class="shop-equip" data-equip="${item.id}" ${selected?'disabled':''}>${action}</button>`:''}
+        </div>
+      </article>`;
+    }
+    return `<div class="banner">🪙 보유 코인 <b>${fmt(prof.coins)}</b><br>
+       <span class="muted">버블은 1개씩 소모 · 헬멧은 영구 보유하고 매 판 충전</span></div>
+       <div class="shop-group"><h3>🫧 버블 보호막</h3>
+       <p class="muted">구매 후 다음 판부터 선택한 보호막 1개를 자동 사용해.</p>${bubbles.map(card).join('')}
+       ${prof.armedBubble?`<button class="shop-clear" type="button" data-clear-bubble>다음 판 보호막 사용 취소</button>`:''}
+       </div>
+       <div class="shop-group"><h3>🪖 공용 헬멧</h3>
+       <p class="muted">우서이·우이지가 공용 착용. 매 판 시작할 때 방어 횟수 복구.</p>
+       ${helmets.map(card).join('')}
+       ${prof.equippedHelmet?`<button class="shop-clear" type="button" data-clear-helmet>헬멧 벗기</button>`:''}
+       </div>`;
+  }
+
   const titles={character:'캐릭터',shop:'상점',earn:'코인 획득소',records:'내 기록',settings:'설정'};
-  function openPanel(type){if(!titles[type])return;sys.audio.unlock();$('drawerTitle').textContent=titles[type];
+  function openPanel(type,notice=''){if(!titles[type])return;sys.audio.unlock();$('drawerTitle').textContent=titles[type];
     const prof=sys.profile,prog=sys.levelProgress(prof.totalDepth),fmt=n=>Number(n).toLocaleString('ko-KR');
     let html='';
-    if(type==='character')html=`<div class="character-owned"><div class="owned-frame"><img src="assets/hero_intro.webp" alt="우서이 캐릭터"></div><div class="owned-details"><span class="owned-kicker">EQUIPPED · 01</span><strong>우서이</strong><p>Lv.${prof.level} · 현재 캐릭터</p><span class="equipped-tag">✓ 장착 중</span></div></div><div class="info-card"><strong>캐릭터 성장</strong>누적 낙하 ${fmt(prof.totalDepth)}m<br><span class="muted">다음 레벨까지 ${fmt(prog.next-prog.within)}m</span></div><div class="info-card"><strong>캐릭터 보관함</strong><div class="future-characters"><span class="future-slot">✦<small>다음 캐릭터</small></span><span class="future-slot">✦<small>추가 예정</small></span><span class="future-slot">✦<small>추가 예정</small></span></div><span class="muted">현재 선택 가능한 캐릭터는 우서이 한 명이야. 새 캐릭터는 추후 추가돼.</span></div>`;
-    else if(type==='shop')html=`<div class="banner">🪙 내 코인 <b>${fmt(prof.coins)}</b></div><div class="info-card"><strong>가속 장비</strong>돌개 강화·속도 유지 등 장비 슬롯<br><span class="muted">효과·가격·판매 여부는 아직 결정 전이야.</span></div><div class="info-card"><strong>꾸미기 · 새 캐릭터</strong>구매한 물품은 보관함에 저장하는 구조가 준비돼 있어.<br><span class="muted">아직 실제 판매 아이템은 없어.</span></div>`;
+    if(type==='character')html=characterPanelHTML(prof,prog,fmt);
+    else if(type==='shop')html=shopPanelHTML(prof,fmt);
     else if(type==='earn')html=`<div class="banner">🪙 현재 코인 <b>${fmt(prof.coins)}</b><br><small>게임 중 수집 · 누적 레벨업 · 선택형 광고 · 코인 구매</small></div><div class="info-card"><strong>무료로 얻기</strong>게임에서 코인 줍기 / 누적 낙하로 레벨업</div><div class="info-card"><strong>▶ 보상형 광고</strong><span class="muted">광고 서비스 연동 전이어서 현재 시청·코인 지급을 사용할 수 없어.</span></div><div class="info-card"><strong>코인 구매</strong><span class="muted">현금 결제는 추후 설계·심사 후 연결할 예정이야. 현재 결제 기능 없음.</span></div>`;
     else if(type==='records')html=`<div class="banner">🏆 최고 낙하 <b>${fmt(Math.floor(best))}m</b></div><div class="info-card"><strong>누적 낙하</strong>${fmt(prof.totalDepth)}m · Lv.${prof.level}<br><span class="muted">다음 레벨까지 ${fmt(prog.next-prog.within)}m</span></div><div class="info-card"><strong>플레이 횟수</strong>${fmt(prof.runs)}판 완료</div><div class="info-card"><strong>획득 코인 기록</strong>게임에서 수집 ${fmt(prof.worldCoins)}코인 · 현재 보유 ${fmt(prof.coins)}코인</div>`;
     else if(type==='settings')html=`<div class="info-card"><strong>🎮 가속·벽점프 버튼 위치</strong><span class="muted">휴대폰을 잡고 연타하기 편한 손으로 가속 버튼을 옮길 수 있어. 선택은 자동 저장돼.</span><div class="control-layout-choices" role="group" aria-label="가속 버튼 방향"><button type="button" class="control-layout-choice" data-boost-side="left" aria-pressed="${prof.settings.boostSide!=='right'}">🌪️ 가속 왼쪽<br><small>점프 오른쪽</small></button><button type="button" class="control-layout-choice" data-boost-side="right" aria-pressed="${prof.settings.boostSide==='right'}">🌪️ 가속 오른쪽<br><small>점프 왼쪽</small></button></div></div><div class="info-card"><strong>🔊 음량 설정</strong><span class="muted">BGM은 배경음악이야. 홈은 무음이니까 아래 음악의 ▶ 미리듣기를 켜고 슬라이더를 움직이면 바로 확인할 수 있어.</span><label for="musicRange">BGM (배경음악) <span id="musicValue">${Math.round(prof.settings.music*100)}%</span><input id="musicRange" type="range" min="0" max="100" value="${Math.round(prof.settings.music*100)}"></label><label for="sfxRange">효과음 <span id="sfxValue">${Math.round(prof.settings.sfx*100)}%</span><input id="sfxRange" type="range" min="0" max="100" value="${Math.round(prof.settings.sfx*100)}"></label></div><div class="info-card"><strong>🎵 게임 음악 미리듣기</strong><span class="muted">게임에서 7곡이 순서대로 이어져. 홈은 무음이며 ▶는 선택한 곡의 미리듣기야.</span><ul class="slot-list music-preview-list">${sys.MUSIC_SLOTS.slice(1).map((v,i)=>`<li><span>${(i+1)+'번 곡'} · ${esc(v.title||v.name)}</span><button type="button" data-music-preview="${i+1}" aria-label="${esc(v.title||v.name)} 미리듣기">▶</button></li>`).join('')}</ul></div>`;
-    $('drawerBody').innerHTML=html;$('drawer').classList.remove('hidden');
+    $('drawerBody').innerHTML=(notice?'<div class="shop-notice" role="status">'+esc(notice)+'</div>':'')+html;
+    $('drawer').classList.remove('hidden');
+    if(type==='character'){
+      $('drawerBody').querySelectorAll('[data-character]').forEach(button=>button.addEventListener('click',()=>{
+        if(!sys.selectCharacter(button.dataset.character))return;
+        syncLobbyCharacter();openPanel('character');
+      }));
+    }
+    if(type==='shop'){
+      $('drawerBody').querySelectorAll('[data-buy]').forEach(button=>button.addEventListener('click',()=>{
+        const result=sys.purchase(button.dataset.buy);
+        openPanel('shop',result.ok?result.item.name+' 구매 완료':result.reason);
+        updateUI();
+      }));
+      $('drawerBody').querySelectorAll('[data-equip]').forEach(button=>button.addEventListener('click',()=>{
+        const item=sys.ITEM_CATALOG.find(x=>x.id===button.dataset.equip);
+        const ok=item?.kind==='bubble'?sys.armBubble(item.id):sys.equipHelmet(item.id);
+        openPanel('shop',ok?item.name+' 선택 완료':'보유한 아이템만 장착할 수 있어');
+      }));
+      const clearBubble=$('drawerBody').querySelector('[data-clear-bubble]');
+      if(clearBubble)clearBubble.addEventListener('click',()=>{sys.armBubble(null);openPanel('shop','다음 판 보호막 예약 해제');});
+      const clearHelmet=$('drawerBody').querySelector('[data-clear-helmet]');
+      if(clearHelmet)clearHelmet.addEventListener('click',()=>{sys.equipHelmet(null);openPanel('shop','헬멧 장착 해제');});
+    }
     if(type==='settings'){
       for(const [key,id] of [['music','musicRange'],['sfx','sfxRange']]){
         $(id).addEventListener('input',e=>{sys.setting(key,Number(e.target.value)/100);$(key+'Value').textContent=e.target.value+'%';});
@@ -628,7 +816,8 @@
   // WEB 0.9: Home-only WebGL sculpt; BGM / audio, gameplay and records unchanged.
   (function setupLobbyCharacter(){
     const actor=$('lobbyCharacter'), embers=$('lobbyEmbers');
-    if(window.HellFallLobby3D)window.HellFallLobby3D.mount(actor,{isHome:()=>s.stage==='READY'});
+    if(window.HellFallLobby3D)lobbyCtrl=window.HellFallLobby3D.mount(actor,{isHome:()=>s.stage==='READY',initial:sys.profile.selectedCharacter});
+    syncLobbyCharacter();
     const frag=document.createDocumentFragment();
     for(let i=0;i<22;i++){
       const dot=document.createElement('i'),x=6+(i*37+31)%88,y=22+(i*23+17)%77;
@@ -639,5 +828,5 @@
   })();
   applyControlSide();fit();updateUI();requestAnimationFrame(frame);
   // Expose read-only simple debug state for local test harnesses, never gameplay rewards.
-  window.HellFallTest={snapshot:()=>({stage:s.stage,depth:s.depth,speed:s.speed,timeLeft:s.timeLeft,wall:s.wall,hopProgress:s.hopProgress,hopVisual:s.hopVisual,boost:s.boost,fold:s.fold,cadence:s.cadence,tapCount:s.tapCount,runCoins:s.runCoins,hazards:s.obstacles.length,gates:s.timeGates.length,boostSide:sys.profile.settings.boostSide,profile:{...sys.profile}}),start:()=>start(false)};
+  window.HellFallTest={snapshot:()=>({stage:s.stage,depth:s.depth,speed:s.speed,timeLeft:s.timeLeft,wall:s.wall,hopProgress:s.hopProgress,hopVisual:s.hopVisual,boost:s.boost,fold:s.fold,cadence:s.cadence,tapCount:s.tapCount,runCoins:s.runCoins,hazards:s.obstacles.length,gates:s.timeGates.length,boostSide:sys.profile.settings.boostSide,bubbleLeft:s.bubbleLeft,helmetCharges:s.helmetCharges,helmetId:s.helmetId,shieldFlash:s.shieldFlash,character:sys.profile.selectedCharacter,profile:{...sys.profile}}),start:()=>start(false)};
 })();

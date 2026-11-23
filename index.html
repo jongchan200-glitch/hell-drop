@@ -8,7 +8,7 @@
   <title>지옥 낙하 · HELL FALL</title>
   <link rel="preload" href="assets/lobby_abyss.webp" as="image">
   <link rel="preload" href="assets/hero_intro.webp" as="image">
-  <link rel="stylesheet" href="style.css?v=14-cave">
+  <link rel="stylesheet" href="style.css?v=16-uiji-gear">
   <link rel="stylesheet" href="hero_turnaround.css?v=11-frontback">
 </head>
 <body>
@@ -41,6 +41,7 @@
         <div class="time-track"><div class="time-fill" id="timeFill"></div></div>
       </header>
       <div id="runBadge" class="run-badge hidden">🪙 <span id="runCoinLabel">0</span></div>
+      <div id="protectionBadge" class="protection-badge hidden" aria-live="off"></div>
       <aside id="vortexGauge" class="vortex-gauge hidden" aria-label="연타 속도로 성장하는 토네이도 가속 게이지">
         <span class="vortex-title">STORM</span>
         <canvas id="vortexCanvas" aria-hidden="true"></canvas>
@@ -66,8 +67,8 @@
         <div class="lobby-layout">
           <header class="lobby-header">
             <div class="lobby-account" aria-label="캐릭터 레벨">
-              <div class="account-avatar"><img src="assets/hero_intro.webp" alt=""></div>
-              <div class="account-meta"><strong>우서이 <span id="homeLevel">1</span><small> LV</small></strong><div class="account-track"><span id="homeProgressFill"></span></div></div>
+              <div class="account-avatar"><img id="homeAvatar" src="assets/hero_intro.webp" alt=""></div>
+              <div class="account-meta"><strong><span id="homeCharacterName">우서이</span> <span id="homeLevel">1</span><small> LV</small></strong><div class="account-track"><span id="homeProgressFill"></span></div></div>
             </div>
             <button type="button" class="lobby-wallet" data-panel="earn" aria-label="코인 획득소 열기">
               <svg class="wallet-icon"><use href="#icon-coin"></use></svg>
@@ -91,7 +92,7 @@
               </div>
             </div>
             <div class="showcase-ground" aria-hidden="true"></div>
-            <div class="character-identity"><span class="identity-diamond">✦</span><b>우서이</b><i></i><span>첫 번째 탐험가</span></div>
+            <div class="character-identity"><span class="identity-diamond">✦</span><b id="characterIdentityName">우서이</b><i></i><span id="characterIdentitySubtitle">첫 번째 탐험가</span></div>
             <div class="character-turn-tip"><span>‹</span> 좌우로 밀어 앞·뒷모습 바꾸기 <span>›</span></div>
           </div>
           <div class="lobby-bottom">
@@ -128,12 +129,12 @@
       <section id="drawer" class="drawer hidden" aria-label="게임 부가 메뉴" role="dialog" aria-modal="true">
         <div class="drawer-card"><div class="drawer-head"><h2 id="drawerTitle">메뉴</h2><button id="drawerClose" type="button" aria-label="닫기">✕</button></div><div id="drawerBody" class="drawer-body"></div></div>
       </section>
-      <div class="version">WEB 1.5 TEST · BGM GAIN CONTROL</div>
+      <div class="version">WEB 1.6 TEST · UIJI + SHIELDS + HELMETS</div>
     </section>
     <aside class="outside-note">연타로 토네이도 성장 · 누적 레벨과 코인은 이 브라우저에 저장돼요.</aside>
   </main>
-  <script src="systems.js?v=15-gain" defer></script>
-  <script src="hero_turnaround.js?v=12-backfix" defer></script>
-  <script src="game.js?v=15-gain" defer></script>
+  <script src="systems.js?v=16-uiji-gear" defer></script>
+  <script src="hero_turnaround.js?v=16-uiji-gear" defer></script>
+  <script src="game.js?v=16-uiji-gear" defer></script>
 </body>
 </html>

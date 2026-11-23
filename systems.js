@@ -16,14 +16,33 @@
     {name:'내핵',title:'베토벤 월광소나타 3악장 · HARD 다이내믹 V6',file:'audio/zone_06.mp3',ready:true},
     {name:'지옥의 심연',title:'비발디 겨울 1악장 · ARCADE BOSS',file:'audio/zone_07.mp3',ready:true}
   ];
-  const ITEM_CATALOG=[]; // Future in-game items: {id,name,price,type,description,effect}
+  const CHARACTER_CATALOG=[
+    {id:'useoi',name:'우서이',description:'첫 번째 탐험가',front:'assets/hero_intro.webp',hasBack:true},
+    {id:'uiji',name:'우이지',description:'두 번째 탐험가',front:'assets/uiji_intro.webp',hasBack:false}
+  ];
+  // Beta balance: the exact prices can be adjusted without changing saved purchases.
+  const ITEM_CATALOG=[
+    {id:'bubble_10',name:'노란 버블 보호막',kind:'bubble',price:20,seconds:10,color:'#ffe579',icon:'🟡',description:'다음 판 시작부터 10초간 장애물 방어'},
+    {id:'bubble_20',name:'초록 버블 보호막',kind:'bubble',price:45,seconds:20,color:'#72f3a3',icon:'🟢',description:'다음 판 시작부터 20초간 장애물 방어'},
+    {id:'bubble_30',name:'빨간 버블 보호막',kind:'bubble',price:80,seconds:30,color:'#ff7787',icon:'🔴',description:'다음 판 시작부터 30초간 장애물 방어'},
+    {id:'helmet_basic',name:'탐험가 헬멧',kind:'helmet',price:160,hits:1,icon:'🪖',description:'장착 시 매 판 충돌 1회 방어'},
+    {id:'helmet_frog',name:'개구리 헬멧',kind:'helmet',price:320,hits:2,icon:'🐸',description:'장착 시 매 판 충돌 2회 방어'}
+  ];
   const clamp=(v,a,b)=>Math.max(a,Math.min(b,Number.isFinite(+v)?+v:a));
   const int=(v)=>Math.max(0,Math.floor(Number(v)||0));
-  function newProfile(){return {coins:0,totalDepth:0,level:1,runs:0,worldCoins:0,inventory:[],settings:{music:DEFAULT_MUSIC,sfx:.32,boostSide:'left',musicDefaultRevision:2},claimed:[]};}
+  function newProfile(){return {coins:0,totalDepth:0,level:1,runs:0,worldCoins:0,inventory:[],selectedCharacter:'useoi',equippedHelmet:null,armedBubble:null,consumables:{},settings:{music:DEFAULT_MUSIC,sfx:.32,boostSide:'left',musicDefaultRevision:2},claimed:[]};}
   function load(){let obj={};try{obj=JSON.parse(localStorage.getItem(KEY)||'{}')||{}}catch(_){/* blocked */}
     const p={...newProfile(),...obj};p.coins=int(p.coins);p.totalDepth=int(p.totalDepth);p.runs=int(p.runs);p.worldCoins=int(p.worldCoins);
     p.inventory=Array.isArray(p.inventory)?p.inventory.filter(x=>typeof x==='string').slice(0,200):[];
     p.claimed=Array.isArray(p.claimed)?p.claimed.filter(x=>typeof x==='string').slice(0,200):[];
+    p.selectedCharacter=CHARACTER_CATALOG.some(c=>c.id===obj?.selectedCharacter)?obj.selectedCharacter:'useoi';
+    p.equippedHelmet=ITEM_CATALOG.some(x=>x.id===obj?.equippedHelmet&&x.kind==='helmet'&&p.inventory.includes(x.id))?obj.equippedHelmet:null;
+    p.consumables={};
+    for(const item of ITEM_CATALOG.filter(x=>x.kind==='bubble')){
+      const n=Number(obj?.consumables?.[item.id]);
+      p.consumables[item.id]=Number.isFinite(n)?Math.max(0,Math.min(99,Math.floor(n))):0;
+    }
+    p.armedBubble=ITEM_CATALOG.some(x=>x.kind==='bubble'&&x.id===obj?.armedBubble&&p.consumables[x.id]>0)?obj.armedBubble:null;
     // Untouched old default 26%/7% -> new default 20%.
     // Preserve chosen music levels including 0% and 2%, coins, scores and SFX.
     const oldSettings=obj?.settings||{};
@@ -51,10 +70,47 @@
     let bonus=0;for(let lv=old+1;lv<=profile.level;lv++)bonus+=8+4*lv;
     profile.coins+=foundCoins+bonus;save();return {distance,foundCoins,bonus,levelUps:profile.level-old,level:profile.level,newBalance:profile.coins};
   }
-  function purchase(id){const item=ITEM_CATALOG.find(x=>x.id===id);if(!item)return {ok:false,reason:'판매 준비 중'};
-    if(profile.inventory.includes(id))return {ok:false,reason:'이미 보유'};
+  function purchase(id){
+    const item=ITEM_CATALOG.find(x=>x.id===id);
+    if(!item)return {ok:false,reason:'판매 준비 중'};
+    if(item.kind==='helmet'&&profile.inventory.includes(id))return {ok:false,reason:'이미 보유 중'};
+    if(item.kind==='bubble'&&profile.consumables[id]>=99)return {ok:false,reason:'최대 99개까지 보관 가능'};
     if(profile.coins<item.price)return {ok:false,reason:'코인이 부족해요'};
-    profile.coins-=item.price;profile.inventory.push(id);save();return {ok:true,item};
+    profile.coins-=item.price;
+    if(item.kind==='helmet'){
+      profile.inventory.push(id);
+      profile.equippedHelmet=id; // shared across all present and future characters
+    }else if(item.kind==='bubble'){
+      profile.consumables[id]=(profile.consumables[id]||0)+1;
+      profile.armedBubble=id; // use one at the start of the next run
+    }
+    save();return {ok:true,item,coins:profile.coins};
+  }
+  function selectCharacter(id){
+    if(!CHARACTER_CATALOG.some(c=>c.id===id))return false;
+    profile.selectedCharacter=id;save();return true;
+  }
+  function equipHelmet(id){
+    if(id!==null&&!ITEM_CATALOG.some(x=>x.id===id&&x.kind==='helmet'&&profile.inventory.includes(id)))return false;
+    profile.equippedHelmet=id;save();return true;
+  }
+  function armBubble(id){
+    if(id!==null&&!ITEM_CATALOG.some(x=>x.id===id&&x.kind==='bubble'&&profile.consumables[id]>0))return false;
+    profile.armedBubble=id;save();return true;
+  }
+  function startLoadout(){
+    const bubble=ITEM_CATALOG.find(x=>x.id===profile.armedBubble&&x.kind==='bubble'&&profile.consumables[x.id]>0);
+    if(bubble){
+      profile.consumables[bubble.id]--;
+      if(profile.consumables[bubble.id]===0)profile.armedBubble=null;
+      save();
+    }
+    const helmet=ITEM_CATALOG.find(x=>x.id===profile.equippedHelmet&&x.kind==='helmet'&&profile.inventory.includes(x.id));
+    return {
+      bubbleSeconds:bubble?.seconds||0,bubbleColor:bubble?.color||null,
+      bubbleName:bubble?.name||'',helmetId:helmet?.id||null,
+      helmetHits:helmet?.hits||0
+    };
   }
   function setting(name,value){
     if(name==='boostSide'){profile.settings.boostSide=value==='right'?'right':'left';save();return;}
@@ -160,5 +216,5 @@
   };
   // The actual reward provider must validate the completed impression before calling this.
   // No fake ad credits, real-money checkout, or automatic reward bypass exists in v0.4.
-  window.HellSystems={profile,save,setting,awardRun,levelProgress,levelFromDepth,threshold,ITEM_CATALOG,MUSIC_SLOTS,audio,purchase};
+  window.HellSystems={profile,save,setting,awardRun,levelProgress,levelFromDepth,threshold,CHARACTER_CATALOG,ITEM_CATALOG,MUSIC_SLOTS,audio,purchase,selectCharacter,equipHelmet,armBubble,startLoadout};
 })();
