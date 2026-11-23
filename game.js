@@ -19,7 +19,7 @@
     RISE_RESPONSE:1.2, FALL_RESPONSE:6.7, HOP_SECONDS:.155, ZONE_LENGTH:5000
   };
   const CHECKPOINT_GAPS=[1450,1600,1800,2000,2250,2500,2800];
-  const CHECKPOINT_BONUS=[14,12,10,8,7,6,5];
+  const CHECKPOINT_BONUS=[5,4,2.5,2,1.5,1,1];
   const CLOCK_GAPS=[900,1050,1160,1260,1400,1510,1670];
   const CLOCK_BONUS=[5,5,5,4,4,3,3];
   const ZONES=['지표면 · 지하 동굴','깊은 암반층','마그마 지대','맨틀 지대','외핵','내핵','지옥의 심연'];

@@ -1,3 +1,8 @@
+## WEB 2.0 — time-line bonus tuning (2026-11-24)
+- Galaxy user test: at 12,782 m in stage 3, the previous 42-second cap was still at 41.4 s. User found the game too easy compared to ~2,000 m earlier.
+- Keep start and maximum 42 seconds, checkpoint locations and separate optional circular clock items unchanged. Reduce automatic full-width time-line bonus from [14,12,10,8,7,6,5] to **[5,4,2.5,2,1.5,1,1] seconds across seven zones**. This avoids constantly refilling to the cap while retaining a generous initial runway. Players will increasingly need optional clock pickups and appropriate acceleration later.
+- Retain all existing obstacles, item spawn protection, coins, helmets, wardrobe, record, levels, music, and controls. No player data reset. Galaxy gameplay result remains subject to the next user test; do not claim final balance approved.
+
 ## WEB 1.9 — Progressive TIME LINE balance (2026-11-23)
 
 - Each run begins with 42.0 seconds. Full-width TIME LINE checkpoints grant automatic +14/+12/+10/+8/+7/+6/+5 seconds by zone. Checkpoint spacing increases from 1,450 m to 2,800 m as the depth increases.
