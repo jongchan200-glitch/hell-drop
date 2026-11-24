@@ -1,3 +1,6 @@
+## WEB RIG V3 (2026-11-24)
+Universal rig uses two-bone IK during wall plant, eight motion phases, continuous aerial flip and torso rotation fix. Glide spreads limbs/cape, boost contracts them. Original character/coins/saves intact; ?rig=1 test, ?rig=0 original. V3 needs real-device design feedback.
+
 ## WEB 2.4 · 2026-11-24 in-map modular mascot motion prototype
 - Body: new browser-native Canvas2D skeletal 2D character with physically separate head mask, upper arms, forearms, torso garment, thighs, calves, feet and cape (all in independent joint coordinate systems).
 - Motion: smooth numeric pose curves at the browser frame rate for normal falling, acceleration & tuck, five-stage wall kick (brace, plant foot, thrust, mid-air rotation, landing/recovery), and hit/death. A single set of poses works with three masks, three outfits, three shoes and three cape styles.

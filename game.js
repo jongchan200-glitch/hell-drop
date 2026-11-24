@@ -378,7 +378,7 @@
     // Only visual character position uses the longer ~0.40-second wall-kick sequence.
     // Original obstacle collisions, gravity, speed and scoring remain unchanged.
     const newRig=window.HellRigV2;
-    const progress=clamp01((s.hopVisual-.13)/.28);
+    const progress=clamp01((s.hopVisual-.17)/.58);
     const rigX=newRig?.isEnabled()&&s.hopVisual<1?
       W*(wallX(s.hopFrom)*(1-smooth(progress))+wallX(s.wall)*smooth(progress)):posX(s)*W;
     drawHero(rigX,charY-arc,u,s.fold,s.elapsed,s.speed,s.stage==='OVER',s.hopVisual<1,s.hopFrom);
