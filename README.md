@@ -1,3 +1,12 @@
+## WEB 2.4 · 2026-11-24 in-map modular mascot motion prototype
+- Body: new browser-native Canvas2D skeletal 2D character with physically separate head mask, upper arms, forearms, torso garment, thighs, calves, feet and cape (all in independent joint coordinate systems).
+- Motion: smooth numeric pose curves at the browser frame rate for normal falling, acceleration & tuck, five-stage wall kick (brace, plant foot, thrust, mid-air rotation, landing/recovery), and hit/death. A single set of poses works with three masks, three outfits, three shoes and three cape styles.
+- Toggle: game URL ?rig=1 turns on new test actor; Settings provides on/off switch and costume selectors. The normal game URL stays on existing character by default for other visitors. Existing character poses and helmet system retained as reversible fallback. Do not sell/unlock trial garments.
+- Rendering only: original coin, item, wallet, level, difficulty, saved progress and collision logic not changed. Draw position of rig player uses phase-based interpolation while original physics remains exactly as before; small hitbox/render difference may require follow-up gameplay tuning.
+- Offline/Android: renderer depends on standard JavaScript + Canvas2D, not Unity, Spine, Godot or a paid SDK. WebViewAssetLoader with local HTML/JS/CSS can reuse the same renderer; still requires performance, touch timing, storage and sound tests in built Android APK before claiming final compatibility.
+- Dedicated motion lab rig-v2-lab.html isolated from game progression.
+- These are experimental drawings, not a fully approved art pass. Test on actual Galaxy before final use.
+
 ## WEB 2.3 — play-test integrated equipment + categorized shop (2026-11-24)
 - Integrated per-frame helmet compositing for all 36 existing Uiji falling animation frames; removes the original head area on each original frame and renders a head-enclosing full-face helmet in the same actor transforms, so tilt, high speed and wall-jump inherit motion without a separate floating overlay. The existing cape/physics and 36-frame cadence remain unchanged. Other character's original sprite variants use the same static head replacement and actor transforms.
 - Two fresh themed full-face helm SVG designs in matching standard 128x128 asset dimensions, one explorer and one frog; each is the same source asset in shop, wardrobe and gameplay. Helmet art and fitting remain player-review prototypes, not final monetization-ready assets.

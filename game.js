@@ -375,7 +375,13 @@
     for(const coin of s.coinGates){if(coin.collected)continue;const y=charY+(coin.depth-s.depth)*ppm;if(y>-80*u&&y<H+90*u)drawCoin(coin,y,u);}
     const arc=Math.sin(Math.min(1,s.hopProgress)*Math.PI)*15*u;
     drawSpeedWind(posX(s)*W,charY-arc,u);
-    drawHero(posX(s)*W,charY-arc,u,s.fold,s.elapsed,s.speed,s.stage==='OVER',s.hopVisual<1,s.hopFrom);
+    // Only visual character position uses the longer ~0.40-second wall-kick sequence.
+    // Original obstacle collisions, gravity, speed and scoring remain unchanged.
+    const newRig=window.HellRigV2;
+    const progress=clamp01((s.hopVisual-.13)/.28);
+    const rigX=newRig?.isEnabled()&&s.hopVisual<1?
+      W*(wallX(s.hopFrom)*(1-smooth(progress))+wallX(s.wall)*smooth(progress)):posX(s)*W;
+    drawHero(rigX,charY-arc,u,s.fold,s.elapsed,s.speed,s.stage==='OVER',s.hopVisual<1,s.hopFrom);
     // Helmet is baked into each active character frame, not painted above the actor.
     drawBubble(posX(s)*W,charY-arc,u);
     if(s.speed>670){ctx.fillStyle='#ff4f6115';ctx.fillRect(0,0,W,H);}
@@ -728,6 +734,14 @@
   }
   function drawHero(x,y,u,fold,elapsed,speed,dead,hopping,hopFrom){
     y+=Math.sin(elapsed*(10+fold*10))*(1.2+fold*1.5)*u;
+    // WEB 2.4 optional true in-map skeletal costume player. Separate renderer;
+    // switching it off restores BOTH original characters exactly as before.
+    const rig=window.HellRigV2;
+    if(rig?.isEnabled()){
+      rig.draw({ctx,x,y,u,fold,elapsed,speed,dead,hopping,hopFrom,
+        hopVisual:s.hopVisual,wallEdge:(hopFrom==='L'?.197:.803)*W});
+      return;
+    }
     if(sys.profile.selectedCharacter==='uiji'){
       drawUiji(x,y,u,fold,elapsed,speed,dead,hopping,hopFrom);return;
     }
@@ -1198,6 +1212,25 @@
     else if(type==='earn')html=`<div class="banner">🪙 현재 코인 <b>${fmt(prof.coins)}</b><br><small>게임 중 수집 · 누적 레벨업 · 선택형 광고 · 코인 구매</small></div><div class="info-card"><strong>무료로 얻기</strong>게임에서 코인 줍기 / 누적 낙하로 레벨업</div><div class="info-card"><strong>▶ 보상형 광고</strong><span class="muted">광고 서비스 연동 전이어서 현재 시청·코인 지급을 사용할 수 없어.</span></div><div class="info-card"><strong>코인 구매</strong><span class="muted">현금 결제는 추후 설계·심사 후 연결할 예정이야. 현재 결제 기능 없음.</span></div>`;
     else if(type==='records')html=`<div class="banner">🏆 최고 낙하 <b>${fmt(Math.floor(best))}m</b></div><div class="info-card"><strong>누적 낙하</strong>${fmt(prof.totalDepth)}m · Lv.${prof.level}<br><span class="muted">다음 레벨까지 ${fmt(prog.next-prog.within)}m</span></div><div class="info-card"><strong>플레이 횟수</strong>${fmt(prof.runs)}판 완료</div><div class="info-card"><strong>획득 코인 기록</strong>게임에서 수집 ${fmt(prof.worldCoins)}코인 · 현재 보유 ${fmt(prof.coins)}코인</div>`;
     else if(type==='settings')html=`<div class="info-card"><strong>🎮 가속·벽점프 버튼 위치</strong><span class="muted">휴대폰을 잡고 연타하기 편한 손으로 가속 버튼을 옮길 수 있어. 선택은 자동 저장돼.</span><div class="control-layout-choices" role="group" aria-label="가속 버튼 방향"><button type="button" class="control-layout-choice" data-boost-side="left" aria-pressed="${prof.settings.boostSide!=='right'}">🌪️ 가속 왼쪽<br><small>점프 오른쪽</small></button><button type="button" class="control-layout-choice" data-boost-side="right" aria-pressed="${prof.settings.boostSide==='right'}">🌪️ 가속 오른쪽<br><small>점프 왼쪽</small></button></div></div><div class="info-card"><strong>🔊 음량 설정</strong><span class="muted">BGM은 배경음악이야. 홈은 무음이니까 아래 음악의 ▶ 미리듣기를 켜고 슬라이더를 움직이면 바로 확인할 수 있어.</span><label for="musicRange">BGM (배경음악) <span id="musicValue">${Math.round(prof.settings.music*100)}%</span><input id="musicRange" type="range" min="0" max="100" value="${Math.round(prof.settings.music*100)}"></label><label for="sfxRange">효과음 <span id="sfxValue">${Math.round(prof.settings.sfx*100)}%</span><input id="sfxRange" type="range" min="0" max="100" value="${Math.round(prof.settings.sfx*100)}"></label></div><div class="info-card"><strong>🎵 게임 음악 미리듣기</strong><span class="muted">게임에서 7곡이 순서대로 이어져. 홈은 무음이며 ▶는 선택한 곡의 미리듣기야.</span><ul class="slot-list music-preview-list">${sys.MUSIC_SLOTS.slice(1).map((v,i)=>`<li><span>${(i+1)+'번 곡'} · ${esc(v.title||v.name)}</span><button type="button" data-music-preview="${i+1}" aria-label="${esc(v.title||v.name)} 미리듣기">▶</button></li>`).join('')}</ul></div>`;
+    if(type==='settings'&&window.HellRigV2){
+      const rig=window.HellRigV2,look=rig.getLook();
+      const parts=[
+        ['mask','탈',[['cat','고양이'],['dog','강아지'],['frog','개구리']]],
+        ['outfit','옷',[['explorer','탐험복'],['pilot','비행복'],['star','별빛 의상']]],
+        ['shoes','신발',[['boots','탐험 부츠'],['sneakers','운동화'],['jet','스피드화']]],
+        ['cape','망토',[['teal','청록 망토'],['red','붉은 망토'],['none','없음']]]
+      ];
+      const combos=parts.map(([key,label,opts])=>
+        '<label class="rig-setting-line">'+label+' <select data-rig-part="'+key+'">'+
+        opts.map(([id,name])=>'<option value="'+id+'" '+(look[key]===id?'selected':'')+'>'+name+'</option>').join('')+
+        '</select></label>').join('');
+      html+='<div class="info-card rig-settings"><strong>탈인형 관절 모션 V2 · 테스트</strong>'+
+       '<span class="muted">게임 내 캐릭터만 시험 교체합니다. 코인·장비 구매·기록은 그대로 유지되고 상품 소유권과 별개예요.</span>'+
+       '<button type="button" class="rig-enable" data-rig-enable aria-pressed="'+rig.isEnabled()+'">'+
+       (rig.isEnabled()?'새 관절 모션 ON':'기존 원본 모션 ON')+'</button>'+
+       '<div class="rig-settings-grid">'+combos+'</div>'+
+       '<a class="rig-lab-link" href="rig-v2-lab.html?v=24-joint">관절·벽점프 자세 실험실 열기</a></div>';
+    }
     $('drawerBody').innerHTML=(notice?'<div class="shop-notice" role="status">'+esc(notice)+'</div>':'')+html;
     $('drawer').classList.remove('hidden');
     if(type==='character')mountWardrobeControls();
@@ -1235,6 +1268,16 @@
       }));
     }
     if(type==='settings'){
+      const rig=window.HellRigV2;
+      $('drawerBody').querySelector('[data-rig-enable]')?.addEventListener('click',e=>{
+        if(!rig)return;
+        const enabled=rig.setEnabled(!rig.isEnabled());
+        e.currentTarget.setAttribute('aria-pressed',String(enabled));
+        e.currentTarget.textContent=enabled?'새 관절 모션 ON':'기존 원본 모션 ON';
+      });
+      $('drawerBody').querySelectorAll('[data-rig-part]').forEach(box=>box.addEventListener('change',()=>{
+        rig?.setLook(box.dataset.rigPart,box.value);
+      }));
       for(const [key,id] of [['music','musicRange'],['sfx','sfxRange']]){
         $(id).addEventListener('input',e=>{sys.setting(key,Number(e.target.value)/100);$(key+'Value').textContent=e.target.value+'%';});
       }

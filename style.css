@@ -523,3 +523,12 @@ html,body{height:100%;overflow:hidden}
 .wardrobe-inventory-item .inventory-name{font-size:9px;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.15}
 .wardrobe-inventory-item .inventory-count{font-size:9px}
 @media(max-width:350px){.market-category-grid{gap:5px}.market-folder{min-height:101px}.market-main-tab{font-size:10px}.market-main-tab b{font-size:19px}.wardrobe-inventory{gap:4px;padding:5px}.wardrobe-inventory-item{min-height:88px}}
+
+/* WEB 2.4 optional modular avatar test controls. */
+.rig-settings{border-color:#68d5ca80!important}
+.rig-enable{display:block;width:100%;min-height:43px;margin:12px 0;border:1.5px solid #73e6d3;border-radius:11px;background:linear-gradient(125deg,#154e58,#123245);color:#d2fff8;font-size:13px;font-weight:900;cursor:pointer}
+.rig-enable[aria-pressed="false"]{border-color:#a4a0a1;background:#30313b;color:#d7d1d3}
+.rig-settings-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:8px 0}
+.rig-setting-line{display:flex!important;flex-direction:column;gap:5px;margin:0!important;padding:9px;background:#101721;border:1px solid #ffffff28;border-radius:10px;font-size:11px!important}
+.rig-setting-line select{width:100%;min-height:36px;border:1px solid #91c8c099;border-radius:8px;padding:5px;background:#233342;color:#fff1da;font-size:12px}
+.rig-lab-link{display:block;margin-top:12px;text-align:center;color:#aaf0db;font-size:11px;font-weight:850;padding:11px;border:1px dashed #93c6b26e;border-radius:10px;text-decoration:none}
