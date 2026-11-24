@@ -949,31 +949,36 @@
       </div>
     </div>`;
   }
-  function shopPanelHTML(prof,fmt){
-    const bubbles=sys.ITEM_CATALOG.filter(x=>x.kind==='bubble');
-    const helmets=sys.ITEM_CATALOG.filter(x=>x.kind==='helmet');
-    function card(item){
-      const isBubble=item.kind==='bubble';
-      const owned=isBubble?(prof.consumables[item.id]||0):prof.inventory.includes(item.id);
-      const color=isBubble?item.color:'#d4bc84';
-      return `<article class="shop-item">
-        <span class="shop-art" style="--item-color:${color}">${item.icon}</span>
-        <div class="shop-copy"><strong>${item.name}</strong><small>${item.description}</small>
-        <span>${isBubble?'보유 '+owned+'개':owned?'영구 보유':'미구매'}</span></div>
-        <div class="shop-acts">
-          <button type="button" data-buy="${item.id}" ${!isBubble&&owned?'disabled':''}>🪙 ${fmt(item.price)}</button>
-        </div>
-      </article>`;
-    }
-    return `<div class="banner">🪙 보유 코인 <b>${fmt(prof.coins)}</b><br>
-      <span class="muted">여기서는 구매만 해. 장착·해제·아이템 두 칸 배치는 캐릭터 화면의 보관함에서 해.</span></div>
-      <div class="shop-group"><h3>🫧 버블 보호막</h3>
-       <p class="muted">사용하는 순간부터 10초·20초·30초 방어. 장착해 둔 것만으로는 소모되지 않아.</p>
-       ${bubbles.map(card).join('')}</div>
-      <div class="shop-group"><h3>🪖 공용 헬멧</h3>
-       <p class="muted">영구 구매 후 캐릭터 화면에서 원하는 캐릭터에 장착할 수 있어.</p>
-       ${helmets.map(card).join('')}</div>`;
+  function marketArt(item,full=false){
+  const id="mark-"+item.id+(full?"-big":"-small");
+  if(item.kind==="bubble"){
+    const color={bubble_10:["#fff9c2","#ffb932","#a85424"],bubble_20:["#c5ffe9","#20d69a","#116f55"],bubble_30:["#ffe0d8","#f3437b","#8d295f"]}[item.id]||["#fff","#9ae","#457"];
+    return `<svg viewBox="0 0 100 100" class="market-svg" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><defs><radialGradient id="${id}" cx="32%" cy="23%" r="80%"><stop stop-color="${color[0]}"/><stop offset=".44" stop-color="${color[1]}"/><stop offset="1" stop-color="${color[2]}"/></radialGradient></defs><circle cx="50" cy="50" r="38" fill="${color[1]}" opacity=".12"/><circle cx="50" cy="50" r="34" fill="url(#${id})" stroke="${color[0]}" stroke-width="2.8"/><path d="M27 45Q30 25 53 23" fill="none" stroke="#fff" stroke-width="5" opacity=".7" stroke-linecap="round"/><path d="m78 8 3 9 9 3-9 3-3 9-3-9-9-3 9-3z" fill="${color[0]}" opacity=".9"/><path d="M42 76q17 5 28-9" fill="none" stroke="${color[2]}" stroke-width="3" opacity=".6"/></svg>`;
   }
+  const frog=item.id==="helmet_frog",primary=frog?"#73c668":"#8aa5af",shadow=frog?"#285940":"#374a58",light=frog?"#ddffb9":"#f4ead8";
+  return `<svg viewBox="0 0 100 100" class="market-svg" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="${id}" x1="0" y1="0" x2="1" y2="1"><stop stop-color="${light}"/><stop offset=".46" stop-color="${primary}"/><stop offset="1" stop-color="${shadow}"/></linearGradient></defs><ellipse cx="50" cy="82" rx="32" ry="6" fill="#000" opacity=".25"/>${frog?'<circle cx="28" cy="27" r="13" fill="#72b861" stroke="#285940" stroke-width="3"/><circle cx="72" cy="27" r="13" fill="#72b861" stroke="#285940" stroke-width="3"/><circle cx="29" cy="26" r="6" fill="#fff"/><circle cx="71" cy="26" r="6" fill="#fff"/><circle cx="31" cy="27" r="2.7" fill="#273a34"/><circle cx="73" cy="27" r="2.7" fill="#273a34"/>':''}<path d="M15 69V58C15 33 29 20 50 20S85 33 85 58v11l-9 10H24z" fill="url(#${id})" stroke="${shadow}" stroke-width="3"/><path d="M23 52Q27 31 52 28" fill="none" stroke="${light}" opacity=".65" stroke-width="5" stroke-linecap="round"/>${frog?'<path d="M36 56q14 10 28 0" fill="none" stroke="#316746" stroke-width="3"/>':'<path d="M47 25h6v47h-6z" fill="#d6b778"/>'}<path d="M12 68Q50 76 88 68l-5 11Q50 89 17 79z" fill="#ad824e" stroke="#62462f" stroke-width="2"/><path d="M25 73q25 7 50 0" fill="none" stroke="#ffe6ac" opacity=".75" stroke-width="2"/></svg>`;
+}
+  let marketTab='all',marketSelected=null;
+  function shopPanelHTML(prof,fmt){
+  const items=sys.ITEM_CATALOG;
+  const shown=items.filter(i=>marketTab==="all"||i.kind===marketTab);
+  const chosen=items.find(i=>i.id===marketSelected);
+  const count=i=>i.kind==="bubble"?(prof.consumables[i.id]||0):(prof.inventory.includes(i.id)?1:0);
+  const coin=n=>`<span class="market-coin" aria-hidden="true"></span>${fmt(n)}`;
+  const tabHTML=[["all","전체"],["bubble","보호막"],["helmet","헬멧"]].map(([id,label])=>`<button type="button" data-market-tab="${id}" class="market-tab ${marketTab===id?'active':''}" role="tab" aria-selected="${marketTab===id}">${label}</button>`).join("");
+  const tiles=shown.map(i=>{
+    const owned=count(i),permanent=i.kind!=="bubble"&&owned;
+    const short=i.kind==="bubble"?i.name.replace(" 버블 보호막"," 버블"):i.name;
+    return `<button type="button" class="market-tile ${permanent?'is-owned':''}" data-market-item="${i.id}" aria-label="${esc(i.name)}, 상품 상세 보기"><span class="market-art">${marketArt(i)}</span>${owned?`<span class="market-stock">${i.kind==='bubble'?'×'+owned:'보유'}</span>`:''}<span class="market-name">${esc(short)}</span><span class="market-price">${permanent?'구매 완료':coin(i.price)}</span></button>`;
+  }).join("");
+  let details="";
+  if(chosen){
+    const have=count(chosen),permanent=chosen.kind!=="bubble"&&have;
+    const guidance=chosen.kind==="bubble"?"캐릭터 화면에서 출전 슬롯에 장착하세요. 게임 중 직접 사용하면 1개가 소모되고 정해진 시간 동안 충돌을 방어해요.":"한 번 구매하면 영구 소유해요. 캐릭터 화면에서 장착하면 매 판 충돌 방어 횟수가 충전됩니다.";
+    details=`<div class="market-overlay"><button type="button" class="market-shade" data-market-close aria-label="상품 설명 닫기"></button><section class="market-detail" role="dialog" aria-modal="true" aria-label="${esc(chosen.name)} 상세 정보"><span class="market-handle"></span><button type="button" class="market-close" data-market-close aria-label="닫기">✕</button><div class="market-detail-head"><span class="market-large-art">${marketArt(chosen,true)}</span><div class="market-detail-title"><small>${chosen.kind==='bubble'?'소모품 · 보호막':'영구 장비 · 헬멧'}</small><strong>${esc(chosen.name)}</strong><b>${chosen.kind==='bubble'?chosen.seconds+'초 충돌 방어':'매 판 충돌 '+chosen.hits+'회 방어'}</b><span>${chosen.kind==='bubble'?'보유 '+have+'개':have?'보유 중':'미구매'}</span></div></div><p class="market-guide">${guidance}</p><div class="market-detail-bottom"><div><small>구매 가격</small><strong>${coin(chosen.price)}</strong></div><button type="button" data-market-buy="${chosen.id}" ${permanent?'disabled':''}>${permanent?'보유 중':'구매하기'}</button></div></section></div>`;
+  }
+  return `<div class="market-root"><p class="market-eyebrow">ADVENTURER'S MARKET</p><h3 class="market-title">탐험을 위한 장비</h3><div class="market-wallet"><span>보유 코인</span><strong>${coin(prof.coins)}</strong></div><nav class="market-tabs" role="tablist" aria-label="상품 분류">${tabHTML}</nav><div class="market-count"><strong>${marketTab==='all'?'모든 아이템':marketTab==='bubble'?'버블 보호막':'탐험가 헬멧'}</strong><span>${shown.length}개 · 상품을 눌러 자세히 보기</span></div><div class="market-grid">${tiles}</div><div class="market-footer">구매 후 캐릭터 화면의 보관함에서 장착할 수 있어요.</div>${details}</div>`;
+}
   function switchWardrobeCharacter(delta,indexOverride=null){
     const chars=sys.CHARACTER_CATALOG;
     const pos=chars.findIndex(c=>c.id===sys.profile.selectedCharacter);
@@ -1114,7 +1119,7 @@
     });
   }
   const titles={character:'캐릭터',shop:'상점',earn:'코인 획득소',records:'내 기록',settings:'설정'};
-  function openPanel(type,notice=''){if(!titles[type])return;sys.audio.unlock();$('drawerTitle').textContent=titles[type];
+  function openPanel(type,notice=''){if(!titles[type])return;sys.audio.unlock();$('drawerTitle').textContent=titles[type];$('drawer').querySelector('.drawer-card').classList.toggle('is-market',type==='shop');
     const prof=sys.profile,prog=sys.levelProgress(prof.totalDepth),fmt=n=>Number(n).toLocaleString('ko-KR');
     let html='';
     if(type==='character')html=characterPanelHTML(prof,prog,fmt);
@@ -1126,9 +1131,23 @@
     $('drawer').classList.remove('hidden');
     if(type==='character')mountWardrobeControls();
     if(type==='shop'){
-      $('drawerBody').querySelectorAll('[data-buy]').forEach(button=>button.addEventListener('click',()=>{
-        const result=sys.purchase(button.dataset.buy);
-        openPanel('shop',result.ok?result.item.name+' 구매 완료':result.reason);
+      const redraw=(noticeText='')=>{
+        const panel=$('drawer').querySelector('.drawer-card'),offset=panel.scrollTop;
+        openPanel('shop',noticeText);
+        panel.scrollTop=offset;
+      };
+      $('drawerBody').querySelectorAll('[data-market-tab]').forEach(b=>b.addEventListener('click',()=>{
+        marketTab=b.dataset.marketTab;marketSelected=null;redraw();
+      }));
+      $('drawerBody').querySelectorAll('[data-market-item]').forEach(b=>b.addEventListener('click',()=>{
+        marketSelected=b.dataset.marketItem;redraw();
+      }));
+      $('drawerBody').querySelectorAll('[data-market-close]').forEach(b=>b.addEventListener('click',()=>{
+        marketSelected=null;redraw();
+      }));
+      $('drawerBody').querySelectorAll('[data-market-buy]').forEach(b=>b.addEventListener('click',()=>{
+        const result=sys.purchase(b.dataset.marketBuy);
+        redraw(result.ok?result.item.name+' 구매 완료':result.reason);
         updateUI();
       }));
     }
@@ -1156,14 +1175,14 @@
       });
     }
   }
-  document.querySelectorAll('[data-panel]').forEach(button=>button.addEventListener('click',()=>openPanel(button.dataset.panel)));
+  document.querySelectorAll('[data-panel]').forEach(button=>button.addEventListener('click',()=>{if(button.dataset.panel==='shop'){marketTab='all';marketSelected=null;}openPanel(button.dataset.panel);}));
   function closePanel(){
     $('drawer').classList.add('hidden');
     sys.audio.stopPreview();
   }
   $('drawerClose').addEventListener('click',closePanel);
   $('drawer').addEventListener('click',e=>{if(e.target===$('drawer'))closePanel()});
-  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('drawer').classList.contains('hidden'))closePanel()});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('drawer').classList.contains('hidden')){if(marketSelected){marketSelected=null;openPanel('shop');}else closePanel();}});
   // WEB 0.9: Home-only WebGL sculpt; BGM / audio, gameplay and records unchanged.
   (function setupLobbyCharacter(){
     const actor=$('lobbyCharacter'), embers=$('lobbyEmbers');
