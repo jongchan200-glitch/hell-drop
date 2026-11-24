@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#100f1e">
+<title>지옥 낙하 · 관절형 탈인형 실험실</title>
+<style>:root{font-family:system-ui,-apple-system,"Noto Sans KR",sans-serif;color-scheme:dark;--gold:#ffdfaa;--mint:#7de8d5;--ink:#10111d}
+*{box-sizing:border-box}html,body{margin:0;background:#0a0b14;color:#f6f0e9}body{background:radial-gradient(ellipse at 50% 16%,#2b1e39,#0b0c17 68%);min-height:100svh}.lab{width:min(100%,480px);margin:auto;padding:0 12px 22px}.head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:19px 4px 14px}.eyebrow{font-size:9px;font-weight:900;letter-spacing:.18em;color:#cbb99a}.head h1{margin:4px 0 1px;font-size:24px;letter-spacing:-.05em;color:#ffda9d}.head p{font-size:11px;color:#c7b9b8;margin:4px 0 0}.prototype{align-self:center;white-space:nowrap;font-size:10px;font-weight:900;border:1px solid #ead09780;border-radius:40px;padding:7px 10px;color:#ffe3ad;background:#d1ad5c18}
+.stage{position:relative;overflow:hidden;height:clamp(305px,47svh,440px);border:1px solid #c5a78580;border-radius:20px;background:#12182a;isolation:isolate;box-shadow:0 22px 38px #0007,inset 0 1px #fff1}.stage canvas{display:block;width:100%;height:100%;position:absolute;inset:0}.stage-glow{position:absolute;inset:0;pointer-events:none;box-shadow:inset 0 0 28px #0006}.speed-panel{position:absolute;left:14px;top:13px;pointer-events:none;display:flex;flex-direction:column;gap:2px;text-shadow:0 2px 5px #000e}.speed-panel small{letter-spacing:.15em;color:#90bbb9;font-size:9px;font-weight:900}.speed-panel strong{font-size:16px;color:#fff0cb}.speed-panel>span{font-size:11px;color:#b6d4e5;font-weight:850}.stage-hint{position:absolute;right:12px;top:14px;width:47%;font-size:10px;text-align:right;color:#f4d9b9bd;line-height:1.5;pointer-events:none}.actions{position:absolute;z-index:2;bottom:12px;left:11px;right:11px;display:grid;grid-template-columns:1fr 1fr;gap:12px}.action{min-height:54px;display:flex;align-items:center;justify-content:center;gap:9px;border-radius:12px;border:1.5px solid #b7f8eb96;color:#f4ffff;background:linear-gradient(145deg,#245d6aef,#142d40ef);font-weight:900;font-size:12px;touch-action:none;user-select:none;cursor:pointer;box-shadow:0 5px 0 #0408149c}.action span{font-size:24px;color:#bdfbef;line-height:1}.action.jump{background:linear-gradient(145deg,#92563aef,#42283def);border-color:#ffb9899c}.action.jump span{color:#ffd09b}.action:active,.action.pressed{transform:translateY(3px);filter:brightness(1.16);box-shadow:0 2px 0 #0408149c}
+.dresser{margin-top:12px;border:1px solid #ad977c59;border-radius:18px;background:linear-gradient(156deg,#241f31f5,#151b28f5);padding:15px 12px 12px;box-shadow:0 10px 30px #0006}.dresser-header{display:flex;align-items:center;justify-content:space-between;gap:10px}.dresser-header h2{font-size:17px;margin:2px 0 12px;color:var(--gold);letter-spacing:-.03em}.reset{border:1px solid #a2a4b94b;padding:8px 11px;background:#ffffff08;border-radius:9px;color:#c9d0d6;font-size:10px;font-weight:900}.categories{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;padding:4px;border:1px solid #b6a17b36;border-radius:12px;background:#101421c0}.cat{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:7px 1px;min-height:48px;border:1px solid transparent;border-radius:9px;background:transparent;color:#bfc0c8;font-size:11px;font-weight:900;cursor:pointer}.cat span{font-size:8px;letter-spacing:.14em;color:#c7aa8388}.cat.active{background:linear-gradient(145deg,#d4ac72,#855d52);border-color:#ffd69e;color:#171825}.cat.active span{color:#37303a}.options{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;padding-top:10px}.option{position:relative;display:flex;align-items:center;gap:6px;justify-content:center;min-height:55px;border-radius:10px;border:1px solid #868aa15c;background:linear-gradient(155deg,#303145,#1f2838);color:#e3e5e9;cursor:pointer;font-size:11px;font-weight:850;white-space:nowrap}.option.active{border:1.5px solid #ffe1a3;background:linear-gradient(145deg,#6e5c55,#353d4d);color:#fff2d5}.option.active:after{content:'✓';position:absolute;top:2px;right:6px;font-size:10px;color:#9ffff1}.swatch{width:22px;height:22px;position:relative;flex:0 0 22px;border:2px solid #fff5;border-radius:50%;background:var(--color);box-shadow:inset -3px -3px 5px #0004}.option[aria-pressed="true"]{box-shadow:inset 0 0 0 1px #ffe1a380}.divider{height:1px;background:#ffffff16;margin:11px 0}.demo-bar{display:flex;align-items:center;justify-content:space-between;gap:9px}.demo-bar>div:first-child{display:flex;flex-direction:column;gap:4px;min-width:0}.demo-bar strong{font-size:11px;color:#ffe7c0}.demo-bar small{font-size:9px;line-height:1.4;color:#a7b4b9}.speeds{display:flex;gap:4px;border:1px solid #5961717a;padding:3px;border-radius:10px;background:#111a27}.speeds button{padding:7px 6px;border-radius:7px;border:0;background:transparent;color:#b2bcc7;font-size:10px;font-weight:900;cursor:pointer;white-space:nowrap}.speeds button.active{color:#162124;background:#b4e9df}.note{font-size:10px;line-height:1.62;color:#b0b9c3;margin:12px 1px 0}.note b{color:#ffdbac}footer{padding:14px 8px;font-size:10px;color:#9a9faa;text-align:center;line-height:1.7}footer a{color:#9adfce;text-decoration:none}
+@media(max-height:700px){.stage{height:320px}.head{padding:10px 4px}.head h1{font-size:20px}.dresser{padding-top:11px}.dresser-header h2{margin-bottom:7px}}
+@media(min-width:700px){.lab{padding-top:20px}.stage{height:430px}}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+<main class="lab">
+ <header class="head"><div><span class="eyebrow">HELL DROP · CHARACTER RIG 01</span><h1>탈인형 제작실</h1><p>몸체 하나, 움직임 하나, 무제한 코디</p></div><span class="prototype">시제품</span></header>
+ <section class="stage" aria-label="탈인형 낙하 애니메이션 미리보기">
+  <canvas id="stage" aria-label="관절을 연결한 탈인형이 낙하하는 모습"></canvas>
+  <div class="stage-glow" aria-hidden="true"></div>
+  <div class="speed-panel"><small>ANIMATION TEST</small><strong id="modeLabel">일반 낙하</strong><span id="speedLabel">180 m/s</span></div>
+  <div class="stage-hint">탈·옷을 바꿔도 동일한 관절로 움직입니다</div>
+  <div class="actions">
+   <button type="button" id="boost" class="action boost" aria-label="버튼을 누르는 동안 가속 낙하"><span>↡</span><b>누르고 가속</b></button>
+   <button type="button" id="jump" class="action jump" aria-label="캐릭터 벽점프"><span>↗</span><b>벽점프</b></button>
+  </div>
+ </section>
+ <section class="dresser" aria-label="의상 교체 패널">
+   <div class="dresser-header"><div><span class="eyebrow">DRESS-UP SYSTEM</span><h2>부품만 바꿔 입히기</h2></div><button id="reset" class="reset" type="button">기본으로</button></div>
+   <div class="categories" role="tablist" aria-label="부품 분류">
+      <button role="tab" type="button" class="cat active" data-category="mask" aria-selected="true"><span>01</span> 머리 탈</button>
+      <button role="tab" type="button" class="cat" data-category="outfit" aria-selected="false"><span>02</span> 옷</button>
+      <button role="tab" type="button" class="cat" data-category="shoes" aria-selected="false"><span>03</span> 신발</button>
+      <button role="tab" type="button" class="cat" data-category="cape" aria-selected="false"><span>04</span> 망토</button>
+   </div>
+   <div id="options" class="options" role="group" aria-label="교체할 부품 선택"></div>
+   <div class="divider"></div>
+   <div class="demo-bar"><div><strong>움직임 시험</strong><small>가속 단계를 고르고 포즈 변화를 확인해 보세요.</small></div><div id="speeds" class="speeds" role="group" aria-label="낙하 속도 단계"><button type="button" data-mode="normal" class="active" aria-pressed="true">일반</button><button type="button" data-mode="boost" aria-pressed="false">가속</button><button type="button" data-mode="extreme" aria-pressed="false">최고속</button></div></div>
+   <p class="note"><b>실제 관절 구조</b> · 몸통/목/어깨/팔꿈치/골반/무릎을 연결한 동일한 뼈대. 옷은 각각의 관절에 달려 움직이며, 탈은 머리 관절에 통째로 교체됩니다. <b>기존 게임 본편·기록·코인에는 영향이 없습니다.</b></p>
+ </section>
+ <footer>WEB RIG LAB 1.0 · 개별 캐릭터 36장 재제작 없이 교체 가능 · <a href="./?v=23-catalog">기존 게임 돌아가기</a></footer>
+</main>
+<script>'use strict';
+/*
+ * HELL DROP — modular 2D mascot rig prototype.
+ * Every garment is painted in its parent's joint coordinate system; no per-helmet
+ * frame atlas is generated. The animation data is independent from costumes.
+ * This is deliberately isolated from game.js and local game progression.
+ */
+(()=>{
+ const $=id=>document.getElementById(id);
+ const canvas=$('stage'), ctx=canvas.getContext('2d',{alpha:false});
+ const MODE={normal:{label:'일반 낙하',speed:180},boost:{label:'가속 낙하',speed:540},extreme:{label:'최고속 낙하',speed:1180}};
+ const CATALOG={
+   mask:[{id:'cat',name:'고양이 탈',color:'#f8b85f'},{id:'dog',name:'강아지 탈',color:'#e3a775'},{id:'frog',name:'개구리 탈',color:'#87d887'}],
+   outfit:[{id:'explorer',name:'탐험복',color:'#48c0be'},{id:'pilot',name:'비행복',color:'#ee985c'},{id:'star',name:'별빛 의상',color:'#a798f4'}],
+   shoes:[{id:'boots',name:'탐험 부츠',color:'#c28d61'},{id:'sneakers',name:'운동화',color:'#e3e9fa'},{id:'jet',name:'스피드화',color:'#74dddf'}],
+   cape:[{id:'teal',name:'청록 망토',color:'#52d8d1'},{id:'red',name:'붉은 망토',color:'#ea6d74'},{id:'none',name:'망토 없음',color:'#555e70'}]
+ };
+ const LOOK={mask:'cat',outfit:'explorer',shoes:'boots',cape:'teal'};
+ let category='mask',mode='normal',pressing=false,t=0,jump=1,wall=-1,last=0,w=420,h=400,dpr=1,motionTest=false;
+ const min=(v,a,b)=>Math.min(b,Math.max(a,v));
+ const ease=v=>{v=min(v,0,1);return v*v*(3-2*v)};
+ const mix=(a,b,v)=>a+(b-a)*v;
+ function drawPath(points,color,stroke='#1d2737',lineWidth=2.7){ctx.beginPath();for(let i=0;i<points.length;i++){const [x,y]=points[i];i?ctx.lineTo(x,y):ctx.moveTo(x,y)}ctx.closePath();ctx.fillStyle=color;ctx.fill();if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=lineWidth;ctx.stroke()}}
+ function outline(fill,stroke='#233041',width=3){ctx.fillStyle=fill;ctx.fill();if(stroke){ctx.lineWidth=width;ctx.strokeStyle=stroke;ctx.stroke()}}
+ function circle(x,y,r,fill,stroke,width=2){ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);outline(fill,stroke,width)}
+ function ellipse(x,y,rx,ry,fill,stroke,width=2){ctx.beginPath();ctx.ellipse(x,y,rx,ry,0,0,Math.PI*2);outline(fill,stroke,width)}
+ function rounded(x,y,ww,hh,r,fill,stroke,width=2.6){ctx.beginPath();ctx.roundRect(x,y,ww,hh,r);outline(fill,stroke,width)}
+ function gradient(a,b,y0,y1){const g=ctx.createLinearGradient(0,y0,0,y1);g.addColorStop(0,a);g.addColorStop(1,b);return g}
+ function line(points,color,width=2){ctx.beginPath();points.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.strokeStyle=color;ctx.lineWidth=width;ctx.lineCap='round';ctx.lineJoin='round';ctx.stroke()}
+ function star(x,y,size,fill){ctx.save();ctx.translate(x,y);ctx.rotate(t*.07);ctx.beginPath();for(let i=0;i<10;i++){const a=i*Math.PI/5-Math.PI/2,rr=i%2?size*.42:size;ctx.lineTo(Math.cos(a)*rr,Math.sin(a)*rr)}ctx.closePath();ctx.fillStyle=fill;ctx.fill();ctx.restore()}
+ function withJoint(x,y,rot,paint){ctx.save();ctx.translate(x,y);ctx.rotate(rot);paint();ctx.restore()}
+ const STYLES={
+  explorer:{main:'#3dacae',mid:'#70e2d0',shade:'#1f5f76',trim:'#f8d091',pants:'#2c7185',cuff:'#c9d9c7',badge:'#fbe6ac'},
+  pilot:{main:'#d96c59',mid:'#ffba77',shade:'#7f4054',trim:'#ffe0a3',pants:'#8a4857',cuff:'#f3d0a7',badge:'#fff0c4'},
+  star:{main:'#7772c8',mid:'#c4acff',shade:'#453e81',trim:'#ead1ff',pants:'#5e579c',cuff:'#e6d8ff',badge:'#f6e3b3'}
+ };
+ const MASCOTS={
+  cat:{base:'#f7bb6b',high:'#ffdf9c',shade:'#d57e62',inner:'#f2a4a2',eye:'#283a4a',muzzle:'#fff3d9'},
+  dog:{base:'#e9b88c',high:'#ffdfb6',shade:'#c4886c',inner:'#e5a1a2',eye:'#303744',muzzle:'#fff1d7'},
+  frog:{base:'#7bcf9a',high:'#c5f2ad',shade:'#429d83',inner:'#8becb5',eye:'#213d47',muzzle:'#dcf6bb'}
+ };
+ function cape(p,wind){
+   if(LOOK.cape==='none')return;
+   const hue=LOOK.cape==='red'?['#eb8a83','#af455c','#662e54']:['#7beae0','#33b5bd','#1b657c'];
+   const flap=Math.sin(t*6.4)*7+wind*27;
+   ctx.save();ctx.translate(0,-63);
+   ctx.beginPath();ctx.moveTo(-33,4);ctx.quadraticCurveTo(-60,10,-70-flap*.44,46+wind*22);
+   ctx.bezierCurveTo(-67-flap,77+wind*30,-32-flap*.4,94+wind*37,0,70+wind*25);
+   ctx.bezierCurveTo(29+flap*.3,98+wind*41,68+flap,78+wind*32,69+flap*.55,41+wind*18);
+   ctx.quadraticCurveTo(54,6,33,4);ctx.quadraticCurveTo(0,18,-33,4);ctx.closePath();
+   const g=ctx.createLinearGradient(-85,0,85,90);g.addColorStop(0,hue[2]);g.addColorStop(.45,hue[1]);g.addColorStop(1,hue[0]);outline(g,'#243144',3.5);
+   ctx.beginPath();ctx.moveTo(-23,15);ctx.quadraticCurveTo(-35,45,-29-flap*.4,74+wind*13);ctx.strokeStyle='#fff7';ctx.lineWidth=3;ctx.stroke();
+   ctx.beginPath();ctx.moveTo(29,15);ctx.quadraticCurveTo(47,49,32+flap*.45,83+wind*22);ctx.strokeStyle='#09233048';ctx.lineWidth=3;ctx.stroke();
+   line([[-23,4],[0,21],[23,4]],'#ffe7a7',4);
+   ctx.restore();
+ }
+ function torso(style,p){
+   // One anatomical torso; its garment is placed inside the SAME spine transform.
+   const wobble=Math.sin(t*5.1)*.7;
+   ctx.save();ctx.translate(0,wobble);
+   ctx.beginPath();ctx.moveTo(-23,-70);ctx.bezierCurveTo(-44,-63,-43,-27,-37,2);ctx.quadraticCurveTo(-36,20,-19,25);ctx.quadraticCurveTo(0,33,19,25);ctx.quadraticCurveTo(37,20,37,2);ctx.bezierCurveTo(43,-27,44,-63,23,-70);ctx.quadraticCurveTo(0,-80,-23,-70);ctx.closePath();
+   const g=ctx.createLinearGradient(-38,-62,35,20);g.addColorStop(0,style.mid);g.addColorStop(.46,style.main);g.addColorStop(1,style.shade);outline(g,'#243244',4);
+   ctx.beginPath();ctx.moveTo(-18,-57);ctx.quadraticCurveTo(0,-63,19,-57);ctx.lineTo(14,-19);ctx.lineTo(-13,-19);ctx.closePath();ctx.fillStyle='#ffffff1d';ctx.fill();
+   ctx.beginPath();ctx.moveTo(-25,-70);ctx.quadraticCurveTo(0,-45,25,-70);ctx.strokeStyle=style.trim;ctx.lineWidth=5;ctx.stroke();
+   // Belt follows pelvis instead of floating in world coordinates.
+   rounded(-36,4,72,14,4,style.shade,'#203348',2.5);
+   rounded(-9,5,18,13,3,style.trim,'#624a4d',1.4);circle(0,12,2.8,'#fff6ce',null);
+   if(LOOK.outfit==='explorer'){
+      line([[0,-49],[0,-12]],'#e3fff2',2);rounded(-17,-44,15,15,5,'#256a81','#d7dfca',1.7);star(-10,-37,4,style.badge);
+      rounded(14,-37,11,16,2,'#20657c','#d3edc7',1.3);line([[16,-33],[23,-33]],'#f9d58f',2);
+   }else if(LOOK.outfit==='pilot'){
+      line([[-24,-55],[19,-15]],'#ffdda3',7);line([[24,-55],[-19,-15]],'#ffdda3',7);rounded(-10,-43,20,25,6,'#3c7389','#ffe5a4',2);circle(0,-32,5,'#bde7df',null);
+   }else{
+      star(0,-44,10,'#fbe6b2');star(-22,-21,4,'#eed9fc');star(22,-19,4,'#eed9fc');line([[-17,-2],[17,-2]],'#dfc3ef',2);
+   }
+   ctx.restore();
+ }
+ function arm(side,style,ang,elbowAngle){
+   withJoint(side*30,-57,ang,()=>{
+      ellipse(0,1,13,13,style.main,'#243349',3);
+      rounded(-13,1,26,34,12,gradient(style.mid,style.main,0,38),'#283649',3);
+      line([[-8,4],[-7,25]],'#fff4',2.5);
+      circle(0,34,10,style.cuff,'#29394d',2.5);
+      withJoint(0,33,elbowAngle,()=>{
+        rounded(-11,-2,22,28,11,gradient(style.main,style.shade,-2,29),'#253547',3);
+        rounded(-12,22,24,9,4,style.cuff,'#293547',2);
+        ellipse(0,34,14,11,'#f7e6c8','#26394b',2.8);
+        circle(4,30,3,'#fff9e8',null);
+      });
+   });
+ }
+ function shoe(kind){
+   const colors={boots:['#d39b6e','#78566b','#ffe9bd'],sneakers:['#f0e9fa','#748baf','#ffb37d'],jet:['#83edeb','#4273a6','#e7ffff']}[kind];
+   ctx.save();ctx.translate(0,24);
+   ctx.beginPath();ctx.moveTo(-13,-4);ctx.quadraticCurveTo(-14,8,-19,15);ctx.quadraticCurveTo(-24,24,-10,28);ctx.quadraticCurveTo(1,29,15,25);ctx.quadraticCurveTo(20,16,13,7);ctx.lineTo(12,-4);ctx.closePath();outline(gradient(colors[0],colors[1],-7,27),'#273244',3.5);
+   line([[-14,19],[14,19]],'#f2eac9',4);
+   if(kind==='jet'){
+      rounded(-9,-2,18,7,3,'#ffffffbb',null);star(0,8,5,'#f9e2ac');
+      line([[-7,27],[-7,32]],'#8eebfd',3);
+   }else if(kind==='sneakers'){line([[-6,6],[6,7]],'#ffe1ae',3);line([[-6,12],[7,12]],'#ffe1ae',2)}
+   else{rounded(-10,0,20,8,3,'#f3c28e','#7a5b60',1.5)}
+   ctx.restore();
+ }
+ function leg(side,style,upperRot,kneeRot){
+   withJoint(side*19,16,upperRot,()=>{
+     ellipse(0,1,12,14,style.pants,'#253445',3);
+     rounded(-12,0,24,36,10,gradient(style.main,style.pants,0,38),'#263748',3);
+     line([[-8,5],[-7,27]],'#ffffff34',2);
+     withJoint(0,33,kneeRot,()=>{
+       circle(0,0,11,style.pants,'#29394c',2.4);
+       rounded(-11,1,22,29,10,gradient(style.pants,style.shade,0,33),'#26384a',3);
+       shoe(LOOK.shoes);
+     });
+   });
+ }
+ function maskDraw(kind,p){
+   const m=MASCOTS[kind];
+   ctx.save();ctx.translate(0,-111);
+   ctx.rotate(p.headTilt);
+   const bounce=Math.sin(t*8.4)*.7;
+   ctx.translate(0,bounce);
+   // Decorative ears or eye stalks are anchored to the same skull joint.
+   if(kind==='cat'){
+     ctx.beginPath();ctx.moveTo(-44,-19);ctx.quadraticCurveTo(-60,-74,-30,-65);ctx.lineTo(-4,-37);ctx.closePath();outline(gradient(m.high,m.base,-70,-12),'#4b414b',4);
+     ctx.beginPath();ctx.moveTo(44,-19);ctx.quadraticCurveTo(60,-74,30,-65);ctx.lineTo(4,-37);ctx.closePath();outline(gradient(m.high,m.base,-70,-12),'#4b414b',4);
+     drawPath([[-43,-36],[-40,-56],[-27,-42]],m.inner,null);drawPath([[43,-36],[40,-56],[27,-42]],m.inner,null);
+   }else if(kind==='dog'){
+     // Dark floppy fabric ears behind the head, no hair/skin texture required.
+     ellipse(-51,-20,20,33,'#ac735f','#544453',4);
+     ellipse(51,-20,20,33,'#ac735f','#544453',4);
+     ellipse(-55,-23,8,19,'#e5a7a0',null);ellipse(55,-23,8,19,'#e5a7a0',null);
+   }else{
+     circle(-36,-42,23,gradient(m.high,m.base,-65,-10),'#305748',4);
+     circle(36,-42,23,gradient(m.high,m.base,-65,-10),'#305748',4);
+   }
+   // Universal head silhouette designed for any mask on this rig.
+   ctx.beginPath();ctx.moveTo(-44,-39);ctx.bezierCurveTo(-66,-22,-67,22,-47,40);
+   ctx.bezierCurveTo(-25,62,25,62,47,40);ctx.bezierCurveTo(67,22,66,-22,44,-39);
+   ctx.bezierCurveTo(24,-58,-24,-58,-44,-39);ctx.closePath();
+   const g=ctx.createLinearGradient(-48,-53,36,52);g.addColorStop(0,m.high);g.addColorStop(.48,m.base);g.addColorStop(1,m.shade);outline(g,'#34444e',4.5);
+   ctx.beginPath();ctx.ellipse(-16,-27,27,11,-.22,0,Math.PI*2);ctx.fillStyle='#ffffff30';ctx.fill();
+   ellipse(-40,17,17,13,'#fff9e228',null);ellipse(40,17,17,13,'#fff9e228',null);
+   if(kind==='dog'){
+     ellipse(-28,-28,19,10,'#c48c76',null);ellipse(30,-28,19,10,'#c48c76',null);
+     ellipse(0,23,32,24,m.muzzle,null);
+   }else if(kind==='cat'){
+     ellipse(0,28,29,19,m.muzzle,null);
+     line([[-46,-6],[-26,-11]],'#db895f',4);line([[46,-6],[26,-11]],'#db895f',4);
+   }else{ellipse(0,24,35,20,'#c9f7ac69',null)}
+   const squint=p.fast>.78;
+   if(squint){
+     ctx.beginPath();ctx.moveTo(-37,0);ctx.quadraticCurveTo(-22,-12,-9,0);ctx.moveTo(9,0);ctx.quadraticCurveTo(22,-12,37,0);ctx.strokeStyle=m.eye;ctx.lineWidth=5;ctx.lineCap='round';ctx.stroke();
+   }else{
+     for(const side of [-1,1]){
+       ellipse(side*24,-5,10.8,15,m.eye,'#fff1db',2);
+       ellipse(side*21,-10,4.1,6,'#fff',null);
+       circle(side*27,-1,2.2,'#fff6ea',null);
+     }
+   }
+   if(kind==='frog'){
+     circle(-23,20,6,'#5cb37d70',null);circle(23,20,6,'#5cb37d70',null);
+     ctx.beginPath();ctx.arc(0,15,16,.16,Math.PI-.16);ctx.strokeStyle='#376b54';ctx.lineWidth=3.8;ctx.lineCap='round';ctx.stroke();
+   }else{
+     drawPath([[-6,15],[6,15],[0,21]],kind==='cat'?'#af6572':'#765a58',null);
+     ctx.beginPath();ctx.moveTo(0,22);ctx.lineTo(0,27);ctx.quadraticCurveTo(-8,35,-14,26);ctx.moveTo(0,27);ctx.quadraticCurveTo(8,35,14,26);ctx.strokeStyle='#705b56';ctx.lineWidth=2.5;ctx.lineCap='round';ctx.stroke();
+     if(kind==='cat'){
+       line([[-20,25],[-47,22]],'#775f59',1.8);line([[-19,30],[-47,35]],'#775f59',1.8);
+       line([[20,25],[47,22]],'#775f59',1.8);line([[19,30],[47,35]],'#775f59',1.8);
+     }
+   }
+   for(const side of [-1,1]){
+     ellipse(side*39,12,8,4,kind==='frog'?'#73c5a084':'#f3aab58a',null);
+   }
+   // A small clasp at the back edge suggests a wearable full-head costume.
+   rounded(-18,43,36,8,4,'#ffe9bd','#786b64',1.5);
+   circle(0,47,2.5,'#f9fff8',null);
+   ctx.restore();
+ }
+ const JOINTS={head:[0,-111],neck:[0,-79],shoulderL:[-30,-57],shoulderR:[30,-57],elbowL:[-30,-22],elbowR:[30,-22],hipL:[-19,16],hipR:[19,16]};
+ function body(p){
+   const style=STYLES[LOOK.outfit];
+   withJoint(0,0,p.tilt,()=>{
+     cape(p,p.fast);
+     // The same connected joint hierarchy is shared across masks and outfits.
+     leg(-1,style,p.legL,p.kneeL);leg(1,style,p.legR,p.kneeR);
+     arm(-1,style,p.armL,p.elbowL);arm(1,style,p.armR,p.elbowR);
+     torso(style,p);
+     // Neck belongs to this body; head costume covers the whole face/skull.
+     rounded(-15,-89,30,22,10,'#e3cbaa','#304050',2.5);
+     maskDraw(LOOK.mask,p);
+     if(p.jumpActive){
+       ctx.save();ctx.globalAlpha=(1-p.jumpProgress)*.45;
+       ctx.strokeStyle='#cef9fa';ctx.lineWidth=3;
+       ctx.beginPath();ctx.arc(0,-25,107+p.jumpProgress*43,Math.PI*.18,Math.PI*.86);ctx.stroke();ctx.restore();
+     }
+   });
+ }
+ function pose(){
+   const fast=mode==='extreme'||pressing?1:mode==='boost'?.56:.08;
+   const b=.5+.5*Math.sin(t*11+fast*4),sway=Math.sin(t*(3+fast*5));
+   const inJump=jump<1,j=inJump?Math.sin(Math.PI*jump):0;
+   const dir=wall;
+   return{
+     fast, jumpActive:inJump,jumpProgress:jump,
+     tilt:sway*.028-fast*.16+(inJump?dir*(.1-.58*j):0),
+     headTilt:Math.sin(t*4+1)*.07+fast*.09+(inJump?-dir*j*.18:0),
+     armL:mix(.78,.16,fast)+b*.065+dir*j*.7,
+     armR:mix(-.78,-.16,fast)-b*.065+dir*j*.5,
+     elbowL:mix(-.17,-.43,fast)+j*.28,
+     elbowR:mix(.17,.43,fast)-j*.30,
+     legL:-.23+fast*.22+sway*.08+j*dir*.38,
+     legR:.23-fast*.22-sway*.08-j*dir*.34,
+     kneeL:.12+j*.26,kneeR:-.13-j*.24
+   };
+ }
+ function stageBackground(){
+   const bg=ctx.createLinearGradient(0,0,0,h);bg.addColorStop(0,'#101528');bg.addColorStop(.45,'#182b3b');bg.addColorStop(1,'#301d38');ctx.fillStyle=bg;ctx.fillRect(0,0,w,h);
+   const mid=w*.5;
+   const haze=ctx.createRadialGradient(mid,h*.45,18,mid,h*.48,w*.57);haze.addColorStop(0,'#2c829244');haze.addColorStop(1,'#06111b00');ctx.fillStyle=haze;ctx.fillRect(0,0,w,h);
+   const flowSpeed=(mode==='extreme'||pressing?9:mode==='boost'?5.1:2.8),slide=(t*flowSpeed*35)%(h*.9);
+   for(let side=0;side<2;side++){
+     ctx.save();if(side) {ctx.translate(w,0);ctx.scale(-1,1)}
+     const stone=ctx.createLinearGradient(0,0,w*.24,0);stone.addColorStop(0,'#2b2538');stone.addColorStop(.6,'#4a3951');stone.addColorStop(1,'#142033');ctx.fillStyle=stone;
+     ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(w*.16,0);
+     for(let y=0;y<=h+26;y+=27){ctx.lineTo(w*(.145+.017*Math.sin(y*.05)),y)}
+     ctx.lineTo(0,h);ctx.closePath();ctx.fill();
+     ctx.strokeStyle='#bb97a733';ctx.lineWidth=2;
+     for(let i=-2;i<14;i++){
+       const y=((i*52+slide)%(h+115))-55;
+       line([[2,y],[w*.13,y+14],[w*.185,y+31]],'#7764798f',2);
+       line([[0,y+16],[w*.12,y+42]],'#c9916a45',1.5);
+     }
+     for(let i=0;i<6;i++){
+       const y=((i*83+slide*.7)%(h+75))-40;
+       ctx.beginPath();ctx.moveTo(w*.14,y);ctx.lineTo(w*.195+(i%2)*11,y+8);ctx.lineTo(w*.15,y+25);ctx.closePath();outline('#5c566184','#242c3a',1);
+     }
+     ctx.restore();
+   }
+   // Depth-flow lines reference the character velocity but stay behind the rig.
+   for(let i=0;i<24;i++){
+     const x=((i*83+17)%91+5)/100*w,y=((i*71+(t*flowSpeed*96*(.7+i%4*.15)))%(h+75))-28;
+     if(x<w*.19||x>w*.81)continue;
+     line([[x,y],[x,y+(9+fastOrZero()*i%14)]],i%3===0?'#ffe9ac63':'#ade9f25a',i%4===0?2:1);
+   }
+   for(let i=0;i<11;i++){
+     const x=w*(.19+.62*((i*29%91)/91)),y=((i*97+t*flowSpeed*60)%(h+20));
+     circle(x,y,1.4+i%3,'#e2a4a487',null);
+   }
+   function fastOrZero(){return mode==='extreme'||pressing?1.6:.4}
+ }
+ function render(){
+   ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h);
+   stageBackground();
+   const p=pose(),scrollEase=jump<1?ease(jump):1;
+   const anchor=jump<1?mix(wall<0?w*.67:w*.33,wall<0?w*.33:w*.67,scrollEase):(wall<0?w*.33:w*.67);
+   const safeScale=Math.min(w/395,(h-77)/270,1.08);
+   const cy=h*.49+(Math.sin(t*6)*1.8);
+   ctx.save();ctx.translate(anchor,cy);ctx.scale(safeScale,safeScale);
+   ctx.shadowColor='#0707178c';ctx.shadowBlur=19;ctx.shadowOffsetY=7;
+   body(p);ctx.restore();
+   if(jump<1){const x=anchor;ctx.save();ctx.strokeStyle='#f8dcaa72';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(x+(wall<0?-45:45),cy+36);ctx.quadraticCurveTo(x,cy+73,x-(wall<0?-43:43),cy+35);ctx.stroke();ctx.restore();}
+ }
+ function resize(){const r=canvas.getBoundingClientRect();if(!r.width||!r.height)return;w=r.width;h=r.height;dpr=Math.min(window.devicePixelRatio||1,2);canvas.width=Math.floor(w*dpr);canvas.height=Math.floor(h*dpr);}
+ function frame(now){const dt=Math.min(Math.max(0,(now-last)/1000||0),.045);last=now;t+=dt; if(jump<1)jump=Math.min(1,jump+dt/.64);render();requestAnimationFrame(frame)}
+ function buildOptions(){const opts=CATALOG[category];$('options').innerHTML=opts.map(x=>`<button type="button" class="option ${LOOK[category]===x.id?'active':''}" aria-pressed="${LOOK[category]===x.id}" data-opt="${x.id}"><span class="swatch" style="--color:${x.color}"></span>${x.name}</button>`).join('');
+  $('options').querySelectorAll('[data-opt]').forEach(button=>button.addEventListener('click',()=>{LOOK[category]=button.dataset.opt;buildOptions()}));
+ }
+ function changeCategory(cat){if(!CATALOG[cat])return;category=cat;document.querySelectorAll('[data-category]').forEach(x=>{const active=x.dataset.category===cat;x.classList.toggle('active',active);x.setAttribute('aria-selected',String(active));});buildOptions()}
+ function changeMode(id){if(!MODE[id])return;mode=id;document.querySelectorAll('[data-mode]').forEach(x=>{const active=x.dataset.mode===mode;x.classList.toggle('active',active);x.setAttribute('aria-pressed',String(active))});const sp=MODE[pressing?'extreme':mode];$('modeLabel').textContent=sp.label;$('speedLabel').textContent=sp.speed.toLocaleString('ko-KR')+' m/s'}
+ function doJump(){if(jump<1)return;wall*=-1;jump=0}
+ document.querySelectorAll('[data-category]').forEach(b=>b.addEventListener('click',()=>changeCategory(b.dataset.category)));
+ document.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>changeMode(b.dataset.mode)));
+ $('jump').addEventListener('click',doJump);
+ const boost=$('boost');
+ function setPress(v){pressing=v;boost.classList.toggle('pressed',v);const sp=MODE[pressing?'extreme':mode];$('modeLabel').textContent=sp.label;$('speedLabel').textContent=sp.speed.toLocaleString('ko-KR')+' m/s'}
+ boost.addEventListener('pointerdown',e=>{e.preventDefault();try{boost.setPointerCapture(e.pointerId)}catch(_){}setPress(true)});
+ boost.addEventListener('pointerup',()=>setPress(false));boost.addEventListener('pointercancel',()=>setPress(false));boost.addEventListener('lostpointercapture',()=>setPress(false));
+ $('reset').addEventListener('click',()=>{Object.assign(LOOK,{mask:'cat',outfit:'explorer',shoes:'boots',cape:'teal'});changeMode('normal');changeCategory('mask')});
+ document.addEventListener('keydown',e=>{if(e.code==='Space'){e.preventDefault();setPress(true)}if(e.code==='ArrowRight'||e.code==='Enter'){e.preventDefault();if(!e.repeat)doJump()}});
+ document.addEventListener('keyup',e=>{if(e.code==='Space')setPress(false)});
+ document.addEventListener('visibilitychange',()=>{if(document.hidden)setPress(false)});
+ window.addEventListener('resize',resize);if('ResizeObserver' in window)new ResizeObserver(resize).observe(canvas);
+ resize();changeCategory('mask');changeMode('normal');requestAnimationFrame(frame);
+ window.RigLabTest={getState:()=>({look:{...LOOK},category,mode,pressing,jump,wall,framesPassed:t>0,canvasSize:[canvas.width,canvas.height]}),setLook:(part,id)=>{if(CATALOG[part]?.some(x=>x.id===id)){LOOK[part]=id;buildOptions()}},setMode:changeMode,jump:doJump,parts:CATALOG,bones:JOINTS};
+})();
+</script>
+</body></html>
