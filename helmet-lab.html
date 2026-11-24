@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>지옥 낙하 · 밀착형 헬멧 실험실</title>
+<style>
+*{box-sizing:border-box}html{color-scheme:dark}body{background:#0e101a;color:#f7eddd;font-family:system-ui,-apple-system,'Malgun Gothic',sans-serif;line-height:1.5;margin:0}
+.page{max-width:760px;margin:0 auto;padding:15px 12px 55px}
+header{display:flex;align-items:center;gap:10px;justify-content:space-between}header a{color:#f5d79c;font-size:13px;font-weight:800;text-decoration:none}
+header strong{font-size:18px;color:#ffe1a2}.tag{display:inline-block;border:1px solid #c39b6577;border-radius:50px;padding:3px 8px;color:#ffdeb1;font-size:10px;font-weight:900}
+h1{font-size:24px;color:#ffe0aa;margin:15px 0 5px}p{margin:4px 0 12px;font-size:13px;color:#cbd0d7}
+.note{padding:10px 13px;border-left:3px solid #6be1cd;background:#1a2a32b9;border-radius:7px;color:#d6f4ed;font-size:12px}
+.top{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin:15px 0}
+.panel{background:linear-gradient(145deg,#292535,#181d2b);border:1px solid #a88c698c;border-radius:16px;padding:12px;min-width:0}
+.panel h2{font-size:14px;color:#ffdca6;margin:0 0 10px}
+.portrait{height:260px;display:flex;align-items:flex-end;justify-content:center;position:relative;overflow:hidden;background:radial-gradient(ellipse at 50% 65%,#69516e69,transparent 75%);border-radius:12px}
+.actor{height:224px;width:100%;position:relative;display:flex;align-items:flex-end;justify-content:center}
+.actor>img:first-child{height:100%;max-width:100%;width:auto;object-fit:contain;filter:drop-shadow(0 6px 8px #0008)}
+.actor .helmet{position:absolute;left:50%;top:-9px;width:100px;height:auto;transform:translateX(-50%);filter:drop-shadow(0 3px 3px #000d);pointer-events:none}
+small{color:#c2c8d2}#motionCanvas{display:block;width:100%;height:260px;border:1px solid #5c5b67;border-radius:12px;background:#101722}
+.modes{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;margin-top:10px}
+.modes button{border-radius:9px;min-height:36px;padding:4px 2px;background:#292b3b;border:1px solid #666377;color:#f2e9d4;font-size:11px;font-weight:800;cursor:pointer}
+.modes button.on{background:#e9b777;color:#342431;border-color:#ffda91}
+.key{display:flex;justify-content:space-between;align-items:center;margin:7px 0}.key>span{font-size:12px}.key>b{color:#ffe0ab}
+.rig-info{display:flex;flex-direction:column;gap:4px;font-size:11px;color:#cbd0d4}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:11px}
+label{display:grid;grid-template-columns:75px 1fr 34px;align-items:center;gap:9px;font-size:11px;color:#e6dccd;margin-bottom:7px}
+input[type=range]{width:100%;accent-color:#65ead1}output{font-weight:900;text-align:right;color:#ffe0a7}
+.controls{margin-top:11px}.controls h2{font-size:15px;color:#ffe1ab;margin:0 0 10px}
+.brief{font-size:12px;line-height:1.6;background:#0e1723;border-radius:12px;border:1px solid #84917a4a;padding:12px;margin-top:11px}
+.brief strong{color:#ffdfac}.brief b{color:#7de9d4}
+button.reset{border:1px solid #d1a26a99;color:#ffe8c4;background:#3e3343;border-radius:10px;padding:9px 12px;font-size:12px;font-weight:850}
+.asset-row{display:flex;align-items:center;gap:12px}.asset-row img{width:92px;height:92px;object-fit:contain;border:1px solid #a98d6877;background:radial-gradient(circle,#8a766b33,transparent 75%);border-radius:13px;padding:3px}
+.asset-row div{font-size:12px;color:#d0cfca}
+.asset-row strong{color:#ffe1ab}
+.footnote{font-size:11px;color:#c0c5ce}
+@media(max-width:560px){.top{grid-template-columns:1fr}.portrait{height:274px}.actor{height:240px}.grid{grid-template-columns:1fr}.page{padding:14px 10px 40px}h1{font-size:22px}}
+</style>
+</head>
+<body>
+<main class="page">
+<header><strong>HELL DROP <span class="tag">장비 실험실 · WEB 2.2</span></strong><a href="./?v=21-market">← 기존 게임</a></header>
+<h1>밀착형 헬멧 · 기준 모델</h1>
+<p>우이지의 기본 탐험가 헬멧을 먼저 시험해. 같은 규격의 착용 위치와 애니메이션을 나중에 다른 헬멧 디자인에도 적용할 수 있어.</p>
+<div class="note">이 화면은 <b>장비 품질 실험용</b>이야. 기존 게임의 레벨·코인·착용 기록·구매 아이템은 변경하지 않아.</div>
+<section class="top">
+  <article class="panel">
+    <h2>캐릭터 화면 · 밀착 착용</h2>
+    <div class="portrait"><div class="actor"><img src="assets/uiji_intro.webp" alt="우이지 원본 캐릭터"><img id="portraitHelmet" class="helmet" src="assets/helmet_master_basic.svg" alt="머리 전체를 덮는 기본 탐험가 헬멧"></div></div>
+    <div class="key"><span>현재 모델</span><b>탐험가 헬멧 · 기본형</b></div>
+    <div class="rig-info"><span>원본 캐릭터 얼굴과 복장 이미지는 그대로 사용</span><span>투명 얼굴창 / 밀착 측면 보호구 / 턱 보호 장치</span></div>
+  </article>
+  <article class="panel">
+    <h2>실제 36프레임 낙하 원본 + 공통 헬멧</h2>
+    <canvas id="motionCanvas" width="350" height="260" aria-label="우이지 낙하 애니메이션 장비 착용 시험"></canvas>
+    <div class="modes">
+      <button type="button" class="on" data-pose="open">일반</button>
+      <button type="button" data-pose="folded">가속</button>
+      <button type="button" data-pose="frantic">최고속</button>
+      <button type="button" data-pose="jump">벽점프</button>
+    </div>
+    <div class="key"><span>현재 모션</span><b id="poseLabel">일반 낙하</b></div>
+    <small id="frameStatus">이미지 로딩 중…</small>
+  </article>
+</section>
+<section class="panel controls">
+<h2>머리 위치 맞춤 · 기준 앵커 조정</h2>
+<p>모션마다 헬멧이 머리에서 벗어나지 않는지 시험하기 위한 조절 장치야. 이 값은 이 시험 화면에만 적용돼.</p>
+<div class="grid">
+<div>
+  <label>낙하 X <input id="motionX" type="range" min="-25" max="25" value="0"><output id="motionXVal">0</output></label>
+  <label>낙하 Y <input id="motionY" type="range" min="-30" max="20" value="0"><output id="motionYVal">0</output></label>
+  <label>헬멧 크기 <input id="motionSize" type="range" min="55" max="110" value="79"><output id="motionSizeVal">79</output></label>
+</div>
+<div>
+  <label>초상화 X <input id="portraitX" type="range" min="-40" max="40" value="0"><output id="portraitXVal">0</output></label>
+  <label>초상화 Y <input id="portraitY" type="range" min="-40" max="35" value="-9"><output id="portraitYVal">-9</output></label>
+  <label>초상화 크기 <input id="portraitSize" type="range" min="70" max="160" value="100"><output id="portraitSizeVal">100</output></label>
+</div>
+</div>
+<button type="button" class="reset" id="reset">기본 위치로 되돌리기</button>
+<div class="brief"><strong>공통 규격의 핵심</strong>
+<br>① 헬멧 바깥 윤곽·얼굴창 기준 크기를 동일하게 제작
+<br>② 낙하·가속·최고속·벽점프에서 캐릭터와 <b>같은 회전·기울기·크기</b> 적용
+<br>③ 새 헬멧은 같은 100×100 그림 틀의 디자인 파일만 교체
+<br>④ 원본 헤어스타일이 얼굴창으로 비치는지 실제 갤럭시에서 확인해 마지막으로 마스킹 보정
+</div>
+</section>
+<section class="panel" style="margin-top:12px">
+<h2>기본 헬멧 원화 · 게임용 규격</h2>
+<div class="asset-row"><img src="assets/helmet_master_basic.svg" alt="실제 장비 시안"><div><strong>100 × 100 표준 슬롯 · SVG 원본</strong><br>작은 상점 아이콘, 캐릭터 착용 모습, 게임 속 모션에 동일한 원본을 사용하는 구조야.<br><span class="footnote">개구리·다크·화염 헬멧은 이 실험이 통과한 뒤 같은 착용 기준을 쓰도록 제작.</span></div></div>
+</section>
+</main>
+<script src="helmet-rig-core.js?v=22-proto"></script>
+<script>
+'use strict';
+(function(){
+const c=document.getElementById('motionCanvas'),ctx=c.getContext('2d'),atlas=new Image();
+atlas.src='assets/uiji_motion_atlas.webp';const sprite=new Image();sprite.src='assets/uiji_intro.webp';
+const model=window.HellHelmetRig,buttons=[...document.querySelectorAll('[data-pose]')];
+const label={open:'일반 낙하',folded:'망토 접기 · 가속',frantic:'최고속 낙하',jump:'벽점프'};
+let pose='open',start=0,previous=0;
+const get=id=>document.getElementById(id);
+const overrides=()=>({x:+get('motionX').value,y:+get('motionY').value,size:+get('motionSize').value});
+function applyPortrait(){
+ const h=get('portraitHelmet');h.style.left='calc(50% + '+get('portraitX').value+'px)';
+ h.style.top=get('portraitY').value+'px';
+ h.style.width=get('portraitSize').value+'px';
+}
+for(const id of ['motionX','motionY','motionSize','portraitX','portraitY','portraitSize']){
+ const item=get(id);item.addEventListener('input',()=>{get(id+'Val').textContent=item.value;applyPortrait()});
+}
+get('reset').addEventListener('click',()=>{
+ for(const [id,v] of [['motionX',0],['motionY',0],['motionSize',79],['portraitX',0],['portraitY',-9],['portraitSize',100]]){
+  get(id).value=v;get(id+'Val').textContent=v;
+ }
+ applyPortrait();
+});
+buttons.forEach(b=>b.addEventListener('click',()=>{
+ pose=b.dataset.pose;start=performance.now()/1000;
+ buttons.forEach(x=>x.classList.toggle('on',x===b));get('poseLabel').textContent=label[pose];
+}));
+function draw(ms){
+ const t=ms/1000;if(!start)start=t;const cycle=t-start;
+ ctx.clearRect(0,0,350,260);
+ const grd=ctx.createLinearGradient(0,0,350,260);grd.addColorStop(0,'#131723');grd.addColorStop(.6,'#302033');grd.addColorStop(1,'#151927');
+ ctx.fillStyle=grd;ctx.fillRect(0,0,350,260);
+ ctx.fillStyle='#65463b';ctx.fillRect(0,0,46,260);ctx.fillRect(304,0,46,260);
+ ctx.strokeStyle='#d29c6288';ctx.lineWidth=2;
+ for(let i=0;i<8;i++){
+ const y=((i*44+cycle*70)%320)-40;
+ ctx.beginPath();ctx.moveTo(12,y);ctx.lineTo(43,y+26);ctx.moveTo(309,y);ctx.lineTo(334,y-20);ctx.stroke();
+ }
+ ctx.save();ctx.translate(175,140);
+ const jumping=pose==='jump',phase=jumping?(cycle%1):0;
+ const poseIndex=pose==='folded'?1:pose==='frantic'?2:jumping?1:0;
+ const wind=pose==='frantic'?1:pose==='folded'?.8:.15;
+ const tilt=jumping?Math.sin(phase*Math.PI*2)*.34:Math.sin(cycle*4)*(.012+.02*wind)-(pose==='frantic'?.2:0);
+ const scale=jumping?1+.05*Math.sin(phase*Math.PI):pose==='frantic'?.97:1;
+ ctx.rotate(tilt);ctx.scale(scale,scale);
+ if(atlas.complete&&atlas.naturalWidth){
+   const frame=Math.floor(cycle*(9.5+wind*5))%12;
+   const idx=poseIndex*12+frame,col=idx%6,row=Math.floor(idx/6);
+   const w=178,h=178;
+   ctx.drawImage(atlas,col*384,row*384,384,384,-w/2,-h*.52,w,h);
+   // This call is INSIDE the character transform. No independent floating helmet.
+   model.draw(ctx,{id:'helmet_basic',character:'uiji',pose:jumping?'jump':pose,unit:1,...overrides()});
+   get('frameStatus').textContent='실제 원본 36프레임 · '+(frame+1)+'/12 · 같은 회전 변환 적용';
+ }else{
+   if(sprite.complete&&sprite.naturalWidth)ctx.drawImage(sprite,-65,-95,130,186);
+   model.draw(ctx,{id:'helmet_basic',character:'uiji',pose:'open',...overrides()});
+   get('frameStatus').textContent='낙하 원본 그림 로딩 중';
+ }
+ ctx.restore();requestAnimationFrame(draw);
+}
+applyPortrait();requestAnimationFrame(draw);
+})();
+</script>
+</body>
+</html>
