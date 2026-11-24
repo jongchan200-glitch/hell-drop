@@ -1,3 +1,11 @@
+## WEB 2.3 — play-test integrated equipment + categorized shop (2026-11-24)
+- Integrated per-frame helmet compositing for all 36 existing Uiji falling animation frames; removes the original head area on each original frame and renders a head-enclosing full-face helmet in the same actor transforms, so tilt, high speed and wall-jump inherit motion without a separate floating overlay. The existing cape/physics and 36-frame cadence remain unchanged. Other character's original sprite variants use the same static head replacement and actor transforms.
+- Two fresh themed full-face helm SVG designs in matching standard 128x128 asset dimensions, one explorer and one frog; each is the same source asset in shop, wardrobe and gameplay. Helmet art and fitting remain player-review prototypes, not final monetization-ready assets.
+- Shop: four high-level sections (characters / skins / gear / items); gear expands to helmet / cape / shoes / pants / top, items expands to protection bubbles. Only truly implemented products can be bought; empty categories clearly show pending, character selection remains free. Tap category -> tap product -> purchase/details sheet. Compact 4-column products remain.
+- Character wardrobe inventory now collapses by helmet and protection bubble, with compact tiles and separately preserved per-character loadouts.
+- Existing coins, item prices, helmet charges, 42-second timer and time-line bonus schedule, levels, records and settings unchanged.
+- Automated source and mocked tests before release; Galaxy visual/animation alignment must be judged by user before full approval.
+
 ## WEB 2.1 — compact illustrated shop (2026-11-24)
 - Shop only: compact four-column grid; protection/helmet category tabs; touch item for bottom-sheet details and purchase.
 - Custom vector bubble/helmet artwork replaces emoji in shop tiles; names/prices/stock remain compact.

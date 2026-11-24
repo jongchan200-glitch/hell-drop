@@ -376,7 +376,7 @@
     const arc=Math.sin(Math.min(1,s.hopProgress)*Math.PI)*15*u;
     drawSpeedWind(posX(s)*W,charY-arc,u);
     drawHero(posX(s)*W,charY-arc,u,s.fold,s.elapsed,s.speed,s.stage==='OVER',s.hopVisual<1,s.hopFrom);
-    drawHelmet(posX(s)*W,charY-arc,u);
+    // Helmet is baked into each active character frame, not painted above the actor.
     drawBubble(posX(s)*W,charY-arc,u);
     if(s.speed>670){ctx.fillStyle='#ff4f6115';ctx.fillRect(0,0,W,H);}
     if(s.gateFlash>.72||s.checkpointFlash>.7){ctx.fillStyle='#6be1cd20';ctx.fillRect(0,0,W,H);}
@@ -509,7 +509,8 @@
   function paintSprite(img,x,y,width,height,alpha){
     if(!img?.naturalWidth || alpha<=0)return false;
     ctx.save();ctx.globalAlpha*=alpha;
-    ctx.drawImage(img,x-width/2,y-height*.52,width,height);
+    const equipped=s.helmetId&&s.stage!=='READY'?window.HellHelmetComposer?.getSprite(img,s.helmetId):null;
+    ctx.drawImage(equipped||img,x-width/2,y-height*.52,width,height);
     ctx.restore();return true;
   }
   // V0.5 rig: THREE pixel-exact layers cut from the ORIGINAL hero_cape artwork.
@@ -538,14 +539,16 @@
       ctx.drawImage(wing.img,0,0,512,512);ctx.restore();
     }
     // Always paint the ORIGINAL central face/body on top of the flexible cloak.
-    ctx.drawImage(core,0,0,512,512);
+    const fitted=s.helmetId&&s.stage!=='READY'?window.HellHelmetComposer?.getSprite(core,s.helmetId):null;
+    ctx.drawImage(fitted||core,0,0,512,512);
     ctx.restore();return true;
   }
   function drawKickSprite(img,x,y,u,rot,scale,opacity){
     if(!img?.naturalWidth||opacity<=0)return false;
     const size=151*u*scale;
     ctx.save();ctx.translate(x,y);ctx.rotate(rot);ctx.globalAlpha*=opacity;
-    ctx.drawImage(img,-size/2,-size*.52,size,size);
+    const fitted=s.helmetId&&s.stage!=='READY'?window.HellHelmetComposer?.getSprite(img,s.helmetId):null;
+    ctx.drawImage(fitted||img,-size/2,-size*.52,size,size);
     ctx.restore();return true;
   }
   function drawWallKickImpact(u,side,phase,y){
@@ -608,6 +611,9 @@
   }
   function drawUiji(x,y,u,fold,elapsed,speed,dead,hopping,hopFrom){
     const atlas=images.uijiMotion;
+    const characterHelmet=s.runCharacter==='uiji'?s.helmetId:null;
+    const fittedAtlas=characterHelmet&&atlas?.naturalWidth?
+      (window.HellHelmetComposer?.getAtlas(atlas,characterHelmet)||atlas):atlas;
     if(!atlas?.naturalWidth){
       // No regression when image has not yet downloaded.
       const standby=images.uiji;
@@ -632,9 +638,9 @@
       ctx.scale(squash*(weights.contract||1)*(1+wind*.021*Math.sin(elapsed*11)),
         (1-.015*wind*Math.sin(elapsed*9))/squash);
       // Each mode has a 12-frame loop, interpolated at 60+ Hz.
-      drawUijiAtlasPose(atlas,0,frameTime,opacity*weights.open,u,elapsed);
-      drawUijiAtlasPose(atlas,1,frameTime*1.09+2,opacity*weights.folded,u,elapsed);
-      drawUijiAtlasPose(atlas,2,frameTime*1.23+5,opacity*weights.frantic,u,elapsed);
+      drawUijiAtlasPose(fittedAtlas,0,frameTime,opacity*weights.open,u,elapsed);
+      drawUijiAtlasPose(fittedAtlas,1,frameTime*1.09+2,opacity*weights.folded,u,elapsed);
+      drawUijiAtlasPose(fittedAtlas,2,frameTime*1.23+5,opacity*weights.frantic,u,elapsed);
       ctx.restore();
     }
     // Only one full-opacity character image. Previous ghost-frame echoes
@@ -865,6 +871,7 @@
   // Per-character wardrobes: two consumable quick slots plus persistent gear.
   // Swiping changes the selected hero; buying never consumes or equips items.
   let wardrobePending=null;
+  const wardrobeExpanded=new Set();
   const GEAR_SLOTS=[['helmet','🪖','헬멧'],['cape','🦸','망토'],['shoes','👟','신발'],['pants','👖','바지'],['top','👕','상의']];
   function helmetPreviewMarkup(helmetId,characterId){
     if(!helmetId)return '';
@@ -908,13 +915,22 @@
     }).join('');
     const available=sys.ITEM_CATALOG.filter(item=>item.kind==='bubble'?
       (prof.consumables[item.id]||0)>0:prof.inventory.includes(item.id));
-    const inventory=available.map(item=>{
-      const count=item.kind==='bubble'?(prof.consumables[item.id]||0):1;
-      return `<button type="button" class="wardrobe-inventory-item ${wardrobePending===item.id?'is-picked':''}"
-          data-inventory-item="${item.id}" draggable="true" aria-pressed="${wardrobePending===item.id}">
-        <span class="inventory-icon">${item.icon}</span><span class="inventory-name">${item.name}</span>
-        <strong class="inventory-count">${item.kind==='bubble'?'×'+count:'보유'}</strong>
-      </button>`;
+    const types=[['helmet','헬멧','장비'],['bubble','보호 버블','소모품']];
+    const inventory=types.map(([kind,title,sub])=>{
+      const subitems=available.filter(x=>x.kind===kind);
+      return `<details class="wardrobe-inventory-group" data-wardrobe-group="${kind}">
+        <summary><strong>${title}</strong><span>${subitems.length}종 ${subitems.length?'· 펼쳐서 장착':'· 비어 있음'} <b>⌄</b></span></summary>
+        <div class="wardrobe-inventory">
+          ${subitems.map(item=>{
+            const count=item.kind==='bubble'?(prof.consumables[item.id]||0):1;
+            const icon=item.kind==='helmet'?marketArt(item):'<span class="wardrobe-bubble-art" style="--bubble:'+item.color+'"></span>';
+            return `<button type="button" class="wardrobe-inventory-item ${wardrobePending===item.id?'is-picked':''}"
+              data-inventory-item="${item.id}" draggable="true" aria-pressed="${wardrobePending===item.id}">
+              <span class="inventory-icon">${icon}</span><span class="inventory-name">${item.name.replace(' 버블 보호막',' 버블')}</span>
+              <strong class="inventory-count">${item.kind==='bubble'?'×'+count:'보유'}</strong>
+            </button>`;
+          }).join('')||'<p class="wardrobe-empty-inventory">보유한 아이템이 없어요.</p>'}
+        </div></details>`;
     }).join('');
     const badge=helmet?`<span class="wardrobe-equipped-badge">${helmet.icon} ${helmet.name} 장착 중</span>`:
       '<span class="wardrobe-equipped-badge is-empty">헬멧 미착용</span>';
@@ -923,8 +939,7 @@
         <button type="button" data-char-direction="-1" class="wardrobe-arrow" aria-label="이전 캐릭터">❮</button>
         <div class="wardrobe-portrait">
           <div class="wardrobe-portrait-art">
-            <img src="${active.front}" alt="${active.name} 캐릭터 일러스트" draggable="false">
-            ${helmetPreviewMarkup(wardrobe.gear.helmet,active.id)}
+            ${helmet?'<canvas class="wardrobe-composed-portrait" data-worn-portrait aria-label="'+esc(active.name)+' 헬멧 착용 모습"></canvas>':'<img src="'+active.front+'" alt="'+esc(active.name)+' 캐릭터 일러스트" draggable="false">'}
           </div>
           <div class="wardrobe-portrait-footer"><strong>${active.name}</strong>
             <span class="wardrobe-active-tag">✓ 사용 중</span></div>
@@ -943,13 +958,17 @@
         <div class="wardrobe-gear-slots">${gear}</div>
       </div>
       <div class="wardrobe-section">
-        <div class="wardrobe-heading"><strong>🎒 내 보관함</strong><small>드래그하거나 선택 후 슬롯 터치</small></div>
-        <div class="wardrobe-inventory">${inventory||'<p class="wardrobe-empty-inventory">아직 보관한 아이템이 없어. 상점에서 구매하면 여기에 나타나.</p>'}</div>
+        <div class="wardrobe-heading"><strong>내 보관함</strong><small>종류 선택 → 아이템 선택 → 슬롯 장착</small></div>
+        <div class="wardrobe-inventory-groups">${inventory}</div>
         <p id="wardrobeHint" class="wardrobe-hint">${wardrobePending?'선택한 아이템을 장착 슬롯에 눌러 넣어 주세요.':'아이템을 누르고 슬롯을 터치하거나, 직접 끌어다 놓으세요.'}</p>
       </div>
     </div>`;
   }
   function marketArt(item,full=false){
+  if(item.kind==='helmet'){
+    const asset=item.id==='helmet_frog'?'assets/helmet_frog_full.svg':'assets/helmet_basic_full.svg';
+    return '<img class="market-svg" src="'+asset+'" alt="">';
+  }
   const id="mark-"+item.id+(full?"-big":"-small");
   if(item.kind==="bubble"){
     const color={bubble_10:["#fff9c2","#ffb932","#a85424"],bubble_20:["#c5ffe9","#20d69a","#116f55"],bubble_30:["#ffe0d8","#f3437b","#8d295f"]}[item.id]||["#fff","#9ae","#457"];
@@ -958,27 +977,69 @@
   const frog=item.id==="helmet_frog",primary=frog?"#73c668":"#8aa5af",shadow=frog?"#285940":"#374a58",light=frog?"#ddffb9":"#f4ead8";
   return `<svg viewBox="0 0 100 100" class="market-svg" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="${id}" x1="0" y1="0" x2="1" y2="1"><stop stop-color="${light}"/><stop offset=".46" stop-color="${primary}"/><stop offset="1" stop-color="${shadow}"/></linearGradient></defs><ellipse cx="50" cy="82" rx="32" ry="6" fill="#000" opacity=".25"/>${frog?'<circle cx="28" cy="27" r="13" fill="#72b861" stroke="#285940" stroke-width="3"/><circle cx="72" cy="27" r="13" fill="#72b861" stroke="#285940" stroke-width="3"/><circle cx="29" cy="26" r="6" fill="#fff"/><circle cx="71" cy="26" r="6" fill="#fff"/><circle cx="31" cy="27" r="2.7" fill="#273a34"/><circle cx="73" cy="27" r="2.7" fill="#273a34"/>':''}<path d="M15 69V58C15 33 29 20 50 20S85 33 85 58v11l-9 10H24z" fill="url(#${id})" stroke="${shadow}" stroke-width="3"/><path d="M23 52Q27 31 52 28" fill="none" stroke="${light}" opacity=".65" stroke-width="5" stroke-linecap="round"/>${frog?'<path d="M36 56q14 10 28 0" fill="none" stroke="#316746" stroke-width="3"/>':'<path d="M47 25h6v47h-6z" fill="#d6b778"/>'}<path d="M12 68Q50 76 88 68l-5 11Q50 89 17 79z" fill="#ad824e" stroke="#62462f" stroke-width="2"/><path d="M25 73q25 7 50 0" fill="none" stroke="#ffe6ac" opacity=".75" stroke-width="2"/></svg>`;
 }
-  let marketTab='all',marketSelected=null;
+  let marketTab='items',marketGroup=null,marketSelected=null,marketCharacter=null;
   function shopPanelHTML(prof,fmt){
-  const items=sys.ITEM_CATALOG;
-  const shown=items.filter(i=>marketTab==="all"||i.kind===marketTab);
-  const chosen=items.find(i=>i.id===marketSelected);
-  const count=i=>i.kind==="bubble"?(prof.consumables[i.id]||0):(prof.inventory.includes(i.id)?1:0);
-  const coin=n=>`<span class="market-coin" aria-hidden="true"></span>${fmt(n)}`;
-  const tabHTML=[["all","전체"],["bubble","보호막"],["helmet","헬멧"]].map(([id,label])=>`<button type="button" data-market-tab="${id}" class="market-tab ${marketTab===id?'active':''}" role="tab" aria-selected="${marketTab===id}">${label}</button>`).join("");
-  const tiles=shown.map(i=>{
-    const owned=count(i),permanent=i.kind!=="bubble"&&owned;
-    const short=i.kind==="bubble"?i.name.replace(" 버블 보호막"," 버블"):i.name;
-    return `<button type="button" class="market-tile ${permanent?'is-owned':''}" data-market-item="${i.id}" aria-label="${esc(i.name)}, 상품 상세 보기"><span class="market-art">${marketArt(i)}</span>${owned?`<span class="market-stock">${i.kind==='bubble'?'×'+owned:'보유'}</span>`:''}<span class="market-name">${esc(short)}</span><span class="market-price">${permanent?'구매 완료':coin(i.price)}</span></button>`;
-  }).join("");
-  let details="";
-  if(chosen){
-    const have=count(chosen),permanent=chosen.kind!=="bubble"&&have;
-    const guidance=chosen.kind==="bubble"?"캐릭터 화면에서 출전 슬롯에 장착하세요. 게임 중 직접 사용하면 1개가 소모되고 정해진 시간 동안 충돌을 방어해요.":"한 번 구매하면 영구 소유해요. 캐릭터 화면에서 장착하면 매 판 충돌 방어 횟수가 충전됩니다.";
-    details=`<div class="market-overlay"><button type="button" class="market-shade" data-market-close aria-label="상품 설명 닫기"></button><section class="market-detail" role="dialog" aria-modal="true" aria-label="${esc(chosen.name)} 상세 정보"><span class="market-handle"></span><button type="button" class="market-close" data-market-close aria-label="닫기">✕</button><div class="market-detail-head"><span class="market-large-art">${marketArt(chosen,true)}</span><div class="market-detail-title"><small>${chosen.kind==='bubble'?'소모품 · 보호막':'영구 장비 · 헬멧'}</small><strong>${esc(chosen.name)}</strong><b>${chosen.kind==='bubble'?chosen.seconds+'초 충돌 방어':'매 판 충돌 '+chosen.hits+'회 방어'}</b><span>${chosen.kind==='bubble'?'보유 '+have+'개':have?'보유 중':'미구매'}</span></div></div><p class="market-guide">${guidance}</p><div class="market-detail-bottom"><div><small>구매 가격</small><strong>${coin(chosen.price)}</strong></div><button type="button" data-market-buy="${chosen.id}" ${permanent?'disabled':''}>${permanent?'보유 중':'구매하기'}</button></div></section></div>`;
+    const items=sys.ITEM_CATALOG;
+    const sectionDefs=[
+      {id:'characters',label:'캐릭터',mark:'✦'},
+      {id:'skins',label:'스킨',mark:'✧'},
+      {id:'gear',label:'장비',mark:'⛨'},
+      {id:'items',label:'아이템',mark:'✳'}
+    ];
+    const groups=marketTab==='gear'?
+      [{id:'helmet',label:'헬멧',desc:'머리 보호장비'},{id:'cape',label:'망토',desc:'외형 장비'},{id:'shoes',label:'신발',desc:'외형 장비'},{id:'pants',label:'바지',desc:'외형 장비'},{id:'top',label:'상의',desc:'외형 장비'}]:
+      marketTab==='items'?[{id:'bubble',label:'보호 버블',desc:'게임 중 사용'}]:[];
+    const shown=items.filter(i=>i.kind===marketGroup);
+    const chosen=items.find(i=>i.id===marketSelected);
+    const character=sys.CHARACTER_CATALOG.find(c=>c.id===marketCharacter);
+    const count=i=>i.kind==='bubble'?(prof.consumables[i.id]||0):(prof.inventory.includes(i.id)?1:0);
+    const coin=n=>'<span class="market-coin" aria-hidden="true"></span>'+fmt(n);
+    const menu=sectionDefs.map(s=>`<button type="button" data-market-tab="${s.id}" class="market-main-tab ${marketTab===s.id?'active':''}" aria-pressed="${marketTab===s.id}"><b>${s.mark}</b><span>${s.label}</span></button>`).join('');
+    const breadcrumb=marketGroup?`<button type="button" data-market-back class="market-back">‹ ${marketTab==='gear'?'장비':'아이템'} 목록</button>`:'';
+    const folders=groups.map(g=>{
+      const qty=items.filter(x=>x.kind===g.id).length,disabled=qty===0;
+      return `<button type="button" class="market-folder ${disabled?'is-pending':''}" data-market-group="${g.id}" ${disabled?'disabled':''}>
+        <span class="market-folder-icon">${g.id==='helmet'?'<img src="assets/helmet_basic_full.svg" alt="">':g.id==='bubble'?'<span class="market-folder-orb"></span>':'✧'}</span>
+        <strong>${g.label}</strong><small>${qty?qty+'종 상품':'준비 중'}</small><span class="market-folder-caret">›</span>
+      </button>`;
+    }).join('');
+    const tiles=shown.map(i=>{
+      const qty=count(i),permanent=i.kind!=='bubble'&&qty;
+      const short=i.kind==='bubble'?i.name.replace(' 버블 보호막',' 버블'):i.name;
+      return `<button type="button" class="market-tile ${permanent?'is-owned':''}" data-market-item="${i.id}" aria-label="${esc(i.name)}, 상세 정보"><span class="market-art">${marketArt(i)}</span>
+       ${qty?'<span class="market-stock">'+(i.kind==='bubble'?'×'+qty:'보유')+'</span>':''}
+       <span class="market-name">${esc(short)}</span><span class="market-price">${permanent?'구매 완료':coin(i.price)}</span></button>`;
+    }).join('');
+    const cast=marketTab==='characters'?sys.CHARACTER_CATALOG.map(c=>
+      `<button type="button" class="market-character-card" data-market-character="${c.id}" aria-label="${esc(c.name)} 정보">
+         <img src="${c.front}" alt=""><strong>${esc(c.name)}</strong><small>${c.id===prof.selectedCharacter?'사용 중':'무료 보유'}</small></button>`).join(''):'';
+    let detail='';
+    if(chosen){
+      const have=count(chosen),permanent=chosen.kind!=='bubble'&&have;
+      const guidance=chosen.kind==='bubble'?'캐릭터 화면에서 출전 슬롯에 장착하세요. 게임 중 직접 사용하면 1개 소모되며 충돌을 막아줍니다.':'한 번 구매하면 영구 보유합니다. 캐릭터 화면에서 장착하면 매 판 충돌 방어 횟수가 충전됩니다.';
+      detail=`<div class="market-overlay"><button type="button" class="market-shade" data-market-close aria-label="상품 상세 닫기"></button><section class="market-detail" role="dialog" aria-modal="true" aria-label="${esc(chosen.name)} 상세">
+        <span class="market-handle"></span><button type="button" class="market-close" data-market-close aria-label="닫기">✕</button>
+        <div class="market-detail-head"><span class="market-large-art">${marketArt(chosen,true)}</span><div class="market-detail-title">
+        <small>${chosen.kind==='bubble'?'소모품 · 보호막':'영구 장비 · 헬멧'}</small><strong>${esc(chosen.name)}</strong><b>${chosen.kind==='bubble'?chosen.seconds+'초 충돌 방어':'매 판 충돌 '+chosen.hits+'회 방어'}</b><span>${chosen.kind==='bubble'?'보유 '+have+'개':have?'보유 중':'미구매'}</span></div></div>
+        <p class="market-guide">${guidance}</p><div class="market-detail-bottom"><div><small>구매 가격</small><strong>${coin(chosen.price)}</strong></div>
+        <button type="button" data-market-buy="${chosen.id}" ${permanent?'disabled':''}>${permanent?'보유 중':'구매하기'}</button></div></section></div>`;
+    }else if(character){
+      detail=`<div class="market-overlay"><button type="button" class="market-shade" data-market-close aria-label="캐릭터 상세 닫기"></button>
+      <section class="market-detail" role="dialog" aria-modal="true" aria-label="${esc(character.name)} 상세"><span class="market-handle"></span>
+      <button type="button" class="market-close" data-market-close aria-label="닫기">✕</button>
+      <div class="market-detail-head"><span class="market-large-art"><img src="${character.front}" alt=""></span><div class="market-detail-title"><small>캐릭터 · 무료 보유</small><strong>${esc(character.name)}</strong><b>캐릭터 화면에서 선택 가능</b></div></div>
+      <p class="market-guide">이미 보유 중인 캐릭터예요. 새로운 캐릭터의 실제 구매 기능은 아직 추가되지 않았어요.</p>
+      <div class="market-detail-bottom"><span>보유 중</span><button type="button" data-market-go-character>캐릭터 화면</button></div></section></div>`;
+    }
+    const browsing=marketTab==='characters'?`<div class="market-character-grid">${cast}</div>`:
+      marketTab==='skins'?'<p class="market-empty">등록된 스킨이 아직 없습니다. 실제 상품이 만들어지면 이곳에 추가됩니다.</p>':
+      marketGroup?`<div class="market-subhead">${breadcrumb}<strong>${marketGroup==='bubble'?'보호 버블':'헬멧'} <small>${shown.length}종</small></strong></div><div class="market-grid">${tiles}</div>`:
+      `<div class="market-category-grid">${folders}</div>`;
+    return `<div class="market-root"><p class="market-eyebrow">HELL DROP · MARKET</p><div class="market-wallet"><span>보유 코인</span><strong>${coin(prof.coins)}</strong></div>
+      <nav class="market-main-tabs" aria-label="상점 대분류">${menu}</nav>
+      <div class="market-count"><strong>${sectionDefs.find(x=>x.id===marketTab)?.label||'상점'}</strong><span>${marketGroup?'상품을 눌러 상세보기':'종류를 선택해 펼쳐보세요'}</span></div>
+      ${browsing}<div class="market-footer">구매 후 캐릭터 보관함에서 장착할 수 있어요.</div>${detail}</div>`;
   }
-  return `<div class="market-root"><p class="market-eyebrow">ADVENTURER'S MARKET</p><h3 class="market-title">탐험을 위한 장비</h3><div class="market-wallet"><span>보유 코인</span><strong>${coin(prof.coins)}</strong></div><nav class="market-tabs" role="tablist" aria-label="상품 분류">${tabHTML}</nav><div class="market-count"><strong>${marketTab==='all'?'모든 아이템':marketTab==='bubble'?'버블 보호막':'탐험가 헬멧'}</strong><span>${shown.length}개 · 상품을 눌러 자세히 보기</span></div><div class="market-grid">${tiles}</div><div class="market-footer">구매 후 캐릭터 화면의 보관함에서 장착할 수 있어요.</div>${details}</div>`;
-}
   function switchWardrobeCharacter(delta,indexOverride=null){
     const chars=sys.CHARACTER_CATALOG;
     const pos=chars.findIndex(c=>c.id===sys.profile.selectedCharacter);
@@ -1002,6 +1063,12 @@
   }
   function mountWardrobeControls(){
     const body=$('drawerBody'),carousel=$('wardrobeCarousel');
+    const worn=body.querySelector('[data-worn-portrait]');
+    if(worn){
+      const who=sys.CHARACTER_CATALOG.find(x=>x.id===sys.profile.selectedCharacter);
+      const wornHelmet=sys.wardrobeOf(sys.profile.selectedCharacter).gear.helmet;
+      if(who&&wornHelmet)window.HellHelmetComposer?.drawPortrait(worn,who.front,wornHelmet);
+    }
     body.querySelectorAll('[data-char-direction]').forEach(button=>button.addEventListener('click',()=>{
       switchWardrobeCharacter(Number(button.dataset.charDirection));
     }));
@@ -1025,6 +1092,10 @@
         }
       });
     }
+    body.querySelectorAll('[data-wardrobe-group]').forEach(section=>{
+      section.open=wardrobeExpanded.has(section.dataset.wardrobeGroup)||!!(wardrobePending&&sys.ITEM_CATALOG.some(i=>i.id===wardrobePending&&i.kind===section.dataset.wardrobeGroup));
+      section.addEventListener('toggle',()=>{if(section.open)wardrobeExpanded.add(section.dataset.wardrobeGroup);else wardrobeExpanded.delete(section.dataset.wardrobeGroup);});
+    });
     const active=sys.profile.selectedCharacter,wardrobe=sys.wardrobeOf(active);
     body.querySelectorAll('[data-character-slot],[data-gear-slot]').forEach(target=>{
       target.addEventListener('click',()=>{
@@ -1137,13 +1208,25 @@
         panel.scrollTop=offset;
       };
       $('drawerBody').querySelectorAll('[data-market-tab]').forEach(b=>b.addEventListener('click',()=>{
-        marketTab=b.dataset.marketTab;marketSelected=null;redraw();
+        marketTab=b.dataset.marketTab;marketGroup=null;marketSelected=null;marketCharacter=null;redraw();
+      }));
+      $('drawerBody').querySelectorAll('[data-market-group]').forEach(b=>b.addEventListener('click',()=>{
+        marketGroup=b.dataset.marketGroup;marketSelected=null;marketCharacter=null;redraw();
+      }));
+      $('drawerBody').querySelectorAll('[data-market-back]').forEach(b=>b.addEventListener('click',()=>{
+        marketGroup=null;marketSelected=null;marketCharacter=null;redraw();
+      }));
+      $('drawerBody').querySelectorAll('[data-market-character]').forEach(b=>b.addEventListener('click',()=>{
+        marketCharacter=b.dataset.marketCharacter;marketSelected=null;redraw();
+      }));
+      $('drawerBody').querySelectorAll('[data-market-go-character]').forEach(b=>b.addEventListener('click',()=>{
+        marketCharacter=null;openPanel('character');
       }));
       $('drawerBody').querySelectorAll('[data-market-item]').forEach(b=>b.addEventListener('click',()=>{
-        marketSelected=b.dataset.marketItem;redraw();
+        marketSelected=b.dataset.marketItem;marketCharacter=null;redraw();
       }));
       $('drawerBody').querySelectorAll('[data-market-close]').forEach(b=>b.addEventListener('click',()=>{
-        marketSelected=null;redraw();
+        marketSelected=null;marketCharacter=null;redraw();
       }));
       $('drawerBody').querySelectorAll('[data-market-buy]').forEach(b=>b.addEventListener('click',()=>{
         const result=sys.purchase(b.dataset.marketBuy);
@@ -1175,14 +1258,14 @@
       });
     }
   }
-  document.querySelectorAll('[data-panel]').forEach(button=>button.addEventListener('click',()=>{if(button.dataset.panel==='shop'){marketTab='all';marketSelected=null;}openPanel(button.dataset.panel);}));
+  document.querySelectorAll('[data-panel]').forEach(button=>button.addEventListener('click',()=>{if(button.dataset.panel==='shop'){marketTab='items';marketGroup=null;marketSelected=null;marketCharacter=null;}openPanel(button.dataset.panel);}));
   function closePanel(){
     $('drawer').classList.add('hidden');
     sys.audio.stopPreview();
   }
   $('drawerClose').addEventListener('click',closePanel);
   $('drawer').addEventListener('click',e=>{if(e.target===$('drawer'))closePanel()});
-  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('drawer').classList.contains('hidden')){if(marketSelected){marketSelected=null;openPanel('shop');}else closePanel();}});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('drawer').classList.contains('hidden')){if(marketSelected||marketCharacter){marketSelected=null;marketCharacter=null;openPanel('shop');}else if(marketGroup){marketGroup=null;openPanel('shop');}else closePanel();}});
   // WEB 0.9: Home-only WebGL sculpt; BGM / audio, gameplay and records unchanged.
   (function setupLobbyCharacter(){
     const actor=$('lobbyCharacter'), embers=$('lobbyEmbers');
