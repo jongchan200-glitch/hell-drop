@@ -1,3 +1,8 @@
+## ART RIG V4 — 2026-11-24 | ART APPROVAL PENDING
+Test studio: https://jongchan200-glitch.github.io/hell-drop/rig-v4-lab.html
+Replaces primitive rig shapes with painted high-detail 2D modular art. Uses a single 4x3 WebP transparent atlas with 4 complete interchangeable heads/masks (boy/girl/frog/cat), 2 outfits, separated upper/lower arm pieces, upper/lower leg pieces, 2 flowing cape wing assets and programmatic bracelets/brooches/boot treatment. 648 visual combinations use ONE articulated skeleton and existing three key motion families: gliding, folded high-speed, wall kick (with two-bone foot IK and arm/cape response). Cosmetic-only test; no purchases, stat effects or profile writes. Main game untouched and user visual approval still pending.
+Assets: rigv4-kit.webp (generated in-project art sheet, original work), rig-v4.js (Canvas 2D no runtime dependencies), rig-v4-lab.html, rig-v4-lab.css, rig-v4-lab.js. Designed for eventual Android WebView asset bundling; not yet APK-tested. Stable V3 remains on main game.
+
 ## WEB RIG V3 (2026-11-24)
 Universal rig uses two-bone IK during wall plant, eight motion phases, continuous aerial flip and torso rotation fix. Glide spreads limbs/cape, boost contracts them. Original character/coins/saves intact; ?rig=1 test, ?rig=0 original. V3 needs real-device design feedback.
 
