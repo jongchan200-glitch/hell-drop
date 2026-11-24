@@ -230,7 +230,7 @@ function poseAt(arg){
  }
  if(inJump){
    const k=jumpKeys(jumpProgress,side),weight=Math.sin(Math.PI*jumpProgress)**.48;
-   for(const key of KEYS)base[key]+=k[key]*weight;
+   for(const key of KEYS){if(key==='head')base.headTilt+=k[key]*weight;else base[key]+=k[key]*weight;}
    base.headTilt-=base.tilt*.22*weight;
    base.phase=k.phase;
  }
