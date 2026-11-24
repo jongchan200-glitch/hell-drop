@@ -1,0 +1,74 @@
+hell-drop.png
+size: 2048,2048
+filter: Linear,Linear
+pma: false
+empty
+  bounds: 2,2,1,1
+uiji_face
+  bounds: 7,2,137,95
+uiji_fringe
+  bounds: 148,2,179,140
+uiji_shirt
+  bounds: 331,2,294,162
+uiji_pants
+  bounds: 629,2,183,274
+uiji_shoe_L
+  bounds: 816,2,72,82
+uiji_glove_L
+  bounds: 892,2,67,67
+uiji_shoe_L_silver
+  bounds: 963,2,72,82
+uiji_glove_L_silver
+  bounds: 1039,2,67,67
+uiji_shoe_R
+  bounds: 1110,2,74,82
+uiji_glove_R
+  bounds: 1188,2,64,66
+uiji_shoe_R_silver
+  bounds: 1256,2,74,82
+uiji_glove_R_silver
+  bounds: 1334,2,64,66
+useoi_face
+  bounds: 1402,2,140,126
+useoi_fringe
+  bounds: 1546,2,165,164
+useoi_backhair
+  bounds: 1715,2,171,66
+useoi_sidehair
+  bounds: 2,280,167,52
+useoi_shirt
+  bounds: 173,280,302,184
+useoi_pants
+  bounds: 479,280,179,274
+useoi_shoe_L
+  bounds: 662,280,70,82
+useoi_glove_L
+  bounds: 736,280,67,65
+useoi_shoe_L_silver
+  bounds: 807,280,70,82
+useoi_glove_L_silver
+  bounds: 881,280,67,65
+useoi_shoe_R
+  bounds: 952,280,75,82
+useoi_glove_R
+  bounds: 1031,280,67,65
+useoi_shoe_R_silver
+  bounds: 1102,280,75,82
+useoi_glove_R_silver
+  bounds: 1181,280,67,65
+bracelet_L
+  bounds: 1252,280,21,15
+bracelet_R
+  bounds: 1277,280,21,15
+uiji_cape_L
+  bounds: 1302,280,190,174
+uiji_cape_R
+  bounds: 1496,280,190,174
+useoi_cape_L
+  bounds: 1690,280,190,174
+useoi_cape_R
+  bounds: 2,558,190,174
+explorer_helmet
+  bounds: 196,558,159,125
+frog_mask
+  bounds: 359,558,155,140
