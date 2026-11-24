@@ -379,9 +379,13 @@
     // Original obstacle collisions, gravity, speed and scoring remain unchanged.
     const newRig=window.HellRigV2;
     const progress=clamp01((s.hopVisual-.17)/.58);
-    const rigX=newRig?.isEnabled()&&s.hopVisual<1?
+    const rigX=(newRig?.isEnabled()||window.HellWorkRig?.enabled)&&s.hopVisual<1?
       W*(wallX(s.hopFrom)*(1-smooth(progress))+wallX(s.wall)*smooth(progress)):posX(s)*W;
-    drawHero(rigX,charY-arc,u,s.fold,s.elapsed,s.speed,s.stage==='OVER',s.hopVisual<1,s.hopFrom);
+    const workRig=window.HellWorkRig;
+    if(workRig?.enabled&&workRig.ready){
+      workRig.update({active:true,x:rigX,y:charY-arc,u,fold:s.fold,elapsed:s.elapsed,speed:s.speed,
+        hopping:s.hopVisual<1,hopVisual:s.hopVisual,hopFrom:s.hopFrom,character:sys.profile.selectedCharacter});
+    }else drawHero(rigX,charY-arc,u,s.fold,s.elapsed,s.speed,s.stage==='OVER',s.hopVisual<1,s.hopFrom);
     // Helmet is baked into each active character frame, not painted above the actor.
     drawBubble(posX(s)*W,charY-arc,u);
     if(s.speed>670){ctx.fillStyle='#ff4f6115';ctx.fillRect(0,0,W,H);}
@@ -836,7 +840,10 @@
   // No artificial hole-jump intro. Home is a dedicated living character lobby,
   // and pressing PLAY enters the existing falling gameplay immediately.
   function draw(){
-    if(s.stage==='READY'){ctx.fillStyle='#0f0d19';ctx.fillRect(0,0,W,H);}
+    if(s.stage==='READY'){
+      if(window.HellWorkRig?.enabled)window.HellWorkRig.update({active:false});
+      ctx.fillStyle='#0f0d19';ctx.fillRect(0,0,W,H);
+    }
     else cave();
   }
   function frame(now){
@@ -844,7 +851,7 @@
     lastFrame=now;clock+=dt;
     if(s.stage==='PLAYING')advance(dt);
     sys.audio.fade(dt);
-    draw();drawVortex();updateUI();requestAnimationFrame(frame);
+    draw();window.HellWorkRig?.paint?.();drawVortex();updateUI();requestAnimationFrame(frame);
   }
   function applyControlSide(){
     controls.classList.toggle('boost-right',sys.profile.settings.boostSide==='right');
