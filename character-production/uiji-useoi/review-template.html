@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="ko">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>지옥 낙하 | 캐릭터 검수</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#11111a;color:#f4e7d6;font:15px system-ui,sans-serif}main{max-width:880px;margin:auto;padding:22px 16px}h1{font-size:clamp(24px,5vw,36px);margin:0 0 14px}canvas{width:100%;height:auto;display:block;border:1px solid #595067;border-radius:15px;background:radial-gradient(ellipse at center,#382637,#171520 78%)}.controls{display:flex;gap:11px 16px;flex-wrap:wrap;margin:15px 0}label{display:flex;align-items:center;gap:6px;font-size:14px}button,select{font:inherit;color:inherit;background:#252332;border:1px solid #66576d;border-radius:8px;min-height:40px;padding:6px 9px}input{accent-color:#e9a766}.timeline{display:flex;gap:12px;align-items:center}.timeline input{flex:1;min-width:70px}.meta{color:#d4bfd2;font-size:13px}
+</style>
+<main>
+<h1>지옥 낙하 캐릭터 검수</h1>
+<canvas width="800" height="500" aria-label="관절 애니메이션 시연"></canvas>
+<div class="controls">
+  <label>캐릭터 <select id="hero"><option value="Uiji">우이지</option><option value="Useoi">우서이</option></select></label>
+  <label>동작 <select id="clip"><option value="01_Cape_Glide">망토 펼친 낙하</option><option value="02_Fast_Drop">고속 낙하</option><option value="03_Wall_Kick_Left">왼쪽 벽점프</option><option value="04_Wall_Kick_Right">오른쪽 벽점프</option><option value="">중립 자세</option></select></label>
+  <label>머리 장비 <select id="head"><option value="">기본</option><option value="Helmet">탐험 헬멧</option><option value="Frog">밀폐 개구리 탈</option></select></label>
+  <label>의상 <select id="outfit"><option value="">기본</option><option value="other">교체</option></select></label>
+  <label>장갑 <select id="glove"><option value="base">기본</option><option value="silver">은색</option></select></label>
+  <label>신발 <select id="shoe"><option value="base">기본</option><option value="silver">은색</option></select></label>
+  <label><input type="checkbox" id="bracelet"> 팔찌</label>
+  <label><input type="checkbox" id="cape" checked> 망토</label>
+  <label><input type="checkbox" id="small"> 게임 크기</label>
+  <label><input type="checkbox" id="slow"> 느린 재생</label>
+</div>
+<div class="timeline"><button id="play">일시정지</button><input id="time" type="range" min="0" max="1" step="0.001" value="0" aria-label="재생 위치"><output id="seconds">0.00초</output></div>
+<p class="meta" id="status" role="status">원화 불러오는 중</p>
+</main>
+<script>
+const {skeleton, atlas, image} = /* RIG_DATA */;
+const $ = id => document.getElementById(id);
+const canvas = document.querySelector('canvas');
+const gl = canvas.getContext('webgl', {alpha:true, antialias:true});
+if (!gl) {
+  $('status').textContent = '이 브라우저에서 WebGL을 사용할 수 없습니다.';
+  throw Error('WebGL unavailable');
+}
+function shader(type, source) {
+  const result = gl.createShader(type);
+  gl.shaderSource(result, source);
+  gl.compileShader(result);
+  if (!gl.getShaderParameter(result, gl.COMPILE_STATUS)) throw Error(gl.getShaderInfoLog(result));
+  return result;
+}
+const program = gl.createProgram();
+gl.attachShader(program, shader(gl.VERTEX_SHADER, 'attribute vec2 p; attribute vec2 uv; varying vec2 t; void main(){t=uv; gl_Position=vec4(p,0.,1.);}'));
+gl.attachShader(program, shader(gl.FRAGMENT_SHADER, 'precision mediump float; varying vec2 t; uniform sampler2D tex; void main(){gl_FragColor=texture2D(tex,t);}'));
+gl.linkProgram(program);
+if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw Error(gl.getProgramInfoLog(program));
+gl.useProgram(program);
+gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+for (const [name, offset] of [['p',0],['uv',8]]) {
+  const location = gl.getAttribLocation(program,name);
+  gl.enableVertexAttribArray(location);
+  gl.vertexAttribPointer(location,2,gl.FLOAT,false,16,offset);
+}
+gl.enable(gl.BLEND);
+gl.blendFunc(gl.ONE,gl.ONE_MINUS_SRC_ALPHA);
+gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL,true);
+gl.bindTexture(gl.TEXTURE_2D,gl.createTexture());
+gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);
+gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);
+gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+const assets = {};
+const skins = Object.fromEntries(skeleton.skins.map(s => [s.name,s.attachments]));
+const index = Object.fromEntries(skeleton.bones.map((b,i) => [b.name,i]));
+for (const skin of skeleton.skins) for (const entries of Object.values(skin.attachments)) {
+  for (const part of Object.values(entries)) {
+    if (part.type !== 'mesh' || assets[part.path]) continue;
+    const points = [];
+    for (let i=0; i<part.vertices.length;) {
+      const count=part.vertices[i++];
+      points.push(part.vertices.slice(i,i+count*4));
+      i+=count*4;
+    }
+    assets[part.path]=points;
+  }
+}
+function value(keys, time, field, fallback) {
+  if (!keys?.length) return fallback;
+  const next = keys.findIndex(k => k.time>time);
+  if (next<=0) return keys[next===0?0:keys.length-1][field];
+  const a=keys[next-1], b=keys[next];
+  return a[field]+(b[field]-a[field])*(time-a.time)/(b.time-a.time);
+}
+function world(clip,time) {
+  const poses=[];
+  for (const bone of skeleton.bones) {
+    const keys=clip?.bones[bone.name];
+    const theta=value(keys?.rotate,time,'value',0)*Math.PI/180;
+    const sx=value(keys?.scale,time,'x',1), sy=value(keys?.scale,time,'y',1);
+    const x=bone.x+value(keys?.translate,time,'x',0), y=bone.y+value(keys?.translate,time,'y',0);
+    const a=Math.cos(theta)*sx,b=Math.sin(theta)*sx,c=-Math.sin(theta)*sy,d=Math.cos(theta)*sy;
+    const p=poses[index[bone.parent]];
+    poses.push(p?[p[0]*a+p[2]*b,p[1]*a+p[3]*b,p[0]*c+p[2]*d,p[1]*c+p[3]*d,
+                 p[0]*x+p[2]*y+p[4],p[1]*x+p[3]*y+p[5]]:[a,b,c,d,x,y]);
+  }
+  return poses;
+}
+function render(clip,time) {
+  const vertices=[];
+  const poses=world(clip,time);
+  const hero=$('hero').value, other=hero==='Uiji'?'Useoi':'default';
+  const basic=hero==='Uiji'?'default':hero;
+  const worn=$('head').value?hero+' '+$('head').value:basic;
+  const scale=$('small').checked?.22:.68;
+  for (const slot of skeleton.slots) {
+    const key=slot.name;
+    const group=key.split('_')[0];
+    const skin=$('outfit').value && ['shirt','pants'].includes(key)?other:worn;
+    let choice=slot.attachment;
+    if (group==='shoe'||group==='glove') choice=$(group).value;
+    if (group==='cape'&&!$('cape').checked) continue;
+    if (group==='bracelet') {if (!$('bracelet').checked) continue; choice='gold';}
+    const part=skins[skin][key]?.[choice]??skins.default[key]?.[choice];
+    if (!part || part.path==='empty') continue;
+    const [ax,ay,w,h]=atlas[part.path];
+    let points=[],uvs,triangles;
+    if (part.type==='mesh') {
+      points=assets[part.path].map(entries=>{
+        let x=0,y=0;
+        for(let i=0;i<entries.length;i+=4) {
+          const pose=poses[entries[i]], px=entries[i+1],py=entries[i+2],gain=entries[i+3];
+          x+=(pose[0]*px+pose[2]*py+pose[4])*gain;
+          y+=(pose[1]*px+pose[3]*py+pose[5])*gain;
+        }
+        return [x,y];
+      });
+      uvs=part.uvs;
+      triangles=part.triangles;
+    } else {
+      const pose=poses[index[slot.bone]];
+      points=[[-w/2,h/2],[w/2,h/2],[-w/2,-h/2],[w/2,-h/2]].map(([x,y])=>{
+        x+=part.x;y+=part.y;
+        return [pose[0]*x+pose[2]*y+pose[4],pose[1]*x+pose[3]*y+pose[5]];
+      });
+      uvs=[0,0,1,0,0,1,1,1];triangles=[0,2,1,1,2,3];
+    }
+    for (const i of triangles) {
+      const [x,y]=points[i];
+      vertices.push(x*scale*2/canvas.width,y*scale*2/canvas.height,
+        (ax+w*uvs[i*2])/2048,(ay+h*uvs[i*2+1])/2048);
+    }
+  }
+  gl.clearColor(0,0,0,0);
+  gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(vertices),gl.DYNAMIC_DRAW);
+  gl.drawArrays(gl.TRIANGLES,0,vertices.length/4);
+}
+let playing=true, time=0, last=0;
+$('play').onclick=()=>{
+  playing=!playing;
+  $('play').textContent=playing?'일시정지':'재생';
+};
+$('clip').onchange=()=>{time=0;};
+$('time').oninput=()=>{
+  time=+$('time').value;
+  playing=false;
+  $('play').textContent='재생';
+};
+function frame(now) {
+  const clip=skeleton.animations[$('clip').value];
+  const duration=clip?.bones.root.rotate.at(-1).time??0;
+  if (playing && duration>0) time=(time+Math.min(50,now-(last||now))*($('slow').checked?.00033:.001))%duration;
+  last=now;
+  $('time').max=duration||1;
+  $('time').value=time;
+  $('seconds').textContent=time.toFixed(2)+'초';
+  render(clip,time);
+  requestAnimationFrame(frame);
+}
+const bitmap=new Image();
+bitmap.onload=()=>{
+  gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,bitmap);
+  $('status').textContent='타임라인을 움직여 연결부와 장비 위치를 확인할 수 있습니다.';
+  requestAnimationFrame(frame);
+};
+bitmap.src=image;
+</script>
