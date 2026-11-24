@@ -476,3 +476,50 @@ html,body{height:100%;overflow:hidden}
 @keyframes marketSlide{from{opacity:.5;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
 @media(max-width:350px){.market-grid{gap:5px}.market-tile{min-height:110px;padding:4px 2px 6px}.market-art{height:59px}.market-name{font-size:9px}.market-detail-head{grid-template-columns:98px 1fr}.market-large-art{width:95px;height:101px}}
 @media(prefers-reduced-motion:reduce){.market-detail{animation:none}}
+
+/* WEB 2.3: four primary shop sections + nested equipment/consumables. */
+.market-main-tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;padding:5px;border-radius:12px;background:#0f1421b3;border:1px solid #977e644a}
+.market-main-tab{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;min-height:59px;min-width:0;padding:6px 1px;border:1px solid #4e536378;border-radius:10px;color:#c5c3cc;background:linear-gradient(155deg,#272a3b,#1b2130);font-size:11px;font-weight:900;cursor:pointer;letter-spacing:-.05em}
+.market-main-tab b{font-size:22px;line-height:1.2;font-weight:700;color:#d0aa76}
+.market-main-tab.active{background:linear-gradient(145deg,#b88c53,#6e4e40);border-color:#ffdf9b;color:#fff7e6;box-shadow:inset 0 1px #fff5,0 2px 9px #0006}
+.market-main-tab.active b{color:#fff3bd}
+.market-category-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-top:1px}
+.market-folder{position:relative;display:flex;flex-direction:column;align-items:center;gap:3px;justify-content:center;min-height:113px;padding:8px 3px;border:1px solid #b59b7d85;border-radius:12px;background:linear-gradient(145deg,#423449,#202d38);color:#fff2db;cursor:pointer}
+.market-folder:active:not(:disabled){filter:brightness(1.17)}
+.market-folder.is-pending{opacity:.55;cursor:default}
+.market-folder-icon{display:grid;place-items:center;width:50px;height:48px;line-height:1;color:#c5dece;font-size:28px}
+.market-folder-icon img{max-width:100%;max-height:100%;object-fit:contain;filter:drop-shadow(0 2px 4px #0007)}
+.market-folder strong{font-size:11px}
+.market-folder small{font-size:9px;color:#b9c1cb}
+.market-folder-caret{position:absolute;top:5px;right:7px;color:#d3bd9d;font-size:17px}
+.market-folder-orb{display:block;width:40px;height:40px;border:2px solid #f9edb3;border-radius:50%;background:radial-gradient(circle at 31% 25%,#fffbea,#ffdd64 28%,#e69734 65%,#955839)}
+.market-subhead{display:flex;flex-direction:column;gap:4px;margin-bottom:1px}
+.market-subhead strong{font-size:13px;color:#ffe0a9}
+.market-subhead small{font-size:10px;color:#a7b4be}
+.market-back{align-self:flex-start;min-height:30px;padding:3px 8px;border:1px solid #baae995a;background:#28314085;border-radius:8px;color:#d7e3de;font-size:11px;font-weight:850;cursor:pointer}
+.market-empty{padding:25px 10px;border:1px dashed #a197846e;border-radius:11px;text-align:center;font-size:12px;color:#c2c1c4;background:#151b27}
+.market-character-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.market-character-card{display:flex;flex-direction:column;align-items:center;gap:4px;min-height:177px;padding:9px 6px;border:1px solid #bcaa8968;border-radius:13px;color:#ffe7bc;background:radial-gradient(ellipse at 50% 30%,#80624e6b,#25293a 78%);cursor:pointer}
+.market-character-card img{display:block;width:100%;height:135px;max-width:140px;object-fit:contain}
+.market-character-card strong{font-size:12px}
+.market-character-card small{font-size:10px;color:#a6dbc9}
+.market-large-art>img{max-width:100%;max-height:100%;object-fit:contain}
+.market-main-tab:focus-visible,.market-folder:focus-visible,.market-character-card:focus-visible{outline:2px solid #7eebd7;outline-offset:2px}
+/* The selected helmet portrait is a single baked character render, not two layers. */
+.wardrobe-composed-portrait{height:100%;width:auto;max-width:100%;object-fit:contain;filter:drop-shadow(0 5px 12px #03030a98);pointer-events:none}
+.wardrobe-inventory-groups{display:flex;flex-direction:column;gap:7px}
+.wardrobe-inventory-group{border:1px solid #b39e8369;border-radius:10px;overflow:hidden;background:#101a27a6}
+.wardrobe-inventory-group>summary{cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;gap:8px;padding:11px 10px;min-height:42px;background:linear-gradient(105deg,#342f42,#1e3037);color:#fff1d3}
+.wardrobe-inventory-group>summary::-webkit-details-marker{display:none}
+.wardrobe-inventory-group>summary strong{font-size:12px}
+.wardrobe-inventory-group>summary span{font-size:10px;color:#b4d5cc}
+.wardrobe-inventory-group>summary b{display:inline-block;font-size:17px;margin-left:3px;transition:transform .14s}
+.wardrobe-inventory-group[open]>summary b{transform:rotate(180deg)}
+.wardrobe-inventory{grid-template-columns:repeat(4,minmax(0,1fr));padding:7px;gap:5px}
+.wardrobe-inventory-item{min-width:0;min-height:92px;display:flex;flex-direction:column;justify-content:space-between;align-items:center;padding:6px 3px 5px;gap:2px;text-align:center;touch-action:none}
+.wardrobe-inventory-item .inventory-icon{display:grid;place-items:center;height:45px;width:100%;font-size:24px}
+.wardrobe-inventory-item .inventory-icon .market-svg{max-height:44px;max-width:48px}
+.wardrobe-bubble-art{display:block;width:34px;height:34px;border:2px solid #fff8d5aa;border-radius:50%;background:radial-gradient(circle at 32% 22%,#fff9f2,var(--bubble) 55%,#4c3b4f 100%);box-shadow:inset -3px -4px 7px #050c2080}
+.wardrobe-inventory-item .inventory-name{font-size:9px;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.15}
+.wardrobe-inventory-item .inventory-count{font-size:9px}
+@media(max-width:350px){.market-category-grid{gap:5px}.market-folder{min-height:101px}.market-main-tab{font-size:10px}.market-main-tab b{font-size:19px}.wardrobe-inventory{gap:4px;padding:5px}.wardrobe-inventory-item{min-height:88px}}
