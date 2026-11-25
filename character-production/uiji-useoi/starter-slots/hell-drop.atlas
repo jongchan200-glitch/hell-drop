@@ -9,26 +9,28 @@ cloth_L
 cloth_R
   bounds: 535,2,155,164
 shorts
-  bounds: 694,2,140,91
+  bounds: 694,2,156,151
 tee
-  bounds: 838,2,180,145
+  bounds: 854,2,184,148
 slipper_L
-  bounds: 1022,2,64,46
+  bounds: 1042,2,64,46
 tread_L
-  bounds: 1090,2,50,47
+  bounds: 1110,2,50,47
 slipper_R
-  bounds: 1144,2,64,46
+  bounds: 1164,2,64,46
 tread_R
-  bounds: 1212,2,50,47
+  bounds: 1232,2,50,47
 uji_original
-  bounds: 1266,2,182,166
+  bounds: 1286,2,171,165
 useo_original
-  bounds: 1452,2,256,169
+  bounds: 1461,2,256,169
 useo_L
-  bounds: 1712,2,239,149
+  bounds: 1721,2,239,149
 useo_R
   bounds: 2,438,239,149
 safety
-  bounds: 245,438,189,91
-safety_side
-  bounds: 438,438,186,88
+  bounds: 245,438,179,75
+hardhat_L
+  bounds: 428,438,180,88
+hardhat_R
+  bounds: 612,438,180,88
