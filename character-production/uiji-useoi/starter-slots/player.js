@@ -122,6 +122,7 @@
       if (['cape','shirt','pants','shoe','helmet'].includes(group) && !l[group])continue;
       const frames=clip.slots?.[key]?.attachment;
       let choice=frames?.filter(k=>k.time<=t).at(-1)?.name||slot.attachment;
+      if(key==='body' && !l.cape)choice='open';
       const part=skins[basic]?.[key]?.[choice]??skins.default?.[key]?.[choice];
       if(!part||part.path==='empty')continue;
       const region=atlas[part.path];if(!region)continue;

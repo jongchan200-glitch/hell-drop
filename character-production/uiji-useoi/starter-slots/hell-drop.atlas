@@ -5,32 +5,34 @@ pma: false
 underlayer
   bounds: 2,2,370,432
 cloth_L
-  bounds: 376,2,155,164
+  bounds: 376,2,172,184
 cloth_R
-  bounds: 535,2,155,164
+  bounds: 552,2,172,184
+underlayer_holding
+  bounds: 728,2,362,432
 shorts
-  bounds: 694,2,156,151
+  bounds: 1094,2,156,151
 tee
-  bounds: 854,2,184,148
+  bounds: 1254,2,184,148
 slipper_L
-  bounds: 1042,2,64,46
+  bounds: 1442,2,64,46
 tread_L
-  bounds: 1110,2,50,47
+  bounds: 1510,2,50,47
 slipper_R
-  bounds: 1164,2,64,46
+  bounds: 1564,2,64,46
 tread_R
-  bounds: 1232,2,50,47
+  bounds: 1632,2,50,47
 uji_original
-  bounds: 1286,2,171,165
+  bounds: 1686,2,171,165
 useo_original
-  bounds: 1461,2,256,169
+  bounds: 2,438,256,169
 useo_L
-  bounds: 1721,2,239,149
+  bounds: 262,438,239,149
 useo_R
-  bounds: 2,438,239,149
+  bounds: 505,438,239,149
 safety
-  bounds: 245,438,179,75
+  bounds: 748,438,179,78
 hardhat_L
-  bounds: 428,438,180,88
+  bounds: 931,438,180,92
 hardhat_R
-  bounds: 612,438,180,88
+  bounds: 1115,438,180,92
