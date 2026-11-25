@@ -23,10 +23,17 @@
   window.HellKeypose=actor;
   function artwork(i){
     const c=layers[i];
-    if(!c.width){
+    const revision=window.HellStarterKit?.revision??-1;
+    // Recompose each pose's original pixels and fitted equipment when a
+    // garment toggle changes; every triangle keeps the same Work mesh timing.
+    if(!c.width||c._starterRevision!==revision){
       const [x,y,w,h]=boxes[i];
-      c.width=w;c.height=h;
-      c.getContext('2d').drawImage(image,x,y,w,h,0,0,w,h);
+      if(c.width!==w||c.height!==h){c.width=w;c.height=h;}
+      const ink=c.getContext('2d');
+      ink.clearRect(0,0,w,h);
+      ink.drawImage(image,x,y,w,h,0,0,w,h);
+      window.HellStarterKit?.paint?.(ink,i,w,h);
+      c._starterRevision=revision;
     }
     return c;
   }
