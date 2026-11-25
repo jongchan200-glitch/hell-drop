@@ -67,8 +67,12 @@
             if(d2<score){score=d2;closest=foot;}
           }
           const upright=closest&&closest[1]>.88;
-          const upper=closest&&y<closest[1]-.015;
-          type=upright&&upper?'legs':'shoes';
+          const upper=closest&&y<closest[1]-.017;
+          const openToe=closest&&y>closest[1]+.026;
+          // For vertically oriented feet, the blue instep band sits between
+          // the bare ankle and the exposed toes. Only the source shoe pixels
+          // are modified, so toes move with the actual Work animation.
+          type=upright&&(upper||openToe)?'legs':'shoes';
           strength=1;
         }
         // The entire original leg silhouette becomes bare skin below the short
