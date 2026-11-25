@@ -58,18 +58,34 @@
         const shoeMaterial=bright>105&&chroma<28;
         let type='',strength=0;
         const shoeZone=y>.59&&(i!==6||y>.57);
-        // Gray-white original shoe sprites are completely recolored as shoes.
-        // Unlike an ellipse overlay, the real pixel alpha supplies exact soles.
-        if(gear.shoes&&shoeZone&&shoeMaterial){type='shoes';strength=1;}
+        // Reuse the actual artist-drawn footwear shape (not blue ovals).
+        // Near-vertical feet show bare ankle/heel above a low rubber slide.
+        if(gear.shoes&&shoeZone&&shoeMaterial){
+          let closest=null,score=1e9;
+          for(const foot of p.feet){
+            const d2=((x-foot[0])/foot[2])**2+((y-foot[1])/foot[3])**2;
+            if(d2<score){score=d2;closest=foot;}
+          }
+          const upright=closest&&closest[1]>.88;
+          const upper=closest&&y<closest[1]-.015;
+          type=upright&&upper?'legs':'shoes';
+          strength=1;
+        }
         // The entire original leg silhouette becomes bare skin below the short
         // hem; no round masks or detached oval shoes.
-        const kickLeg=(i===6&&x<.39&&y>.595)||(i===7&&x<.47&&y>.66);
+        const kickLeg=(i===6&&x<.46&&y>.595)||(i===7&&x<.55&&y>.645);
         if(gear.bottom&&fabric&&!type&&(y>legStart||kickLeg)){
           type='legs';strength=clamp((y-legStart)*85+.65);
           if(kickLeg)strength=1;
         }
         const pant=ellipse(x,y,p.shorts);
-        if(gear.bottom&&pant>.03&&fabric){type='bottom';strength=pant;}
+        // Complete upper thigh cloth between waist seam and leg opening.
+        // Prevent stray original black leggings showing beside the new shorts.
+        const waistY=p.shorts[1]-p.shorts[3]*.85;
+        const continuousShort=y>waistY&&y<legStart+.012&&Math.abs(x-p.shorts[0])<p.shorts[2]*1.08;
+        if(gear.bottom&&fabric&&(pant>.03||continuousShort)){
+          type='bottom';strength=Math.max(pant,continuousShort?.96:0);
+        }
         // Mouths and eyes are dark: never mistake facial linework for fabric.
         const faceArea=ellipse(x,y,faces[i]);
         const shirt=ellipse(x,y,p.shirt);
