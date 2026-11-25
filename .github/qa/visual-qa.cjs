@@ -24,6 +24,13 @@ const fs=require('fs');
     console.log('QAINFO_'+name.toUpperCase()+'='+JSON.stringify(info));
     console.log('QAIMAGE_'+name.toUpperCase()+'='+fs.readFileSync(shot).toString('base64'));
     if(name==='starter'){
+      const prior=await page.evaluate(()=>window.HellFallTest?.snapshot());
+      await page.locator('#jump').tap();
+      await page.waitForTimeout(140);
+      const jumped=await page.evaluate(()=>window.HellFallTest?.snapshot());
+      await page.screenshot({path:'qa-shot-wall-kick.jpg',type:'jpeg',quality:52});
+      console.log('QAINFO_KICK='+JSON.stringify({before:prior?.hopVisual,after:jumped?.hopVisual,side:jumped?.wall}));
+      console.log('QAIMAGE_KICK='+fs.readFileSync('qa-shot-wall-kick.jpg').toString('base64'));
       const before=await page.evaluate(()=>window.HellStarterKit?.revision);
       await page.locator('#starterGearPanel button').click();
       const checks=page.locator('#starterGearPanel input[type=checkbox]');
