@@ -1,0 +1,473 @@
+<!doctype html>
+<html lang="ko">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>지옥 낙하 | 최신 모션 휴대폰 테스트</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#11111a;color:#f4e7d6;font:15px system-ui,sans-serif}main{max-width:880px;margin:auto;padding:22px 16px}h1{font-size:clamp(24px,5vw,36px);margin:0 0 14px}canvas{width:100%;height:auto;display:block;border:1px solid #595067;border-radius:15px;background:radial-gradient(ellipse at center,#382637,#171520 78%)}.controls{display:flex;gap:11px 16px;flex-wrap:wrap;margin:15px 0}label{display:flex;align-items:center;gap:6px;font-size:14px}button,select{font:inherit;color:inherit;background:#252332;border:1px solid #66576d;border-radius:8px;min-height:40px;padding:6px 9px}input{accent-color:#e9a766}.timeline{display:flex;gap:12px;align-items:center}.timeline input{flex:1;min-width:70px}.meta{color:#d4bfd2;font-size:13px}
+.panels{display:grid;grid-template-columns:1fr 1fr;gap:10px}h2{font-size:15px;margin:0 0 6px}.timeline button{min-width:40px}.timeline{flex-wrap:wrap}
+/* New motion only by default: no effects in visible preview. Optional original comparison. */
+.panels{grid-template-columns:1fr!important;max-width:620px;margin:auto}
+.panels>section:first-child{display:none}
+body.show-original .panels>section:first-child{display:block}
+.panels>section h2{color:#dbf2e9;font-size:14px}
+canvas#rig{background:radial-gradient(ellipse at 50% 44%,#3e293d,#171520 78%)}
+.controls{position:relative;z-index:1}
+.controls label{min-height:36px}
+#clip,#hero{max-width:180px}
+#sheet-output canvas{position:relative;max-width:100%;height:auto}
+@media(min-width:760px){body.show-original .panels{max-width:none;grid-template-columns:1fr 1fr!important}}
+</style>
+<main>
+<h1>지옥 낙하 · 새 캐릭터 모션</h1>
+<p class="meta" style="font-size:14px;color:#bdf0de">불꽃·충격 효과를 뺀 움직임 전용 테스트 · 캐릭터와 동작을 선택해 보세요.</p>
+<div class="panels">
+  <section><h2>본편 원본 · rig=0</h2><canvas id="original" width="390" height="300"></canvas></section>
+  <section><h2>장비 없는 핵심 자세</h2><canvas id="rig" width="390" height="300"></canvas></section>
+</div>
+<div class="controls">
+  <label><input type="checkbox" id="showOriginal"> 원본과 나란히 비교</label>
+  <label>캐릭터 <select id="hero"><option value="Uiji">우이지</option><option value="Useoi">우서이</option></select></label>
+  <label>동작 <select id="clip"><option value="glide">망토 펼친 낙하</option><option value="folded">망토 접힌 낙하</option><option value="fast">고속 낙하</option><option value="left">왼쪽 벽 출발</option><option value="right">오른쪽 벽 출발</option></select></label>
+  <label><input type="checkbox" id="small"> 게임 크기</label>
+  <label><input type="checkbox" id="slow"> 느린 재생</label>
+</div>
+<div class="timeline"><button id="play">일시정지</button><button id="prev" aria-label="이전 프레임">‹</button><button id="next" aria-label="다음 프레임">›</button><input id="time" type="range" min="0" max="1" step="0.001" value="0" aria-label="재생 위치"><output id="seconds">0.00초</output></div>
+<p class="meta" id="status" role="status">원화 불러오는 중</p>
+<button id="sheet">프레임 표 만들기</button><div id="sheet-output"></div></main>
+<script>
+const {original,specs,boxes,image,curves}={"original":{"uijiMotion":"assets/uiji_motion_atlas.webp","braking":"assets/hero_cape.webp","falling":"assets/hero_fall.webp","jumpLeft":"assets/hero_jump_left.webp","jumpRight":"assets/hero_jump_right.webp"},"specs":{"Uiji_glide":{"duration":1.263157894736842,"speed":112,"fold":0,"wall":"","count":76},"Uiji_folded":{"duration":0.8336397137409474,"speed":550,"fold":0.85,"wall":"","count":50},"Uiji_fast":{"duration":0.6504065040650406,"speed":900,"fold":1,"wall":"","count":39},"Uiji_left":{"duration":0.4,"speed":112,"fold":0,"wall":"L","count":24},"Uiji_right":{"duration":0.4,"speed":112,"fold":0,"wall":"R","count":24},"Useoi_glide":{"duration":1.0471975511965976,"speed":112,"fold":0,"wall":"","count":63},"Useoi_folded":{"duration":0.5660527303765394,"speed":550,"fold":0.85,"wall":"","count":34},"Useoi_fast":{"duration":0.5235987755982988,"speed":900,"fold":1,"wall":"","count":31},"Useoi_left":{"duration":0.4,"speed":112,"fold":0,"wall":"L","count":24},"Useoi_right":{"duration":0.4,"speed":112,"fold":0,"wall":"R","count":24}},"boxes":[[54,15,349,402],[561,21,225,392],[991,19,243,403],[1391,19,336,395],[56,472,347,399],[513,449,304,422],[934,483,367,383],[1408,473,339,400]],"image":"character-production/uiji-useoi/keypose-study/poses.png","curves":[[[0,4,379,377],[0,3,379,378],[1,3,381,378],[3,3,382,379],[4,4,384,379],[5,5,384,379],[5,6,384,379],[4,7,384,379],[3,7,384,378],[1,7,383,378],[0,6,381,378],[0,5,380,377]],[[68,2,318,382],[69,2,318,382],[71,2,318,382],[72,2,319,382],[71,2,320,381],[70,3,320,382],[68,4,321,382],[67,5,321,382],[65,5,321,382],[65,5,320,382],[65,4,319,382],[66,3,318,382]],[[68,2,318,382],[70,1,319,382],[72,1,319,382],[72,1,319,382],[70,2,318,381],[69,3,319,382],[68,5,321,382],[67,6,322,382],[66,6,322,382],[65,5,320,382],[64,4,318,382],[65,3,317,382]]]};
+const $ = id => document.getElementById(id);
+const canvas = $('rig');
+const ref = $('original');
+const ctx = ref.getContext('2d');
+const W = ref.width;
+const images = {};
+const capeRig = {};
+let s;
+const sys = {profile:{}};
+const clamp = x => Math.min(1,Math.max(0,x));
+const smooth = x => {const t=clamp(x); return t*t*(3-2*t);};
+const wallX = wall => wall==='L'?.29:.71;
+const drawFallbackHero = () => {};
+  function prepareCapeRig(original){
+    // Create an articulated 3-layer puppet directly from the single original
+    // 512px hero_cape image. No generated poses, no new character images.
+    // Source pixels are never redrawn and the central face/body stays unchanged.
+    const width=original.naturalWidth,height=original.naturalHeight;
+    const masks={
+      left:[[0,151],[45,148],[86,156],[125,171],[154,191],[184,222],[210,255],[208,311],[188,350],[132,364],[64,349],[15,317]],
+      right:[[511,139],[468,143],[420,158],[384,180],[359,206],[328,224],[303,255],[306,310],[333,350],[395,361],[462,335],[506,302]]
+    };
+    const shape=(context,points)=>{context.beginPath();context.moveTo(points[0][0],points[0][1]);
+      for(let i=1;i<points.length;i++)context.lineTo(points[i][0],points[i][1]);context.closePath();};
+    const canvas=()=>{const c=document.createElement('canvas');c.width=width;c.height=height;return c;};
+    const core=canvas(),cc=core.getContext('2d');cc.drawImage(original,0,0);
+    for(const name of ['left','right']){
+      const piece=canvas(),pc=piece.getContext('2d');pc.save();shape(pc,masks[name]);pc.clip();
+      pc.drawImage(original,0,0);pc.restore();capeRig[name]=piece;
+      cc.globalCompositeOperation='destination-out';cc.fillStyle='#fff';shape(cc,masks[name]);cc.fill();
+    }
+    cc.globalCompositeOperation='source-over';capeRig.core=core;capeRig.ready=true;
+  }
+  function paintSprite(img,x,y,width,height,alpha){
+    if(!img?.naturalWidth || alpha<=0)return false;
+    ctx.save();ctx.globalAlpha*=alpha;
+    const equipped=s.helmetId&&s.stage!=='READY'?window.HellHelmetComposer?.getSprite(img,s.helmetId):null;
+    ctx.drawImage(equipped||img,x-width/2,y-height*.52,width,height);
+    ctx.restore();return true;
+  }
+  // V0.5 rig: THREE pixel-exact layers cut from the ORIGINAL hero_cape artwork.
+  // The face, hair and body live in the stationary core. Each arm and cape wing
+  // has a separate shoulder pivot and moves continuously on every animation frame.
+  // Unlike swapping generated poses, no interpolated frame can change the face.
+  function drawLockedCapeSprite(img,x,y,u,fold,tilt,elapsed=0,opacity=1){
+    const {core,left,right}=capeRig;
+    if(!capeRig.ready){
+      return paintSprite(img,x,y,165*u,165*u,opacity);
+    }
+    // This deliberately reveals a clear fold even at moderate thumb-tapping
+    // speeds; it DOES NOT change the actual falling physics/boost.
+    const raw=Math.max(0,Math.min(1,fold));
+    const amt=Math.pow(raw,.57);
+    const size=170*u, scale=size/512;
+    const flap=Math.sin(elapsed*(6+raw*6))*.021*(1-raw);
+    ctx.save();ctx.translate(x,y);ctx.rotate(tilt);ctx.globalAlpha*=opacity;
+    ctx.translate(-size/2,-size*.52);ctx.scale(scale,scale);
+    const wings=[{img:left,px:181,py:230,sign:-1},{img:right,px:331,py:228,sign:1}];
+    for(const wing of wings){
+      ctx.save();ctx.translate(wing.px,wing.py);
+      ctx.rotate(wing.sign*(amt*1.64+flap));
+      ctx.scale(1-.32*amt,1-.1*amt);
+      ctx.translate(-wing.px,-wing.py);
+      ctx.drawImage(wing.img,0,0,512,512);ctx.restore();
+    }
+    // Always paint the ORIGINAL central face/body on top of the flexible cloak.
+    const fitted=s.helmetId&&s.stage!=='READY'?window.HellHelmetComposer?.getSprite(core,s.helmetId):null;
+    ctx.drawImage(fitted||core,0,0,512,512);
+    ctx.restore();return true;
+  }
+  function drawKickSprite(img,x,y,u,rot,scale,opacity){
+    if(!img?.naturalWidth||opacity<=0)return false;
+    const size=151*u*scale;
+    ctx.save();ctx.translate(x,y);ctx.rotate(rot);ctx.globalAlpha*=opacity;
+    const fitted=s.helmetId&&s.stage!=='READY'?window.HellHelmetComposer?.getSprite(img,s.helmetId):null;
+    ctx.drawImage(fitted||img,-size/2,-size*.52,size,size);
+    ctx.restore();return true;
+  }
+  function drawWallKickImpact(u,side,phase,y){return; // TEST MODE: no hit sparks / contact rings
+    // Small kick contact sparks originate at the ACTUAL wall, not the character.
+    const strength=Math.max(0,1-phase/.34);
+    if(strength<=0)return;
+    const wx=wallX(s.hopFrom)*W;
+    const sy=y+19*u;
+    ctx.save();ctx.globalAlpha*=strength;
+    const direction=side;
+    ctx.strokeStyle='#ffdf9a';ctx.lineWidth=2.7*u;ctx.lineCap='round';
+    for(let i=0;i<5;i++){
+      const a=(-.8+i*.38)*direction;
+      const v=(20+i%3*7)*(1-phase*.45)*u;
+      ctx.beginPath();ctx.moveTo(wx,sy);
+      ctx.lineTo(wx+Math.cos(a)*v*direction,sy+Math.sin(a)*v);ctx.stroke();
+    }
+    ctx.strokeStyle='#ffe7ae';ctx.lineWidth=1.7*u;
+    ctx.beginPath();ctx.arc(wx,sy,(14+phase*45)*u,-Math.PI*.64,Math.PI*.68);ctx.stroke();
+    ctx.restore();
+  }
+  // WEB 1.7: 36 pre-rendered hand-approved chibi frames from the same visual
+  // identity. 12 frames per pose, with subframe interpolation at the display's
+  // actual refresh rate. The cape, hair and shoes move independently within
+  // each baked frame, rather than wobbling an unchanged standing portrait.
+  const UIJI_FRAME=384,UIJI_COLS=6,UIJI_FRAMES=12;
+  const clamp01=v=>Math.max(0,Math.min(1,v));
+  function uijiPoseState(fold,speed){
+    // Respond from the first tap, not after an arbitrary early-speed threshold.
+    // Keep only ONE full-opacity pose selected at a time; continuous tilt and
+    // silhouette contraction happen before the late expression keyframe swap.
+    const progress=clamp01(fold*1.08);
+    const action=smooth(progress);
+    const closed=progress>=.80,frantic=closed&&speed>=800;
+    const mode=frantic?2:closed?1:0;
+    const contract=mode===0?1-.18*action:mode===2?.96:(.97+.03*smooth(clamp01((progress-.80)/.20)));
+    return {open:mode===0?1:0,folded:mode===1?1:0,frantic:mode===2?1:0,contract,progress};
+  }
+  function drawUijiAtlasPose(atlas,mode,phase,alpha,u,elapsed){
+    if(alpha<=.003)return;
+    const position=((phase%UIJI_FRAMES)+UIJI_FRAMES)%UIJI_FRAMES;
+    const first=Math.floor(position),frac=smooth(position-first);
+    // The cape-open silhouette is wider. Folding contracts the cape instead
+    // of simply hiding it; the folded face is deliberately more determined.
+    const w=(mode===0?175:mode===1?155:162)*u;
+    const h=(mode===0?175:mode===1?171:173)*u;
+    const bob=Math.sin(elapsed*(mode===2?13:7)+mode)*(.7+mode*.32)*u;
+    function cell(i,opacity){
+      if(opacity<.003)return;
+      const index=mode*UIJI_FRAMES+i;
+      const col=index%UIJI_COLS,row=Math.floor(index/UIJI_COLS);
+      ctx.save();ctx.globalAlpha*=opacity;
+      ctx.drawImage(atlas,col*UIJI_FRAME,row*UIJI_FRAME,UIJI_FRAME,UIJI_FRAME,
+        -w/2,bob-h*.52,w,h);
+      ctx.restore();
+    }
+    // Crisp 100%-opaque keyframe instead of translucent neighboring images.
+    // Body/cape motion is interpolated by continuous transforms at screen FPS.
+    cell(Math.floor(position+.5)%UIJI_FRAMES,alpha);
+  }
+  function drawUiji(x,y,u,fold,elapsed,speed,dead,hopping,hopFrom){
+    const atlas=images.uijiMotion;
+    const characterHelmet=s.runCharacter==='uiji'?s.helmetId:null;
+    const fittedAtlas=characterHelmet&&atlas?.naturalWidth?
+      (window.HellHelmetComposer?.getAtlas(atlas,characterHelmet)||atlas):atlas;
+    if(!atlas?.naturalWidth){
+      // No regression when image has not yet downloaded.
+      const standby=images.uiji;
+      if(!paintSprite(standby,x,y,116*u,170*u,1))
+        drawFallbackHero(x,y,u,false,elapsed,dead,hopping,hopFrom);
+      return;
+    }
+    const p=hopping?clamp01(s.hopVisual):1;
+    const side=hopFrom==='L'?1:-1;
+    const wind=clamp01((speed-112)/650);
+    const weights=dead?{open:0,folded:0,frantic:1}:uijiPoseState(fold,speed);
+    const jumpPulse=hopping?Math.sin(Math.PI*p):0;
+    const kick=hopping?side*((-.27+.48*smooth(p))*(1-smooth(clamp01((p-.72)/.28)))):0;
+    const tilt=dead?side*.88:(Math.sin(elapsed*(4.1+wind*6))*(.012+wind*.018)+kick-weights.progress*.22);
+    const squash=hopping?1+(.095*(1-smooth(clamp01(p/.20))))-.07*jumpPulse:1;
+    const shiver=0;
+    const yBounce=Math.sin(elapsed*(6.2+wind*5.5))*(.75+wind*.6)*u;
+    const frameTime=elapsed*(9.5+wind*5.5);
+    function actorAt(dx=0,dy=0,opacity=1){
+      ctx.save();ctx.translate(x+dx+shiver,y+dy+yBounce);ctx.rotate(tilt);
+      if(hopping&&hopFrom==='R')ctx.scale(-1,1);
+      ctx.scale(squash*(weights.contract||1)*(1+wind*.021*Math.sin(elapsed*11)),
+        (1-.015*wind*Math.sin(elapsed*9))/squash);
+      // Each mode has a 12-frame loop, interpolated at 60+ Hz.
+      drawUijiAtlasPose(fittedAtlas,0,frameTime,opacity*weights.open,u,elapsed);
+      drawUijiAtlasPose(fittedAtlas,1,frameTime*1.09+2,opacity*weights.folded,u,elapsed);
+      drawUijiAtlasPose(fittedAtlas,2,frameTime*1.23+5,opacity*weights.frantic,u,elapsed);
+      ctx.restore();
+    }
+    // Only one full-opacity character image. Previous ghost-frame echoes
+    // obscured face details and looked translucent on Galaxy.
+    actorAt(0,0,1);
+    if(hopping){
+      drawWallKickImpact(u,side,p,y);
+      if(p>.64){
+        const land=(p-.64)/.36;
+        ctx.save();ctx.strokeStyle='rgba(251,220,151,'+((1-land)*.30)+')';
+        ctx.lineWidth=2.3*u;ctx.beginPath();
+        ctx.arc(x,y+18*u,(19+26*land)*u,0,Math.PI*2);
+        ctx.stroke();ctx.restore();
+      }
+    }
+    if(dead){
+      // A little cartoon "seeing stars" reaction after a lethal fall.
+      ctx.save();
+      ctx.globalAlpha=.75;
+      const t=clock*4.1;
+      for(let i=0;i<3;i++){
+        const a=t+i*Math.PI*2/3;
+        const xx=x+Math.cos(a)*43*u, yy=y-55*u+Math.sin(a)*12*u;
+        ctx.fillStyle=i===0?'#ffe7a2':'#b8d9ff';
+        ctx.beginPath();ctx.arc(xx,yy,3.5*u,0,Math.PI*2);ctx.fill();
+      }
+      ctx.restore();
+    }else if(weights.frantic>.18){
+      // Exaggerated speed/panic accent, synced to the actual in-game speed.
+      ctx.save();ctx.globalAlpha=weights.frantic*(.25+.15*Math.sin(elapsed*15)**2);
+      ctx.strokeStyle='#9ceaff';ctx.lineWidth=2.1*u;
+      for(let i=0;i<3;i++){
+        const sideSign=i%2?1:-1;
+        const xx=x+sideSign*(70+i*7)*u;
+        ctx.beginPath();ctx.moveTo(xx,y-85*u+i*10*u);
+        ctx.lineTo(xx+sideSign*9*u,y-104*u+i*10*u);ctx.stroke();
+      }
+      ctx.restore();
+    }
+  }
+  // Helmet is an independent overlay shared by all character IDs.
+  function drawHero(x,y,u,fold,elapsed,speed,dead,hopping,hopFrom){
+    y+=Math.sin(elapsed*(10+fold*10))*(1.2+fold*1.5)*u;
+    // WEB 2.4 optional true in-map skeletal costume player. Separate renderer;
+    // switching it off restores BOTH original characters exactly as before.
+    const rig=window.HellRigV2;
+    if(rig?.isEnabled()){
+      rig.draw({ctx,x,y,u,fold,elapsed,speed,dead,hopping,hopFrom,
+        hopVisual:s.hopVisual,wallEdge:(hopFrom==='L'?.197:.803)*W});
+      return;
+    }
+    if(sys.profile.selectedCharacter==='uiji'){
+      drawUiji(x,y,u,fold,elapsed,speed,dead,hopping,hopFrom);return;
+    }
+    if(dead){
+      if(!paintSprite(images.dizzy,x,y,139*u,139*u,1))drawFallbackHero(x,y,u,false,elapsed,true,false,hopFrom);
+    }else if(hopping){
+      const p=Math.min(1,Math.max(0,s.hopVisual));
+      const side=hopFrom==='L'?1:-1;
+      const key=hopFrom==='L'?'jumpLeft':'jumpRight';
+      const kick=images[key];
+      // 0..15%: foot drives against wall; 15..65%: torso turns in flight;
+      // 65..100%: cape catches the air and the feet settle at the other wall.
+      const impact=Math.max(0,1-p/.20);
+      const travel=smooth(Math.min(1,Math.max(0,(p-.10)/.62)));
+      const landing=smooth(Math.min(1,Math.max(0,(p-.65)/.35)));
+      const tilt=side*((-.20+travel*.46)*(1-landing));
+      const squash=1+impact*.09-Math.sin(Math.PI*p)*.045;
+      drawWallKickImpact(u,side,p,y);
+      if(p>.11&&p<.69){
+        // Lightweight motion echo; frames are continuous (not discrete images).
+        const echo=.13*Math.sin(Math.PI*Math.min(1,(p-.11)/.58));
+        drawKickSprite(kick,x-side*(15+speed*.014)*u,y+4*u,u,tilt-.09*side,squash*.94,echo);
+      }
+      const faceOut=1-landing;
+      if(!drawKickSprite(kick,x,y,u,tilt,squash,faceOut))
+        drawLockedCapeSprite(images.braking,x,y,u,fold,tilt,elapsed,faceOut);
+      if(landing>0)drawLockedCapeSprite(images.braking,x,y,u,fold,side*.08*(1-landing),elapsed,landing);
+      if(p>.65){
+        const t=(p-.65)/.35;
+        // Brief wall contact glow on arrival (not a new gameplay obstacle).
+        ctx.save();ctx.globalAlpha*=(1-t)*.33;
+        ctx.strokeStyle='#b9ecff';ctx.lineWidth=2*u;
+        ctx.beginPath();ctx.arc(x,y+12*u,(24+19*t)*u,0,2*Math.PI);ctx.stroke();ctx.restore();
+      }
+    }else{
+      if(!drawLockedCapeSprite(images.braking,x,y,u,fold,Math.sin(elapsed*5)*fold*.02,elapsed)){
+        drawFallbackHero(x,y,u,fold<.55,elapsed,false,false,hopFrom);
+      }
+      if(s.tapPulse>.04){
+        ctx.save();ctx.globalAlpha=s.tapPulse*.26;
+        ctx.beginPath();ctx.arc(x,y-25*u,(85+20*(1-s.tapPulse))*u,Math.PI*.23,Math.PI*.82);
+        ctx.strokeStyle='#ffbf7d';ctx.lineWidth=2.5*u;ctx.stroke();ctx.restore();
+      }
+    }
+  }
+
+function position(spec,time) {
+  if (!spec.wall) return {x:W/2,y:ref.height/2};
+  const q=clamp(time/.155);
+  const start=wallX(spec.wall);
+  return {x:W*(start+(1-2*start)*smooth(q)),
+          y:ref.height/2-Math.sin(Math.PI*q)*15*(W/400)};
+}
+
+function drawReference(spec,time) {
+  ctx.clearRect(0,0,ref.width,ref.height);
+  const {x,y}=position(spec,time);
+  s={hopVisual:spec.wall?clamp(time/.4):1,hopFrom:spec.wall,stage:'PLAYING',tapPulse:0};
+  sys.profile.selectedCharacter=$('hero').value.toLowerCase();
+  const shrink=$('small').checked?.62:1;
+  drawHero(x,y,W/400*shrink,spec.fold,time,spec.speed,false,!!spec.wall&&time<.4,spec.wall);
+}
+const paint=canvas.getContext('2d');
+const layers=Array.from({length:8},()=>document.createElement('canvas'));
+function artwork(i){
+  const layer=layers[i];
+  if (!layer.dataset.ready){
+    const [x,y,w,h]=boxes[i];
+    layer.width=w;layer.height=h;
+    layer.getContext('2d').drawImage(bitmap,x,y,w,h,0,0,w,h);
+    layer.dataset.ready='1';
+  }
+  return layer;
+}
+// Triangulated pose surfaces. Head, shoulder line, hips and soles have
+// different follow-through. Each triangle maps texture space to pose space.
+const controls={
+  // nose, wall-side fist, trailing fist, pelvis, leading toe, trailing toe
+  6:[[.28,.26],[.13,.28],[.68,.53],[.48,.59],[.02,.51],[.82,.96]],
+  7:[[.40,.27],[.13,.35],[.70,.56],[.45,.62],[.27,.72],[.16,.95]],
+  4:[[.52,.31],[.18,.36],[.81,.35],[.52,.65],[.47,.89],[.42,.98]],
+  3:[[.61,.28],[.10,.33],[.90,.40],[.56,.59],[.30,.78],[.70,.96]],
+  0:[[.49,.32],[.12,.42],[.87,.42],[.49,.67],[.25,.94],[.72,.95]]
+};
+function surface(i,phase,wind,turn,peer,amount){
+  const img=artwork(i),w=img.width,h=img.height;
+  const xs=Array.from({length:9},(_,j)=>j/8),ys=xs;
+  const point=(u,v)=>{
+    const edge=(u-.5)*2, hair=(1-smooth(v/.5))*Math.abs(edge);
+    const lag=Math.sin(phase-v*2);
+    let dx=0,dy=0,total=0; if(amount && controls[peer]){controls[i].forEach(([x,y],n)=>{const weight=1/((u-x)**2+(v-y)**2+.006)**2;total+=weight;dx+=(controls[peer][n][0]-x)*weight;dy+=(controls[peer][n][1]-y)*weight;});dx*=amount/total;dy*=amount/total;} return [(u+dx-.5)*w*(1-.045*Math.abs(turn))+w*(hair*lag*.027*wind+turn*(.5-v)*.043),
+      (v+dy-.52)*h+h*(.017*wind*lag*hair+.013*Math.sin(phase+edge)*smooth((v-.57)/.43))];
+  };
+  for(let j=1;j<ys.length;j++) for(let k=1;k<xs.length;k++){
+    const u=xs[k-1],v=ys[j-1],du=xs[k]-u,dv=ys[j]-v;
+    for(const [a,b,c] of [[[u,v],[u+du,v],[u,v+dv]],[[u+du,v+dv],[u,v+dv],[u+du,v]]]){
+      const A=point(...a),B=point(...b),C=point(...c);
+      const sx=(b[0]-a[0])*w,sy=(c[1]-a[1])*h;
+      paint.save();paint.beginPath();paint.moveTo(...A);paint.lineTo(...B);paint.lineTo(...C);paint.closePath();paint.clip();
+      const xx=(B[0]-A[0])/sx,xy=(B[1]-A[1])/sx,yx=(C[0]-A[0])/sy,yy=(C[1]-A[1])/sy;
+      paint.transform(xx,xy,yx,yy,A[0]-xx*a[0]*w-yx*a[1]*h,A[1]-xy*a[0]*w-yy*a[1]*h);
+      paint.drawImage(img,0,0);paint.restore();
+    }
+  }
+}
+function render(_,time,spec){
+  const girl=$('hero').value==='Useoi', wall=spec.wall, p=clamp(time/.4);
+  const side=wall==='L'?1:-1,fold=spec.fold, pos=position(spec,time);
+  const phase=2*Math.PI*time/spec.duration, wind=.5+fold;
+  let parts,roll=0,turn=0;
+  if(wall){
+    const land=smooth((p-.65)/.35), travel=smooth((p-.1)/.62);
+    roll=side*(girl?(-.20+.46*travel)*(1-land):(-.27+.48*smooth(p))*(1-smooth((p-.72)/.28)));
+    turn=side*Math.sin(Math.PI*p);
+    const release=smooth((p-.62)/.15), settle=smooth((p-.79)/.21);
+    parts=girl?[[6,1-release],[7,release*(1-settle)],[4,settle]]:[[3,1-land],[0,land]];
+  }else{
+    parts=[[girl?(fold?5:4):(fold>.95?2:fold?1:0),1]];
+    roll=girl?Math.sin(time*5)*fold*.02:Math.sin(phase)*.022-fold*.22;
+  }
+  paint.clearRect(0,0,canvas.width,canvas.height);
+  for(const [i,alpha] of parts){
+    if(alpha<=0)continue;
+    const size=(girl?150:168)*($('small').checked?.62:1);
+    const scale=size/Math.max(boxes[i][2],boxes[i][3]);
+    paint.save();paint.translate(pos.x,pos.y+Math.sin(phase)*1.3);
+    if(!girl){
+      const mode=fold>.95?2:fold?1:0, speed=clamp((spec.speed-112)/650);
+      const f=(time*(9.5+speed*5.5)*[1,1.09,1.23][mode]+[0,2,5][mode])%12;
+      const row=curves[mode], a=row[Math.floor(f)], b=row[(Math.floor(f)+1)%12];
+      const bounds=a.map((v,j)=>v+(b[j]-v)*(f%1)),base=row[0];
+      paint.scale((bounds[2]-bounds[0])/(base[2]-base[0]),(bounds[3]-bounds[1])/(base[3]-base[1]));
+    }
+    paint.rotate(roll);paint.scale(scale*(wall==='R'&&i!==4&&i!==0?-1:1),scale);
+    paint.globalAlpha=alpha;const next=parts.find(([id,a])=>id!==i && a>0);surface(i,phase,wind,turn,next?.[0],next?.[1]||0);paint.restore();
+  }
+}
+
+let playing=true, time=0, last=0;
+$('play').onclick=()=>{
+  playing=!playing;
+  $('play').textContent=playing?'일시정지':'재생';
+};
+$('clip').onchange=$('hero').onchange=()=>{time=0;};
+function step(dir) {
+  const spec=specs[$('hero').value+'_'+$('clip').value];
+  const stride=spec.duration/spec.count;
+  time=Math.max(0,Math.min(spec.duration,(Math.round(time/stride)+dir)*stride));
+  playing=false;
+  $('play').textContent='재생';
+}
+$('prev').onclick=()=>step(-1);
+$('next').onclick=()=>step(1);
+$('time').oninput=()=>{
+  time=+$('time').value;
+  playing=false;
+  $('play').textContent='재생';
+};
+$('sheet').onclick=()=>{
+  const name=$('hero').value+'_'+$('clip').value;
+  const clip=null, spec=specs[name];
+  const count=spec.wall?25:12;
+  const sheet=document.createElement('canvas');
+  sheet.width=1040;
+  sheet.height=Math.ceil(count/4)*103;
+  sheet.setAttribute('aria-label','원본과 관절형의 시간별 비교표');
+  const ink=sheet.getContext('2d');
+  ink.fillStyle='#171520'; ink.fillRect(0,0,sheet.width,sheet.height);
+  ink.font='14px system-ui';
+  for(let i=0;i<count;i++){
+    const t=spec.duration*i/(spec.wall?count-1:count);
+    const x=(i%4)*260,y=Math.floor(i/4)*103;
+    drawReference(spec,t);
+    render(clip,t,spec);
+    ink.fillStyle='#f4e7d6';
+    ink.fillText(Math.round(t*1000)+' ms  원본 / 관절형',x+8,y+15);
+    ink.drawImage(ref,x,y+18,126,82);
+    ink.drawImage(canvas,x+130,y+18,126,82);
+  }
+  $('sheet-output').replaceChildren(sheet);
+};
+function frame(now) {
+  const key=$('hero').value+'_'+$('clip').value;
+  const clip=null, spec=specs[key];
+  const {duration}=spec;
+  if (playing && duration>0) time=(time+Math.min(50,now-(last||now))*($('slow').checked?.00033:.001))%duration;
+  last=now;
+  $('time').max=duration||1;
+  $('time').value=time;
+  $('seconds').textContent=Math.round(time*1000)+' ms · '+Math.round(time/duration*spec.count)+' / '+spec.count;
+  drawReference(spec,time);
+  render(clip,time,spec);
+  requestAnimationFrame(frame);
+}
+const bitmap=new Image();
+bitmap.onload=async()=>{
+  try {
+    await Promise.all(Object.entries(original).map(async ([key,url])=>{
+      const img=new Image();
+      img.src=url;
+      await img.decode();
+      images[key]=img;
+    }));
+    prepareCapeRig(images.braking);
+  } catch(error) {
+    $('status').textContent='원본 파일을 불러오지 못했습니다.';
+    throw error;
+  }
+  $('status').textContent='좌우 화면은 같은 시간과 속도로 재생합니다. 벽점프는 0–400 ms에서 한 프레임씩 확인할 수 있습니다.';
+  requestAnimationFrame(frame);
+};
+bitmap.src=image;
+$('showOriginal').addEventListener('change',e=>document.body.classList.toggle('show-original',e.target.checked));
+</script>
+
