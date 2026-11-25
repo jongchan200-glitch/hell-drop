@@ -1,6 +1,7 @@
 """Build synchronized reference and weighted-mesh animations from the pinned game."""
 from pathlib import Path
-from PIL import Image
+from PIL import Image, ImageDraw
+from io import BytesIO
 from math import sin, pi, degrees
 import base64, json, subprocess, zipfile
 
@@ -62,7 +63,7 @@ def pose(hero,mode,t,from_wall,speed,fold):
             roll+=side*(-.27+.48*smooth(p))*(1-smooth((p-.72)/.28))
         # Targets trace the atlas silhouettes: fists lift above shoulders, then
         # tuck beside chest; knees angle outward with the soles drawn forward.
-        arm,elbow,thigh,knee=[(77,23,25,13),(-12,60,17,14),(-7,54,19,15)][mode]
+        arm,elbow,thigh,knee=[(108,19,42,36),(-19,75,26,39),(-23,84,30,45)][mode]
         cape=[2,72,80][mode]
         head=[2,-12,-4][mode]
         bias=(width-mw)/13
@@ -79,7 +80,7 @@ def pose(hero,mode,t,from_wall,speed,fold):
         flap=sin(t*(6+fold*6))*.021*(1-fold)
         cape=degrees(amt*1.64+flap)
         roll=sin(t*5)*fold*.02
-        arm,elbow,thigh,knee,head,bias=82-61*amt,24+29*amt,4,8,0,0
+        arm,elbow,thigh,knee,head,bias=97-103*amt,19+49*amt,18,24,-5*amt,0
         sx,sy=1,.84
         if kick:
             roll=side*((-.20+travel*.46)*(1-landing))
@@ -90,7 +91,9 @@ def pose(hero,mode,t,from_wall,speed,fold):
     moves={'root':(0,bob)}
     for end,s in [('L',-1),('R',1)]:
         rotations[f'upper_{end}']=s*(arm+bias)
-        rotations[f'elbow_{end}']=-s*elbow
+        # In the folded pose the upper arm drops alongside the ribs and the
+        # forearm flexes back toward the chest in the projected frontal view.
+        rotations[f'elbow_{end}']=s*elbow if fold>.7 else -s*elbow
         rotations[f'thigh_{end}']=s*thigh
         rotations[f'knee_{end}']=-s*knee
         rotations[f'wrist_{end}']=s*min(10,elbow*.2)
@@ -99,7 +102,12 @@ def pose(hero,mode,t,from_wall,speed,fold):
         rotations[f'cape_mid_{end}']=-s*cape*.16
         scales[f'cape_root_{end}']=(max(.45,1-amt*.32),1-amt*.1)
         # Leg length projected toward screen; shoe/ankle stay under this chain.
-        scales[f'thigh_{end}']=(1,.79 if hero=='Uiji' else .77)
+        scales[f'thigh_{end}']=(1,(.52 if mode else .57) if hero=='Uiji' else .62)
+        if not kick or hero=='Uiji':
+            # One knee is higher in the artwork; camera-facing shoes are larger.
+            rotations[f'thigh_{end}']+=s*(9 if end=='L' else -5)
+            scales[f'shin_{end}']=(1,.76 if end=='L' else .87)
+            scales[f'cape_mid_{end}']=(1-.27*amt,1-.18*amt)
         if kick and hero=='Useoi':
             # The source holds ONE side-specific kick image until the crossfade.
             # Preserve the opening silhouette through the fade, with no full spin.
@@ -107,8 +115,8 @@ def pose(hero,mode,t,from_wall,speed,fold):
             wall=(end==from_wall)
             rotations[f'upper_{end}']+=(s*((133 if wall else 36)-arm))*drive
             rotations[f'elbow_{end}']+=(-s*((37 if wall else 17)-elbow))*drive
-            rotations[f'thigh_{end}']+=((s*(105 if wall else 24))-s*thigh)*drive
-            rotations[f'knee_{end}']+=(-s*((23 if wall else 11)-knee))*drive
+            rotations[f'thigh_{end}']+=((s*(104 if wall else 54))-s*thigh)*drive
+            rotations[f'knee_{end}']+=(-s*((17 if wall else 45)-knee))*drive
             rotations[f'ankle_{end}']+=s*(8 if wall else 0)*drive
             rotations[f'cape_root_{end}']+=(-side*(44 if wall else 25)+s*cape)*drive
             rotations[f'cape_mid_{end}']+=-side*10*drive
@@ -121,6 +129,23 @@ def pose(hero,mode,t,from_wall,speed,fold):
         scales['head']=(1-.20*(1-landing),1)
         rotations['neck']=side*7*(1-landing)
         rotations['head']=side*4*(1-landing)
+    # Project the torso turn through the chest, keeping the near and far
+    # shoulders attached as the pelvis follows through on the rebound.
+    if kick:
+        turn=side*(1-landing)*(.42+.58*travel)
+        rotations['chest']=-turn*13
+        rotations['pelvis']=-turn*5
+        scales['chest']=(1-.23*abs(turn),1)
+        moves['chest']=(turn*8,0)
+        for end,s in [('L',-1),('R',1)]:
+            moves[f'shoulder_{end}']=(turn*4,-s*turn*5)
+            if hero=='Uiji':
+                rotations[f'thigh_{end}']+=s*(43 if end==from_wall else -14)*(1-landing)
+    phase=t*(6+fold*6) if hero=='Useoi' else t*(9.5+wind*5.5)*[1,1.09,1.23][mode]*2*pi/12
+    for joint,delay,amplitude in [('hair_base',0,4),('hair_mid',.45,7),('hair_tip',.95,10)]:
+        rotations[joint]=rotations.get(joint,0)+(1+fold)*amplitude*sin(phase-delay)
+    for end,s in [('L',-1),('R',1)]:
+        rotations[f'cape_tip_{end}']=s*(4+fold*3)*sin(phase-.8)
     # Chibi proportions are inherited by the entire attachment chain.
     # Scaling at the upper arm and hip also moves the elbow, knee and equipment.
     scales['pelvis']=(1,.90)
@@ -130,8 +155,10 @@ def pose(hero,mode,t,from_wall,speed,fold):
         scales[f'upper_{end}']=(.80,.78)
         tx,ty=scales[f'thigh_{end}']
         scales[f'thigh_{end}']=(tx*.90,ty*.78)
-        scales[f'foot_{end}']=(1.23,1.18)
+        scales[f'foot_{end}']=(1.48,1.36) if hero=='Uiji' else (1.23,1.18)
         scales[f'hand_{end}']=(1.10,1.10)
+        burst=(1-smooth(t/.12)) if kick and end==from_wall else 0
+        scales[f'impact_{end}']=(burst,burst)
     return set_pose(rotations,scales,moves)
 
 clips={}
@@ -149,12 +176,26 @@ for hero in ('Uiji','Useoi'):
         specs[name]=dict(duration=duration,speed=speed,fold=fold,wall=wall,count=count)
 
 rig['animations']=clips
+for end,sign in [('L',-1),('R',1)]:
+    name=f'impact_{end}'
+    rig['bones'].append(dict(name=name,parent=f'foot_{end}',x=sign*20,y=-52))
+    rig['slots'].append(dict(name=name,bone=name,attachment='base'))
+    rig['skins'][0]['attachments'][name]={'base':dict(path='kick_flash',x=0,y=0,width=128,height=128)}
 dest=ROOT/'motion-reproduction'
 dest.mkdir(exist_ok=True)
 encoded=json.dumps(rig,separators=(',',':'))
 (dest/'hell-drop.json').write_text(encoded,encoding='utf8')
-for file in ('hell-drop.atlas','hell-drop.png'):
-    (dest/file).write_bytes((ROOT/file).read_bytes())
+flash=Image.new('RGBA',(128,128))
+draw=ImageDraw.Draw(flash)
+outline=[(9,4),(53,47),(49,17),(64,47),(83,2),(76,50),(123,31),(84,60),(115,76),(81,71),(103,120),(67,82),(51,117),(55,79),(7,98),(44,68),(0,47),(46,55)]
+for size,color in [(1,'#ff872b'),(.78,'#ffdb70'),(.53,'#fffbe0')]:
+    draw.polygon([(64+(x-64)*size,64+(y-64)*size) for x,y in outline],fill=color)
+layout=json.loads((ROOT/'layout.json').read_text())
+layout['kick_flash']=[2,750,128,128]
+texture=Image.open(ROOT/'hell-drop.png').convert('RGBA')
+texture.alpha_composite(flash,(2,750))
+texture.save(dest/'hell-drop.png')
+(dest/'hell-drop.atlas').write_text((ROOT/'hell-drop.atlas').read_text()+'kick_flash\n  bounds: 2,750,128,128\n',encoding='utf8')
 
 def segment(first,last):
     return source[source.index(first):source.index(last)]
@@ -168,8 +209,8 @@ assert 'drawLockedCapeSprite' in original and 'if(s.tapPulse' in original
 files={'uijiMotion':'uiji_motion_atlas','braking':'hero_cape','falling':'hero_fall','jumpLeft':'hero_jump_left','jumpRight':'hero_jump_right'}
 def data(path,mime):
     return 'data:'+mime+';base64,'+base64.b64encode(path.read_bytes()).decode('ascii')
-payload=dict(skeleton=rig, atlas=json.loads((ROOT/'layout.json').read_text()),
-             image=data(ROOT/'hell-drop.png','image/png'), specs=specs,
+payload=dict(skeleton=rig, atlas=layout,
+             image=data(dest/'hell-drop.png','image/png'), specs=specs,
              original={k:data(REF/(n+'.webp'),'image/webp') for k,n in files.items()})
 page=(ROOT/'motion-comparison-template.html').read_text(encoding='utf8')
 page=page.replace('/* RIG_DATA */',json.dumps(payload,separators=(',',':'))).replace('/* ORIGINAL_DRAW */',original)
@@ -185,6 +226,10 @@ fs.writeFileSync('motion-reproduction/project.json',r.skeleton.toJson());
 subprocess.run(['node','--input-type=module','-e',converter],cwd=ROOT,check=True)
 with zipfile.ZipFile(ROOT/'hell-drop.rigby') as old, zipfile.ZipFile(dest/'hell-drop.rigby','w',zipfile.ZIP_DEFLATED) as new:
     new.writestr('project.json',(dest/'project.json').read_bytes())
+    stream=BytesIO()
+    flash.save(stream,format='PNG')
+    new.writestr('images/kick_flash.png',stream.getvalue())
     for name in old.namelist():
         if name.startswith('images/'): new.writestr(name,old.read(name))
 (dest/'project.json').unlink()
+

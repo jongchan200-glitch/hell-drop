@@ -72,3 +72,5 @@ explorer_helmet
   bounds: 196,558,159,125
 frog_mask
   bounds: 359,558,155,140
+kick_flash
+  bounds: 2,750,128,128
