@@ -21,6 +21,8 @@
   };
   const actor={enabled:true,ready:false,error:'',draw};
   window.HellKeypose=actor;
+  // Only exists inside the opt-in tester; used for actual pixel visual QA.
+  actor.testPoseTexture=index=>actor.ready?artwork(index):null;
   function artwork(i){
     const c=layers[i];
     const revision=window.HellStarterKit?.revision??-1;
