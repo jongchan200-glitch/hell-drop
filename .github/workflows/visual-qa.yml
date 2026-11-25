@@ -1,0 +1,36 @@
+name: Hell Drop visual QA
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/visual-qa.yml'
+      - 'starter-kit.js'
+      - 'keypose-live.js'
+      - 'index.html'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install headless browser driver
+        run: npm install --no-save playwright@1.56.1
+      - name: Serve local game
+        run: |
+          python3 -m http.server 8765 >/tmp/hell-drop-qa-server.log 2>&1 &
+          sleep 1
+      - name: Render game screenshots and check equipment
+        run: node .github/qa/visual-qa.cjs
+      - name: Save screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hell-drop-visual-qa
+          path: qa-shot-*.jpg
+          if-no-files-found: ignore
