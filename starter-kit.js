@@ -20,8 +20,8 @@
     {shirt:[.525,.535,.18,.135],shorts:[.52,.66,.19,.10],legs:[[.36,.70,.13,.12],[.675,.75,.13,.14]],feet:[[.30,.785,.14,.08],[.795,.89,.115,.085]],head:[.60,.225,.10],shoulder:[.52,.455],spread:.48},
     {shirt:[.50,.55,.16,.13],shorts:[.50,.69,.175,.085],legs:[[.44,.79,.09,.12],[.59,.83,.075,.12]],feet:[[.45,.942,.065,.075],[.59,.943,.066,.075]],head:[.50,.19,0],shoulder:[.50,.447],spread:.88},
     {shirt:[.50,.55,.16,.13],shorts:[.50,.68,.18,.09],legs:[[.445,.78,.085,.12],[.57,.79,.085,.13]],feet:[[.46,.925,.065,.075],[.565,.935,.065,.075]],head:[.50,.195,0],shoulder:[.50,.445],spread:.38},
-    {shirt:[.455,.525,.17,.13],shorts:[.44,.635,.145,.085],legs:[[.22,.635,.20,.05],[.64,.81,.095,.16]],feet:[[.087,.62,.105,.10],[.74,.944,.095,.075]],head:[.37,.245,-.08],shoulder:[.45,.425],spread:.55},
-    {shirt:[.46,.54,.17,.13],shorts:[.47,.665,.16,.09],legs:[[.40,.706,.12,.12],[.625,.81,.095,.13]],feet:[[.36,.715,.10,.095],[.65,.943,.075,.075]],head:[.40,.235,-.06],shoulder:[.45,.445],spread:.52}
+    {shirt:[.455,.525,.17,.13],shorts:[.44,.635,.145,.085],legs:[[.22,.635,.20,.05],[.64,.81,.095,.16]],feet:[[.087,.62,.105,.10],[.74,.944,.095,.075]],head:[.445,.17,-.03],shoulder:[.45,.425],spread:.55},
+    {shirt:[.46,.54,.17,.13],shorts:[.47,.665,.16,.09],legs:[[.40,.706,.12,.12],[.625,.81,.095,.13]],feet:[[.36,.715,.10,.095],[.65,.943,.075,.075]],head:[.465,.18,-.01],shoulder:[.45,.445],spread:.52}
   ];
   const clamp=v=>Math.max(0,Math.min(1,v));
   const ellipse=(x,y,e)=>{
@@ -55,9 +55,10 @@
         const chroma=Math.max(r,g,b)-Math.min(r,g,b);
         // Hair and skin are never recolored; material is gray-charcoal.
         const fabric=bright<156&&chroma<42;
-        const shoeMaterial=bright>105&&chroma<28;
+        const footScore=Math.max(...p.feet.map(e=>ellipse(x,y,e)));
+        const shoeMaterial=(bright>105&&chroma<28)||(footScore>.05&&bright>80&&chroma<60);
         let type='',strength=0;
-        const shoeZone=y>.59&&(i!==6||y>.57);
+        const shoeZone=y>.59||(i>=6&&footScore>.05);
         // Reuse the actual artist-drawn footwear shape (not blue ovals).
         // Near-vertical feet show bare ankle/heel above a low rubber slide.
         if(gear.shoes&&shoeZone&&shoeMaterial){
@@ -160,7 +161,7 @@
     if(gear.helmet){
       const [x,y,a]=p.head;
       ctx.save();ctx.translate(x,y);ctx.rotate(a);
-      roundCap(ctx,0,-.153,.324,.185);
+      roundCap(ctx,0,i>=6?-.145:-.153,i>=6?.284:.324,i>=6?.162:.185);
       ctx.restore();
     }
     ctx.restore();
