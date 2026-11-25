@@ -51,6 +51,21 @@ const fs=require('fs');
     return c.toDataURL('image/jpeg',.6).split(',')[1];
   });
   console.log('QAIMAGE_ATLAS='+sheet);
+  const dressed=await page.evaluate(()=>{
+    if(!window.HellStarterKit||!window.HellKeypose?.testPoseTexture)return null;
+    window.HellStarterKit.gear.helmet=true;window.HellStarterKit.revision++;
+    const c=document.createElement('canvas');c.width=1400;c.height=940;
+    const ctx=c.getContext('2d');ctx.fillStyle='#383139';ctx.fillRect(0,0,c.width,c.height);
+    for(let i=0;i<8;i++){
+      const img=window.HellKeypose.testPoseTexture(i);
+      const col=i%4,row=Math.floor(i/4),cx=col*350+175,cy=row*470+240;
+      const scale=Math.min(315/img.width,390/img.height);
+      ctx.drawImage(img,cx-img.width*scale/2,cy-img.height*scale/2,img.width*scale,img.height*scale);
+      ctx.fillStyle='#fff';ctx.font='bold 27px sans-serif';ctx.fillText('#'+i,col*350+14,row*470+33);
+    }
+    return c.toDataURL('image/jpeg',.58).split(',')[1];
+  });
+  if(dressed)console.log('QAIMAGE_DRESSED='+dressed);
   console.log('QAERRORS='+JSON.stringify(errors.slice(0,12)));
   // Current app has known optional-resource 404s; make test gate depend on
   // playable canvas/loaded 8-pose art instead of unrelated broken asset URLs.
