@@ -42,6 +42,9 @@
   }
   function dressPixelArt(ctx,i,w,h){
     const p=shapes[i],im=ctx.getImageData(0,0,w,h),d=im.data;
+    const faces=[[.50,.375,.145,.105],[.50,.38,.13,.12],[.53,.405,.145,.125],[.625,.39,.14,.12],
+                 [.50,.375,.145,.12],[.50,.375,.145,.12],[.37,.385,.14,.12],[.40,.38,.145,.12]];
+    const legStart=[.75,.76,.71,.72,.745,.75,.73,.735][i];
     for(let py=0;py<h;py++){
       const y=(py+.5)/h;
       for(let px=0;px<w;px++){
@@ -52,16 +55,25 @@
         const chroma=Math.max(r,g,b)-Math.min(r,g,b);
         // Hair and skin are never recolored; material is gray-charcoal.
         const fabric=bright<156&&chroma<42;
-        const shoeMaterial=bright>92&&chroma<34;
+        const shoeMaterial=bright>105&&chroma<28;
         let type='',strength=0;
-        const foot=Math.max(...p.feet.map(e=>ellipse(x,y,e)));
-        const leg=Math.max(...p.legs.map(e=>ellipse(x,y,e)));
-        if(gear.shoes&&foot>.02&&shoeMaterial){type='shoes';strength=foot;}
-        if(gear.bottom&&leg>.03&&fabric&&(!type||strength<.4)){type='legs';strength=leg;}
+        const shoeZone=y>.59&&(i!==6||y>.57);
+        // Gray-white original shoe sprites are completely recolored as shoes.
+        // Unlike an ellipse overlay, the real pixel alpha supplies exact soles.
+        if(gear.shoes&&shoeZone&&shoeMaterial){type='shoes';strength=1;}
+        // The entire original leg silhouette becomes bare skin below the short
+        // hem; no round masks or detached oval shoes.
+        const kickLeg=(i===6&&x<.39&&y>.595)||(i===7&&x<.47&&y>.66);
+        if(gear.bottom&&fabric&&!type&&(y>legStart||kickLeg)){
+          type='legs';strength=clamp((y-legStart)*85+.65);
+          if(kickLeg)strength=1;
+        }
         const pant=ellipse(x,y,p.shorts);
         if(gear.bottom&&pant>.03&&fabric){type='bottom';strength=pant;}
+        // Mouths and eyes are dark: never mistake facial linework for fabric.
+        const faceArea=ellipse(x,y,faces[i]);
         const shirt=ellipse(x,y,p.shirt);
-        if(gear.top&&shirt>.03&&fabric){type='top';strength=shirt;}
+        if(gear.top&&shirt>.03&&fabric&&faceArea<.02){type='top';strength=shirt;}
         if(!type)continue;
         const col=textileColor([r,g,b],type);
         // Subtle alpha feather suppresses hard mask outlines at shoulders.
@@ -74,21 +86,19 @@
     ctx.putImageData(im,0,0);
   }
   function capePanel(c,p,side){
-    const [sx,sy]=p.shoulder,wide=p.spread,dx=side*(.21+.21*wide);
-    const x=sx+side*.105;
-    c.beginPath();
-    c.moveTo(x,sy-.037);
-    c.bezierCurveTo(x+side*.12,sy-.06,x+dx,sy-.09,x+dx*1.10,sy+.025);
-    c.bezierCurveTo(x+dx*1.14,sy+.11,x+dx*.86,sy+.28,x+dx*.83,sy+.34);
-    c.quadraticCurveTo(x+dx*.46,sy+.30,x+side*.15,sy+.20);
-    c.quadraticCurveTo(x+side*.14,sy+.055,x,sy-.037);
-    const color=c.createLinearGradient(x,sy,x+dx,sy+.32);
-    color.addColorStop(0,'#e5ceb0');color.addColorStop(.52,'#b99d79');color.addColorStop(1,'#927d67');
-    c.fillStyle=color;c.fill();
-    c.strokeStyle='#8e775e';c.lineWidth=.006;c.stroke();
-    c.beginPath();c.moveTo(x+side*.04,sy);
-    c.bezierCurveTo(x+dx*.70,sy+.12,x+dx*.64,sy+.22,x+dx*.83,sy+.32);
-    c.strokeStyle='#efe0cd66';c.lineWidth=.010;c.stroke();
+    const [sx,sy]=p.shoulder,wide=p.spread;
+    const x=sx+side*.102,dx=side*(.125+.135*wide);
+    c.beginPath();c.moveTo(x,sy-.028);
+    c.bezierCurveTo(x+side*.12,sy-.082,x+dx*.88,sy-.065,x+dx*1.13,sy+.022);
+    c.bezierCurveTo(x+dx*1.18,sy+.095,x+dx*.94,sy+.16,x+dx*.77,sy+.222);
+    c.quadraticCurveTo(x+dx*.43,sy+.19,x+side*.11,sy+.142);
+    c.quadraticCurveTo(x+side*.115,sy+.018,x,sy-.028);
+    const g=c.createLinearGradient(x,sy-.03,x+dx,sy+.21);
+    g.addColorStop(0,'#bb7f72');g.addColorStop(.48,'#99665c');g.addColorStop(1,'#754f4b');
+    c.fillStyle=g;c.fill();c.strokeStyle='#704844';c.lineWidth=.006;c.stroke();
+    c.beginPath();c.moveTo(x+side*.04,sy-.016);
+    c.bezierCurveTo(x+dx*.72,sy+.06,x+dx*.67,sy+.14,x+dx*.78,sy+.20);
+    c.strokeStyle='#e1b4a485';c.lineWidth=.008;c.stroke();
   }
   function paintUnder(ctx,i,w,h){
     if(!gear.cape)return;
@@ -130,7 +140,7 @@
     if(gear.helmet){
       const [x,y,a]=p.head;
       ctx.save();ctx.translate(x,y);ctx.rotate(a);
-      roundCap(ctx,0,-.118,.355,.205);
+      roundCap(ctx,0,-.153,.324,.185);
       ctx.restore();
     }
     ctx.restore();
