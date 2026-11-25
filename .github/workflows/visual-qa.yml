@@ -7,6 +7,7 @@ on:
       - 'starter-kit.js'
       - 'keypose-live.js'
       - 'index.html'
+      - '.github/qa/visual-qa.cjs'
   workflow_dispatch:
 permissions:
   contents: read
