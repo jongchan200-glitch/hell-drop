@@ -121,6 +121,17 @@ def pose(hero,mode,t,from_wall,speed,fold):
         scales['head']=(1-.20*(1-landing),1)
         rotations['neck']=side*7*(1-landing)
         rotations['head']=side*4*(1-landing)
+    # Chibi proportions are inherited by the entire attachment chain.
+    # Scaling at the upper arm and hip also moves the elbow, knee and equipment.
+    scales['pelvis']=(1,.90)
+    hx,hy=scales.get('head',(1,1))
+    scales['head']=(hx*1.46,hy*1.56)
+    for end in ('L','R'):
+        scales[f'upper_{end}']=(.80,.78)
+        tx,ty=scales[f'thigh_{end}']
+        scales[f'thigh_{end}']=(tx*.90,ty*.78)
+        scales[f'foot_{end}']=(1.23,1.18)
+        scales[f'hand_{end}']=(1.10,1.10)
     return set_pose(rotations,scales,moves)
 
 clips={}
