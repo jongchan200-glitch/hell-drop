@@ -31,8 +31,9 @@
       if(c.width!==w||c.height!==h){c.width=w;c.height=h;}
       const ink=c.getContext('2d');
       ink.clearRect(0,0,w,h);
+      window.HellStarterKit?.paintUnder?.(ink,i,w,h);
       ink.drawImage(image,x,y,w,h,0,0,w,h);
-      window.HellStarterKit?.paint?.(ink,i,w,h);
+      window.HellStarterKit?.paintOver?.(ink,i,w,h);
       c._starterRevision=revision;
     }
     return c;
@@ -62,7 +63,11 @@
         const A=point(...a),B=point(...b),C=point(...c);
         const sx=(b[0]-a[0])*w,sy=(c[1]-a[1])*h;
         ctx.save();
-        ctx.beginPath();ctx.moveTo(...A);ctx.lineTo(...B);ctx.lineTo(...C);
+        // Slight overlap between warped mesh triangles avoids visible white
+        // stitching lines from canvas antialiasing at low phone resolutions.
+        const mid=[(A[0]+B[0]+C[0])/3,(A[1]+B[1]+C[1])/3];
+        const over=P=>[mid[0]+(P[0]-mid[0])*1.07,mid[1]+(P[1]-mid[1])*1.07];
+        ctx.beginPath();ctx.moveTo(...over(A));ctx.lineTo(...over(B));ctx.lineTo(...over(C));
         ctx.closePath();ctx.clip();
         const xx=(B[0]-A[0])/sx,xy=(B[1]-A[1])/sx;
         const yx=(C[0]-A[0])/sy,yy=(C[1]-A[1])/sy;
