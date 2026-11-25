@@ -379,10 +379,10 @@
     // Original obstacle collisions, gravity, speed and scoring remain unchanged.
     const newRig=window.HellRigV2;
     const progress=clamp01((s.hopVisual-.17)/.58);
-    const rigX=(newRig?.isEnabled()||window.HellWorkRig?.enabled)&&s.hopVisual<1?
+    const rigX=(newRig?.isEnabled()||window.HellWorkRig?.enabled||window.HellKeypose?.enabled)&&s.hopVisual<1?
       W*(wallX(s.hopFrom)*(1-smooth(progress))+wallX(s.wall)*smooth(progress)):posX(s)*W;
     const workRig=window.HellWorkRig;
-    if(workRig?.enabled&&workRig.ready){
+    if(workRig?.enabled&&workRig.ready&&!window.HellKeypose?.enabled){
       workRig.update({active:true,x:rigX,y:charY-arc,u,fold:s.fold,elapsed:s.elapsed,speed:s.speed,
         hopping:s.hopVisual<1,hopVisual:s.hopVisual,hopFrom:s.hopFrom,character:sys.profile.selectedCharacter});
     }else drawHero(rigX,charY-arc,u,s.fold,s.elapsed,s.speed,s.stage==='OVER',s.hopVisual<1,s.hopFrom);
@@ -740,6 +740,12 @@
     y+=Math.sin(elapsed*(10+fold*10))*(1.2+fold*1.5)*u;
     // WEB 2.4 optional true in-map skeletal costume player. Separate renderer;
     // switching it off restores BOTH original characters exactly as before.
+    // Latest Work eight-pose key artwork: safe opt-in, original renderer fallback.
+    const keypose=window.HellKeypose;
+    if(keypose?.enabled&&keypose.ready&&keypose.draw({
+      ctx,x,y,u,fold,elapsed,speed,dead,hopping,hopFrom,
+      hopVisual:s.hopVisual,character:sys.profile.selectedCharacter
+    }))return;
     const rig=window.HellRigV2;
     if(rig?.isEnabled()){
       rig.draw({ctx,x,y,u,fold,elapsed,speed,dead,hopping,hopFrom,
