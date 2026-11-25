@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="ko">
+<head><script>
+const trialStore=new Map();Object.defineProperty(window,"localStorage",{value:{getItem:k=>trialStore.get(k)??null,setItem:(k,v)=>trialStore.set(k,String(v)),removeItem:k=>trialStore.delete(k),clear:()=>trialStore.clear()}});
+</script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#110e1b">
+  <meta name="description" content="지옥 낙하 — 캐릭터와 함께 지하 세계를 돌파하는 낙하 게임">
+  <title>지옥 낙하 · HELL FALL</title>
+  <link rel="preload" href="assets/lobby_abyss.webp" as="image">
+  <link rel="preload" href="assets/hero_intro.webp" as="image">
+  <link rel="stylesheet" href="style.css?v=24-joint">
+  <link rel="stylesheet" href="hero_turnaround.css?v=11-frontback">
+</head>
+<body>
+  <svg class="svg-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+    <symbol id="icon-person" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.2"/><path d="M4.5 20c.3-4.5 3.2-6.8 7.5-6.8s7.2 2.3 7.5 6.8"/></symbol>
+    <symbol id="icon-shop" viewBox="0 0 24 24"><path d="M3 9l1.8-5h14.4L21 9v2c0 1.8-2.3 2.9-4.2 1.1A3.7 3.7 0 0 1 12 12a3.7 3.7 0 0 1-4.8.1C5.2 13.9 3 12.8 3 11V9zM5 13v7h14v-7M9 20v-5h6v5"/></symbol>
+    <symbol id="icon-coin" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="5.3"/><path d="M12 8.5v7M9.7 10.1h3.7c2.6 0 2.3 3.7-.2 3.7H10"/></symbol>
+    <symbol id="icon-trophy" viewBox="0 0 24 24"><path d="M7 4h10v6a5 5 0 0 1-10 0V4zM7 6H4v3a4 4 0 0 0 3 4M17 6h3v3a4 4 0 0 1-3 4M12 15v4M8 21h8M9 19h6"/></symbol>
+    <symbol id="icon-gear" viewBox="0 0 24 24"><path d="M10 2h4l.6 2.4 1.8.8 2.2-1.3 2.7 2.8-1.3 2.2.8 1.8L23 11v3l-2.2.5-.8 1.9 1.3 2.2-2.7 2.7-2.2-1.2-1.8.7-.6 2.2h-4l-.5-2.2-1.9-.7-2.2 1.2-2.7-2.7 1.2-2.2-.7-1.9L1 14v-3l2.2-.3.7-1.8-1.2-2.2 2.7-2.8 2.2 1.3 1.9-.8L10 2z"/><circle cx="12" cy="12.5" r="3.2"/></symbol>
+    <symbol id="icon-spark" viewBox="0 0 24 24"><path d="m12 2 2.5 7.5L22 12l-7.5 2.5L12 22l-2.5-7.5L2 12l7.5-2.5L12 2z"/></symbol>
+    <symbol id="icon-play" viewBox="0 0 24 24"><path d="M8 4.5 20 12 8 19.5V4.5z"/></symbol>
+    <symbol id="icon-arrow" viewBox="0 0 24 24"><path d="M4 12h16M14 6l6 6-6 6"/></symbol>
+  </svg>
+  <main class="shell">
+    <section class="game" id="game" aria-label="지옥 낙하 게임">
+      <canvas id="scene" aria-label="낙하하는 동굴과 캐릭터"></canvas>
+      <header id="hud" class="hud hidden" aria-live="off">
+        <div class="hud-row">
+          <div class="hud-col">
+            <span class="hud-kicker" id="zoneLabel">1구역 · 지표면 · 지하 동굴</span>
+            <strong class="hud-value" id="depthLabel">0 <small>m</small></strong>
+            <span class="hud-note" id="recordLabel">최고 0 m</span>
+          </div>
+          <div class="hud-col hud-right">
+            <span class="hud-kicker mint" id="timeCaption">TIME</span>
+            <strong class="hud-value" id="timeLabel">42.0</strong>
+            <span class="hud-note" id="speedLabel">속도 124 m/s · 난이도 1</span>
+          </div>
+        </div>
+        <div class="time-track"><div class="time-fill" id="timeFill"></div></div>
+      </header>
+      <div id="runBadge" class="run-badge hidden">🪙 <span id="runCoinLabel">0</span></div>
+      <div id="protectionBadge" class="protection-badge hidden" aria-live="off"></div>
+      <aside id="vortexGauge" class="vortex-gauge hidden" aria-label="연타 속도로 성장하는 토네이도 가속 게이지">
+        <span class="vortex-title">STORM</span>
+        <canvas id="vortexCanvas" aria-hidden="true"></canvas>
+        <span class="vortex-state" id="vortexState">바람 대기</span>
+      </aside>
+      <div id="toast" class="toast hidden" role="status"></div>
+      <div id="controls" class="controls hidden" aria-label="게임 조작 버튼">
+        <button type="button" id="boost" class="stone-button boost" aria-label="망토 접기 연타 가속">
+          <span class="button-icon" aria-hidden="true">🌪️</span><strong>망토 접기</strong>
+          <small id="boostHint">더 빠르게 연타!</small>
+        </button>
+        <div class="item-quickbar" role="group" aria-label="게임 중 사용하는 아이템 슬롯 두 개">
+          <button type="button" id="quickItem0" class="quick-item-btn is-empty" aria-label="빈 아이템 슬롯 1" disabled>
+            <span id="quickItemIcon0" class="quick-item-icon">＋</span>
+            <span id="quickItemCount0" class="quick-item-count"></span>
+          </button>
+          <button type="button" id="quickItem1" class="quick-item-btn is-empty" aria-label="빈 아이템 슬롯 2" disabled>
+            <span id="quickItemIcon1" class="quick-item-icon">＋</span>
+            <span id="quickItemCount1" class="quick-item-count"></span>
+          </button>
+        </div>
+        <button type="button" id="jump" class="stone-button jump" aria-label="벽 점프">
+          <span class="button-icon" aria-hidden="true">👟</span><strong>벽 점프</strong><small>한 번 누르기</small>
+        </button>
+      </div>
+
+      <!-- V0.7 polished full-screen lobby: isolated from the game-over dialog. -->
+      <section id="lobby" class="lobby" aria-label="지옥 낙하 홈 화면">
+        <div class="lobby-world" aria-hidden="true"></div>
+        <div class="lobby-ambient" aria-hidden="true"></div>
+        <div class="lobby-embers" id="lobbyEmbers" aria-hidden="true"></div>
+        <div class="lobby-vignette" aria-hidden="true"></div>
+        <div class="lobby-layout">
+          <header class="lobby-header">
+            <div class="lobby-account" aria-label="캐릭터 레벨">
+              <div class="account-avatar"><img id="homeAvatar" src="assets/hero_intro.webp" alt=""></div>
+              <div class="account-meta"><strong><span id="homeCharacterName">우서</span> <span id="homeLevel">1</span><small> LV</small></strong><div class="account-track"><span id="homeProgressFill"></span></div></div>
+            </div>
+            <button type="button" class="lobby-wallet" data-panel="earn" aria-label="코인 획득소 열기">
+              <svg class="wallet-icon"><use href="#icon-coin"></use></svg>
+              <strong id="homeCoin">0</strong><span class="wallet-plus">+</span>
+            </button>
+          </header>
+          <div class="lobby-title" aria-label="지옥 낙하">
+            <div class="lobby-kicker"><span></span>THE DESCENT<span></span></div>
+            <h1>지옥 <em>낙하</em></h1>
+            <p>HELL FALL <span>✦</span> INTO THE ABYSS</p>
+          </div>
+          <div class="lobby-showcase" id="lobbyShowcase">
+            <div class="lobby-backlight" aria-hidden="true"></div>
+            <div class="lobby-shadow" aria-hidden="true"></div>
+            <div id="lobbyCharacter" class="lobby-character" tabindex="0" role="button" aria-label="우서 앞뒷모습 전환. 좌우로 밀거나 방향키를 사용하세요">
+              <canvas id="lobby3dCanvas" class="lobby-3d-canvas" aria-hidden="true"></canvas>
+              <div id="lobbyTurn" class="lobby-turn">
+                <div class="lobby-idle">
+                  <img id="lobbyHero" draggable="false" src="assets/hero_intro.webp" alt="">
+                </div>
+              </div>
+            </div>
+            <div class="showcase-ground" aria-hidden="true"></div>
+            <div class="character-identity"><span class="identity-diamond">✦</span><b id="characterIdentityName">우서</b><i></i><span id="characterIdentitySubtitle">첫 번째 탐험가</span></div>
+            <div class="character-turn-tip"><span>‹</span> 좌우로 밀어 앞·뒷모습 바꾸기 <span>›</span></div>
+          </div>
+          <div class="lobby-bottom">
+            <div class="lobby-summary"><div><small>PERSONAL BEST</small><strong><svg><use href="#icon-trophy"></use></svg><span id="homeBest">0</span><i>m</i></strong></div><div class="summary-divider"></div><div><small>TOTAL DESCENT</small><strong><svg><use href="#icon-spark"></use></svg><span id="homeTotal">0</span><i>m</i></strong></div></div>
+            <button type="button" class="lobby-play" id="start"><span class="play-insignia"><svg><use href="#icon-play"></use></svg></span><span class="play-copy"><strong>지옥으로 뛰어들기</strong><small>지하 세계 탐험 시작</small></span><svg class="play-arrow"><use href="#icon-arrow"></use></svg></button>
+            <a href="?rig=0&amp;keypose=1&amp;v=nov25-game1" id="keyposeGameEntry" style="display:block;text-decoration:none;text-align:center;min-height:45px;padding:9px 8px;margin:7px 0 3px;background:linear-gradient(100deg,#163b3b,#21454a);border:1px solid #8ce9df99;border-radius:12px;color:#e4fff9;font-weight:900;font-size:13px">🎮 최신 8자세 모션으로 게임 시험하기 <small style="font-size:10px;font-weight:500;display:block;margin-top:3px">실제 낙하·가속·벽점프 · 장비는 아직 미적용</small></a>
+            <a href="?rig=0&amp;keypose=1&amp;starter=1&amp;v=nov25-starter4" id="starterOutfitEntry" style="display:block;text-decoration:none;text-align:center;min-height:45px;padding:8px 8px;margin:6px 0 3px;background:linear-gradient(100deg,#705226,#3e4332);border:1px solid #f7d889a0;border-radius:12px;color:#fff0d1;font-weight:900;font-size:13px">🧰 초보 장비 풀세트 게임 테스트 <small style="display:block;font-size:10px;font-weight:500;margin-top:3px">공사장 헬멧 · 티셔츠 · 반바지 · 슬리퍼 · 보자기 망토 / 개별 장착 가능</small></a>
+            <div class="work-rig-entry" style="display:flex;gap:7px;margin:9px 0 1px">
+              <a href="character-lab.html?v=workrig-nov25" style="flex:1;text-decoration:none;text-align:center;display:grid;place-items:center;min-height:39px;background:#293342d9;border:1px solid #6be1cd7a;border-radius:11px;color:#c0fff1;font-weight:850;font-size:11px">🎭 모션·장비 시연</a>
+              <a href="?rig=0&amp;workrig=1&amp;v=workrig-nov25" style="flex:1;text-decoration:none;text-align:center;display:grid;place-items:center;min-height:39px;background:#452a42db;border:1px solid #f8cc7880;border-radius:11px;color:#ffe7bc;font-weight:850;font-size:11px">🎮 새 캐릭터로 게임</a>
+            </div>
+            <nav id="homeNav" class="lobby-nav" aria-label="게임 홈 메뉴">
+              <button type="button" data-panel="character"><svg><use href="#icon-person"></use></svg><span>캐릭터</span></button>
+              <button type="button" data-panel="shop"><svg><use href="#icon-shop"></use></svg><span>상점</span></button>
+              <button type="button" data-panel="earn"><svg><use href="#icon-coin"></use></svg><span>코인</span></button>
+              <button type="button" data-panel="records"><svg><use href="#icon-trophy"></use></svg><span>기록</span></button>
+              <button type="button" data-panel="settings"><svg><use href="#icon-gear"></use></svg><span>설정</span></button>
+            </nav>
+            <div class="lobby-home-indicator" aria-hidden="true"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Game over has a dedicated result card; the home screen is a separate lobby. -->
+      <div id="overlay" class="overlay hidden">
+        <div class="menu menu-over" id="menu">
+          <h2 id="menuTitle">추락 종료!</h2>
+          <div id="overCopy">
+            <p class="failure" id="failure">시간이 다 됐어!</p>
+            <p class="final-depth" id="finalDepth">0 <small>m</small></p>
+            <p class="final-best" id="finalBest">최고 기록 0 m</p>
+            <div class="reward-summary"><span>이번 판 코인 <b id="earnedCoin">+0</b></span><span>레벨 보상 <b id="earnedLevel">+0</b></span></div>
+            <p class="over-total" id="totalTravel">누적 낙하 0m · Lv.1</p>
+            <button type="button" id="overAd" class="ad-choice" disabled>▶ 광고 보고 코인 받기 <small>광고 연동 준비 중</small></button>
+          </div>
+          <button type="button" class="start-button" id="restart">다시 도전하기</button>
+          <button type="button" class="back-home" id="backHome">홈으로 돌아가기</button>
+        </div>
+      </div>
+      <section id="drawer" class="drawer hidden" aria-label="게임 부가 메뉴" role="dialog" aria-modal="true">
+        <div class="drawer-card"><div class="drawer-head"><h2 id="drawerTitle">메뉴</h2><button id="drawerClose" type="button" aria-label="닫기">✕</button></div><div id="drawerBody" class="drawer-body"></div></div>
+      </section>
+      <div class="version">WEB 2.4 TEST · MODULAR RIG PLAYER</div>
+    </section>
+    <aside class="outside-note">연타로 토네이도 성장 · 누적 레벨과 코인은 이 브라우저에 저장돼요.</aside>
+  </main>
+  <script src="systems.js?v=20-timed" defer></script>
+  <script src="hero_turnaround.js?v=16-uiji-gear" defer></script>
+  <script src="helmet-composer.js?v=23-catalog" defer></script>
+  <script src="rig-v3.js?v=25-rig3" defer></script>
+  <script src="character-production/uiji-useoi/starter-slots/player.js" defer></script>
+  <script src="starter-kit.js?v=nov25-starter4" defer></script>
+  <script src="keypose-live.js?v=nov25-starter4" defer></script>
+  <script src="game.js?v=nov25-game1" defer></script>
+</body>
+</html>

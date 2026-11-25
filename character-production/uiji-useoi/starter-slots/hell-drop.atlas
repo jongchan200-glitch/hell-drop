@@ -1,0 +1,34 @@
+hell-drop.png
+size: 2048,2048
+filter: Linear,Linear
+pma: false
+underlayer
+  bounds: 2,2,370,432
+cloth_L
+  bounds: 376,2,155,164
+cloth_R
+  bounds: 535,2,155,164
+shorts
+  bounds: 694,2,140,91
+tee
+  bounds: 838,2,180,145
+slipper_L
+  bounds: 1022,2,64,46
+tread_L
+  bounds: 1090,2,50,47
+slipper_R
+  bounds: 1144,2,64,46
+tread_R
+  bounds: 1212,2,50,47
+uji_original
+  bounds: 1266,2,182,166
+useo_original
+  bounds: 1452,2,256,169
+useo_L
+  bounds: 1712,2,239,149
+useo_R
+  bounds: 2,438,239,149
+safety
+  bounds: 245,438,189,91
+safety_side
+  bounds: 438,438,186,88
