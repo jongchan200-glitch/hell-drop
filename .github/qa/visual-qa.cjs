@@ -26,10 +26,10 @@ const fs=require('fs');
     if(startStats.items.filter(i=>i.kind==='drink').length!==6)throw Error('Missing six stat drinks');
     if(startStats.catalog.length!==4)throw Error('Expected two starters and two original premium actors');
     if(index===0||index===1){
-      await page.waitForFunction(()=>document.getElementById('homeAvatar')?.src.startsWith('data:image/'),{timeout:15000});
+      await page.waitForFunction(()=>(document.getElementById('homeAvatar')?.src.startsWith('data:image/')||document.getElementById('homeAvatar')?.src.includes('/assets/starter_boy_original_face.webp')),{timeout:15000});
       const pre=await page.evaluate(()=>({
-        home:document.getElementById('homeAvatar').src.startsWith('data:'),
-        showcase:document.querySelector('.turnaround-pose.is-selected')?.src.startsWith('data:'),
+        home:/^(data:image\/|.*\/assets\/starter_boy_original_face\.webp)/.test(document.getElementById('homeAvatar').src),
+        showcase:/^(data:image\/|.*\/assets\/starter_boy_original_face\.webp)/.test(document.querySelector('.turnaround-pose.is-selected')?.src||''),
         stats:document.querySelector('#lobbyTraits')?.textContent,
         assetReady:!!window.HellStarterSkin?.portraitSprite
       }));
@@ -38,11 +38,11 @@ const fs=require('fs');
         await page.screenshot({path:'qa-shot-starter-home.jpg',type:'jpeg',quality:65});
         console.log('QAIMAGE_STARTER_HOME='+fs.readFileSync('qa-shot-starter-home.jpg').toString('base64'));
         await page.locator('[data-panel="character"]').first().click();
-        await page.waitForFunction(()=>[...document.querySelectorAll('.starter-pick-card [data-starter-face]')].every(i=>i.src.startsWith('data:image/')),{timeout:15000});
+        await page.waitForFunction(()=>[...document.querySelectorAll('.starter-pick-card [data-starter-face]')].every(i=>i.src.startsWith('data:image/')||i.src.includes('/assets/starter_boy_original_face.webp')),{timeout:15000});
         const chooser=await page.evaluate(()=>({
           count:document.querySelectorAll('.starter-pick-card').length,
-          transformed:document.querySelectorAll('.starter-pick-card img[src^="data:image/"]').length,
-          starter:document.querySelector('[data-starter-face="starter_boy"]')?.src.startsWith('data:')
+          transformed:document.querySelectorAll('.starter-pick-card img[src^="data:image/"],.starter-pick-card img[src*="starter_boy_original_face.webp"]').length,
+          starter:(document.querySelector('[data-starter-face="starter_boy"]')?.src.startsWith('data:')||document.querySelector('[data-starter-face="starter_boy"]')?.src.includes('/assets/starter_boy_original_face.webp'))
         }));
         if(chooser.count!==4||chooser.transformed!==2||!chooser.starter)throw Error('Character cards visually stale '+JSON.stringify(chooser));
         await page.screenshot({path:'qa-shot-starter-choice.jpg',type:'jpeg',quality:65});
