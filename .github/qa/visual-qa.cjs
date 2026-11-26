@@ -92,6 +92,8 @@ const fs=require('fs');
     }
     if(index===2 && (before.stats.speed!==73||before.stats.brake!==72))throw Error('Premium stats wrong '+JSON.stringify(before.stats));
     if(index<2){
+      await page.screenshot({path:'qa-shot-'+name+'-glide.jpg',type:'jpeg',quality:60});
+      console.log('QAIMAGE_GLIDE_'+name.toUpperCase().replace(/-/g,'_')+'='+fs.readFileSync('qa-shot-'+name+'-glide.jpg').toString('base64'));
       // Real browser thumb events: five successive taps must accelerate,
       // followed by two distinct wall hops. Previous QA only tested one hop.
       const initial=await page.evaluate(()=>window.HellFallTest.snapshot());
@@ -115,9 +117,23 @@ const fs=require('fs');
       stage:before.stage,hero:before.character,stats:before.stats,starter:index<2,rig
     }));
     console.log('QAIMAGE_'+name.toUpperCase().replace(/-/g,'_')+'='+fs.readFileSync(shot).toString('base64'));
+    const priorWall=await page.evaluate(()=>window.HellFallTest.snapshot().wall);
     await page.locator('#jump').tap();await page.waitForTimeout(120);
-    const hop=await page.evaluate(()=>window.HellFallTest.snapshot().hopVisual);
-    if(!(hop<1))throw Error('Wall jump not triggered '+hop);
+    const firstHop=await page.evaluate(()=>window.HellFallTest.snapshot());
+    if(!(firstHop.hopVisual<1)||firstHop.wall===priorWall)
+      throw Error('Wall jump did not respond to mobile touch '+JSON.stringify(firstHop));
+    await page.screenshot({path:'qa-shot-'+name+'-kick.jpg',type:'jpeg',quality:55});
+    console.log('QAIMAGE_KICK_'+name.toUpperCase().replace(/-/g,'_')+'='+fs.readFileSync('qa-shot-'+name+'-kick.jpg').toString('base64'));
+    await page.waitForTimeout(360);
+    // Second distinct touch returns to the original wall; tap fallback must
+    // never synthesize a double jump on the first press.
+    if((await page.evaluate(()=>window.HellFallTest.snapshot().stage))==='PLAYING'){
+      await page.locator('#jump').tap();await page.waitForTimeout(100);
+      const second=await page.evaluate(()=>window.HellFallTest.snapshot());
+      if(second.wall!==priorWall||second.hopVisual>=1)
+        throw Error('Second wall hop failed '+JSON.stringify(second));
+      console.log('QADOUBLE_KICK_'+name.toUpperCase().replace(/-/g,'_')+'='+JSON.stringify({first:firstHop.wall,returned:second.wall}));
+    }
   }
   await reset('?v=nov26-stats25');
   const fresh=await page.evaluate(()=>window.HellSystems.selectCharacter('useoi'));
