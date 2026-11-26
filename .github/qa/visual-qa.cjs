@@ -91,6 +91,24 @@ const fs=require('fs');
       console.log('QADRINKS='+JSON.stringify({stats:active.stats,drink:active.drinks,consumed:true}));
     }
     if(index===2 && (before.stats.speed!==73||before.stats.brake!==72))throw Error('Premium stats wrong '+JSON.stringify(before.stats));
+    if(index<2){
+      // Real browser thumb events: five successive taps must accelerate,
+      // followed by two distinct wall hops. Previous QA only tested one hop.
+      const initial=await page.evaluate(()=>window.HellFallTest.snapshot());
+      for(let n=0;n<5;n++){
+        await page.locator('#boost').tap();
+        await page.waitForTimeout(160);
+      }
+      const boosted=await page.evaluate(()=>window.HellFallTest.snapshot());
+      if(boosted.tapCount-initial.tapCount<5)throw Error('Galaxy acceleration button dropped taps '+JSON.stringify({before:initial.tapCount,after:boosted.tapCount}));
+      if(boosted.boost<.08)throw Error('Rapid thumb tapping did not accelerate '+JSON.stringify({boost:boosted.boost,speed:boosted.speed}));
+      if(boosted.poseFrames<1)throw Error('Starter dedicated animation frames not drawn');
+      console.log('QATOUCH_'+name.toUpperCase().replace(/-/g,'_')+'='+JSON.stringify({
+        taps:boosted.tapCount,boost:boosted.boost,speed:boosted.speed,frames:boosted.poseFrames
+      }));
+      await page.screenshot({path:'qa-shot-'+name+'-boost.jpg',quality:55,type:'jpeg'});
+      console.log('QAIMAGE_BOOST_'+name.toUpperCase().replace(/-/g,'_')+'='+fs.readFileSync('qa-shot-'+name+'-boost.jpg').toString('base64'));
+    }
     const shot='qa-shot-'+name+'.jpg';
     await page.screenshot({path:shot,type:'jpeg',quality:50});
     console.log('QAINFO_'+name.toUpperCase().replace(/-/g,'_')+'='+JSON.stringify({
