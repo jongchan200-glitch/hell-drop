@@ -28,8 +28,8 @@ const fs=require('fs');
     if(index===0||index===1){
       await page.waitForFunction(()=>(document.getElementById('homeAvatar')?.src.includes('starter_')&&document.getElementById('homeAvatar')?.naturalWidth>100),{timeout:15000});
       const pre=await page.evaluate(()=>({
-        home:/\/assets\/starter_(boy|girl)_portrait\.webp/.test(document.getElementById('homeAvatar').src),
-        showcase:/\/assets\/starter_(boy|girl)_portrait\.webp/.test(document.querySelector('.turnaround-pose.is-selected')?.src||''),
+        home:/\/assets\/starter_(boy|girl)_portrait_v29\.webp/.test(document.getElementById('homeAvatar').src),
+        showcase:/\/assets\/starter_(boy|girl)_portrait_v29\.webp/.test(document.querySelector('.turnaround-pose.is-selected')?.src||''),
         stats:document.querySelector('#lobbyTraits')?.textContent,
         assetReady:!!window.HellStarterSkin?.portraitSprite
       }));
@@ -38,10 +38,10 @@ const fs=require('fs');
         await page.screenshot({path:'qa-shot-starter-home.jpg',type:'jpeg',quality:65});
         console.log('QAIMAGE_STARTER_HOME='+fs.readFileSync('qa-shot-starter-home.jpg').toString('base64'));
         await page.locator('[data-panel="character"]').first().click();
-        await page.waitForFunction(()=>[...document.querySelectorAll('.starter-pick-card [data-starter-face]')].every(i=>i.src.includes('_portrait.webp')&&i.naturalWidth>100),{timeout:15000});
+        await page.waitForFunction(()=>[...document.querySelectorAll('.starter-pick-card [data-starter-face]')].every(i=>i.src.includes('_portrait_v29.webp')&&i.naturalWidth>100),{timeout:15000});
         const chooser=await page.evaluate(()=>({
           count:document.querySelectorAll('.starter-pick-card').length,
-          transformed:document.querySelectorAll('.starter-pick-card img[src*="_portrait.webp"]').length,
+          transformed:document.querySelectorAll('.starter-pick-card img[src*="_portrait_v29.webp"]').length,
           starter:document.querySelector('[data-starter-face="starter_boy"]')?.src.includes('/assets/starter_boy_portrait_v29.webp')
         }));
         if(chooser.count!==4||chooser.transformed!==2||!chooser.starter)throw Error('Character cards visually stale '+JSON.stringify(chooser));
