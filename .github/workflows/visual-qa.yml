@@ -1,7 +1,7 @@
 name: Hell Drop visual QA
 on:
   push:
-    branches: [main, 'feature/starter-dedicated-poses-touch-20261126']
+    branches: [main, 'feature/starter-art-atlas-20261126']
     paths:
       - '.github/workflows/visual-qa.yml'
       - 'starter-kit.js'
@@ -9,6 +9,11 @@ on:
       - 'index.html'
       - 'game.js'
       - 'starter-poses.js'
+      - 'assets/starter_boy_actions.webp'
+      - 'assets/starter_girl_actions.webp'
+      - 'assets/starter_boy_portrait.webp'
+      - 'assets/starter_girl_portrait.webp'
+      - 'hero_turnaround.js'
       - 'starter-skin.js'
       - 'systems.js'
       - '.github/qa/visual-qa.cjs'
