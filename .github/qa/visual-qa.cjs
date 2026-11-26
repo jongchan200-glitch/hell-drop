@@ -13,8 +13,8 @@ const fs=require('fs');
   }
   // Every check uses real mobile viewport, real game buttons and live physics.
   for(const [name,query,hero,index] of [
-    ['starter-boy','?v=nov26-stats25','starter_boy',0],
-    ['starter-girl','?v=nov26-stats25','starter_girl',1],
+    ['starter-boy','?v=nov26-artatlas28','starter_boy',0],
+    ['starter-girl','?v=nov26-artatlas28','starter_girl',1],
     ['premium-girl','?rig=1&keypose=1&starter=1&workrig=1&v=nov26-stats25','useoi',2]
   ]){
     await reset(query);
@@ -26,10 +26,10 @@ const fs=require('fs');
     if(startStats.items.filter(i=>i.kind==='drink').length!==6)throw Error('Missing six stat drinks');
     if(startStats.catalog.length!==4)throw Error('Expected two starters and two original premium actors');
     if(index===0||index===1){
-      await page.waitForFunction(()=>(document.getElementById('homeAvatar')?.src.startsWith('data:image/')||document.getElementById('homeAvatar')?.src.includes('/assets/starter_boy_original_face.webp')),{timeout:15000});
+      await page.waitForFunction(()=>(document.getElementById('homeAvatar')?.src.includes('starter_')&&document.getElementById('homeAvatar')?.naturalWidth>100),{timeout:15000});
       const pre=await page.evaluate(()=>({
-        home:/^(data:image\/|.*\/assets\/starter_boy_original_face\.webp)/.test(document.getElementById('homeAvatar').src),
-        showcase:/^(data:image\/|.*\/assets\/starter_boy_original_face\.webp)/.test(document.querySelector('.turnaround-pose.is-selected')?.src||''),
+        home:/\/assets\/starter_(boy|girl)_portrait\.webp/.test(document.getElementById('homeAvatar').src),
+        showcase:/\/assets\/starter_(boy|girl)_portrait\.webp/.test(document.querySelector('.turnaround-pose.is-selected')?.src||''),
         stats:document.querySelector('#lobbyTraits')?.textContent,
         assetReady:!!window.HellStarterSkin?.portraitSprite
       }));
@@ -38,11 +38,11 @@ const fs=require('fs');
         await page.screenshot({path:'qa-shot-starter-home.jpg',type:'jpeg',quality:65});
         console.log('QAIMAGE_STARTER_HOME='+fs.readFileSync('qa-shot-starter-home.jpg').toString('base64'));
         await page.locator('[data-panel="character"]').first().click();
-        await page.waitForFunction(()=>[...document.querySelectorAll('.starter-pick-card [data-starter-face]')].every(i=>i.src.startsWith('data:image/')||i.src.includes('/assets/starter_boy_original_face.webp')),{timeout:15000});
+        await page.waitForFunction(()=>[...document.querySelectorAll('.starter-pick-card [data-starter-face]')].every(i=>i.src.includes('_portrait.webp')&&i.naturalWidth>100),{timeout:15000});
         const chooser=await page.evaluate(()=>({
           count:document.querySelectorAll('.starter-pick-card').length,
-          transformed:document.querySelectorAll('.starter-pick-card img[src^="data:image/"],.starter-pick-card img[src*="starter_boy_original_face.webp"]').length,
-          starter:(document.querySelector('[data-starter-face="starter_boy"]')?.src.startsWith('data:')||document.querySelector('[data-starter-face="starter_boy"]')?.src.includes('/assets/starter_boy_original_face.webp'))
+          transformed:document.querySelectorAll('.starter-pick-card img[src*="_portrait.webp"]').length,
+          starter:document.querySelector('[data-starter-face="starter_boy"]')?.src.includes('/assets/starter_boy_portrait.webp')
         }));
         if(chooser.count!==4||chooser.transformed!==2||!chooser.starter)throw Error('Character cards visually stale '+JSON.stringify(chooser));
         await page.screenshot({path:'qa-shot-starter-choice.jpg',type:'jpeg',quality:65});
@@ -71,6 +71,16 @@ const fs=require('fs');
         return {a:a.ok,b:b.ok,x,y,coins:sys.profile.coins};
       });
       if(!stocked.a||!stocked.b||!stocked.x||!stocked.y)throw Error('Drink purchase/equip failed '+JSON.stringify(stocked));
+    }
+    if(index<2){
+      await page.waitForFunction(
+        actor=>window.HellStarterPoses?.ready?.(actor),
+        index===0?'uiji':'useoi',{timeout:12000}
+      );
+      const art=await page.evaluate(()=>window.HellStarterPoses?.status());
+      if(!window.HellStarterPoses?.usesWholeBodyArt)throw Error('Rejected vector body renderer still active');
+      if(!art?.ready?.[index===0?'uiji':'useoi'])throw Error('Missing complete-body approved art '+JSON.stringify(art));
+      console.log('QAART_'+name.toUpperCase().replace(/-/g,'_')+'='+JSON.stringify(art));
     }
     await page.locator('#start').click();await page.waitForTimeout(320);
     const before=await page.evaluate(()=>window.HellFallTest.snapshot());
@@ -104,7 +114,9 @@ const fs=require('fs');
       const boosted=await page.evaluate(()=>window.HellFallTest.snapshot());
       if(boosted.tapCount-initial.tapCount<5)throw Error('Galaxy acceleration button dropped taps '+JSON.stringify({before:initial.tapCount,after:boosted.tapCount}));
       if(boosted.boost<.08)throw Error('Rapid thumb tapping did not accelerate '+JSON.stringify({boost:boosted.boost,speed:boosted.speed}));
-      if(boosted.poseFrames<1)throw Error('Starter dedicated animation frames not drawn');
+      if(boosted.poseFrames<1)throw Error('Starter action atlas was not drawn');
+      const anim=await page.evaluate(()=>window.HellStarterPoses.status());
+      if(anim.lastPose!=='fast')throw Error('After acceleration the complete-body fast pose did not appear '+JSON.stringify(anim));
       console.log('QATOUCH_'+name.toUpperCase().replace(/-/g,'_')+'='+JSON.stringify({
         taps:boosted.tapCount,boost:boosted.boost,speed:boosted.speed,frames:boosted.poseFrames
       }));
@@ -119,6 +131,10 @@ const fs=require('fs');
     console.log('QAIMAGE_'+name.toUpperCase().replace(/-/g,'_')+'='+fs.readFileSync(shot).toString('base64'));
     const priorWall=await page.evaluate(()=>window.HellFallTest.snapshot().wall);
     await page.locator('#jump').tap();await page.waitForTimeout(120);
+    if(index<2){
+      const anim=await page.evaluate(()=>window.HellStarterPoses.status());
+      if(anim.lastPose!=='kick')throw Error('Complete-body wall-kick pose did not appear '+JSON.stringify(anim));
+    }
     const firstHop=await page.evaluate(()=>window.HellFallTest.snapshot());
     if(!(firstHop.hopVisual<1)||firstHop.wall===priorWall)
       throw Error('Wall jump did not respond to mobile touch '+JSON.stringify(firstHop));
@@ -135,7 +151,7 @@ const fs=require('fs');
       console.log('QADOUBLE_KICK_'+name.toUpperCase().replace(/-/g,'_')+'='+JSON.stringify({first:firstHop.wall,returned:second.wall}));
     }
   }
-  await reset('?v=nov26-stats25');
+  await reset('?v=nov26-artatlas28');
   const fresh=await page.evaluate(()=>window.HellSystems.selectCharacter('useoi'));
   if(fresh!==false)throw Error('Premium hero accessible without purchase');
   // Old versions shipped two free original heroes: do not remove them from
