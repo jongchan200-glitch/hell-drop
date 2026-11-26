@@ -63,7 +63,10 @@
     // Create an articulated 3-layer puppet directly from the single original
     // 512px hero_cape image. No generated poses, no new character images.
     // Source pixels are never redrawn and the central face/body stays unchanged.
-    const width=original.naturalWidth,height=original.naturalHeight;
+    // Image source may be a Canvas 2D costume recolor (no naturalWidth).
+    const width=original.naturalWidth||original.width;
+    const height=original.naturalHeight||original.height;
+    if(!width||!height)return;
     const masks={
       left:[[0,151],[45,148],[86,156],[125,171],[154,191],[184,222],[210,255],[208,311],[188,350],[132,364],[64,349],[15,317]],
       right:[[511,139],[468,143],[420,158],[384,180],[359,206],[328,224],[303,255],[306,310],[333,350],[395,361],[462,335],[506,302]]
