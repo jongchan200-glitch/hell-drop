@@ -19,8 +19,8 @@
   // Free starter portraits use approved complete-body game illustrations.
   // The premium Uiji/Useoi original artwork is immutable.
   const CHARACTER_CATALOG=[
-    {id:'starter_boy',name:'초보 탐험가 (남)',description:'무료 기본 캐릭터 · 최고속도 70% · 감속 70%',front:'assets/starter_boy_portrait.webp',actor:'uiji',starter:true,price:0,speedBonus:0,brakeBonus:0,hasBack:false},
-    {id:'starter_girl',name:'초보 탐험가 (여)',description:'무료 기본 캐릭터 · 최고속도 70% · 감속 70%',front:'assets/starter_girl_portrait.webp',actor:'useoi',starter:true,price:0,speedBonus:0,brakeBonus:0,hasBack:false},
+    {id:'starter_boy',name:'초보 탐험가 (남)',description:'무료 기본 캐릭터 · 최고속도 70% · 감속 70%',front:'assets/starter_boy_portrait_v29.webp',actor:'uiji',starter:true,price:0,speedBonus:0,brakeBonus:0,hasBack:false},
+    {id:'starter_girl',name:'초보 탐험가 (여)',description:'무료 기본 캐릭터 · 최고속도 70% · 감속 70%',front:'assets/starter_girl_portrait_v29.webp',actor:'useoi',starter:true,price:0,speedBonus:0,brakeBonus:0,hasBack:false},
     {id:'useoi',name:'우서',description:'기존 원화 · 최고속도 +3%p · 감속 +2%p',front:'assets/hero_intro.webp',actor:'useoi',starter:false,price:240,speedBonus:3,brakeBonus:2,hasBack:true},
     {id:'uiji',name:'우지',description:'기존 원화 · 최고속도 +3%p · 감속 +2%p',front:'assets/uiji_intro.webp',actor:'uiji',starter:false,price:240,speedBonus:3,brakeBonus:2,hasBack:false}
   ];

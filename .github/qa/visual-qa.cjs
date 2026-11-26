@@ -13,8 +13,8 @@ const fs=require('fs');
   }
   // Every check uses real mobile viewport, real game buttons and live physics.
   for(const [name,query,hero,index] of [
-    ['starter-boy','?v=nov26-artatlas28','starter_boy',0],
-    ['starter-girl','?v=nov26-artatlas28','starter_girl',1],
+    ['starter-boy','?v=nov27-face-motion29','starter_boy',0],
+    ['starter-girl','?v=nov27-face-motion29','starter_girl',1],
     ['premium-girl','?rig=1&keypose=1&starter=1&workrig=1&v=nov26-stats25','useoi',2]
   ]){
     await reset(query);
@@ -42,7 +42,7 @@ const fs=require('fs');
         const chooser=await page.evaluate(()=>({
           count:document.querySelectorAll('.starter-pick-card').length,
           transformed:document.querySelectorAll('.starter-pick-card img[src*="_portrait.webp"]').length,
-          starter:document.querySelector('[data-starter-face="starter_boy"]')?.src.includes('/assets/starter_boy_portrait.webp')
+          starter:document.querySelector('[data-starter-face="starter_boy"]')?.src.includes('/assets/starter_boy_portrait_v29.webp')
         }));
         if(chooser.count!==4||chooser.transformed!==2||!chooser.starter)throw Error('Character cards visually stale '+JSON.stringify(chooser));
         await page.screenshot({path:'qa-shot-starter-choice.jpg',type:'jpeg',quality:65});
@@ -151,7 +151,7 @@ const fs=require('fs');
       console.log('QADOUBLE_KICK_'+name.toUpperCase().replace(/-/g,'_')+'='+JSON.stringify({first:firstHop.wall,returned:second.wall}));
     }
   }
-  await reset('?v=nov26-artatlas28');
+  await reset('?v=nov27-face-motion29');
   const fresh=await page.evaluate(()=>window.HellSystems.selectCharacter('useoi'));
   if(fresh!==false)throw Error('Premium hero accessible without purchase');
   // Old versions shipped two free original heroes: do not remove them from

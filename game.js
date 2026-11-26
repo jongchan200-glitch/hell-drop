@@ -741,7 +741,7 @@
   // Helmet is an independent overlay shared by all character IDs.
   function drawHelmet(x,y,u){
     if(!s.helmetId||s.stage==='READY')return;
-    const boy=sys.profile.selectedCharacter==='uiji';
+    const boy=currentActor()==='uiji';
     const cy=y-(boy?65:59)*u;
     ctx.save();ctx.translate(x,cy);
     if(s.helmetId==='helmet_frog'){
@@ -1162,7 +1162,7 @@
        <div class="market-detail-head"><span class="market-large-art"><img src="${character.front}" ${character.starter?'data-starter-face="'+character.id+'"':''} alt=""></span>
        <div class="market-detail-title"><small>${character.starter?'무료 기본 캐릭터':'기존 원화 · 판매형'}</small>
        <strong>${esc(character.name)}</strong><b>최고속 ${statOf(character.id).speed}% · 감속 ${statOf(character.id).brake}%</b></div></div>
-       <p class="market-guide">${character.starter?'안전모 없는 기본 복장(밝은 티셔츠·반바지·파란 슬리퍼·베이지 망토)이며 원본 얼굴 픽셀을 보존한 전용 일러스트를 사용합니다.':
+       <p class="market-guide">${character.starter?'안전모 없는 기본 복장(밝은 티셔츠·반바지·파란 슬리퍼·베이지 망토)이며 기존 캐릭터 원화를 참고한 전용 일러스트를 사용합니다.':
          '기존 원화 모습을 그대로 보존한 판매형 캐릭터입니다. 최고속도 +3%p, 감속력 +2%p. 기존 사용자의 보유 권리는 유지됩니다.'}</p>
        <div class="market-detail-bottom"><span>${owned?'보유 중':'🪙 '+fmt(character.price)}</span>
        ${owned?'<button type="button" data-market-go-character>캐릭터 화면</button>':

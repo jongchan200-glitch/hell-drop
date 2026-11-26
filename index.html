@@ -7,10 +7,10 @@
   <meta name="description" content="지옥 낙하 — 캐릭터와 함께 지하 세계를 돌파하는 낙하 게임">
   <title>지옥 낙하 · HELL FALL</title>
   <link rel="preload" href="assets/lobby_abyss.webp" as="image">
-  <link rel="preload" href="assets/starter_boy_portrait.webp" as="image">
-  <link rel="preload" href="assets/starter_girl_portrait.webp" as="image">
-  <link rel="preload" href="assets/starter_boy_actions.webp?v=28" as="image">
-  <link rel="preload" href="assets/starter_girl_actions.webp?v=28" as="image">
+  <link rel="preload" href="assets/starter_boy_portrait_v29.webp" as="image">
+  <link rel="preload" href="assets/starter_girl_portrait_v29.webp" as="image">
+  <link rel="preload" href="assets/starter_boy_actions_v29.webp" as="image">
+  <link rel="preload" href="assets/starter_girl_actions_v29.webp" as="image">
   <link rel="stylesheet" href="style.css?v=nov26-starter-visual2">
   <link rel="stylesheet" href="hero_turnaround.css?v=11-frontback">
 </head>
@@ -80,7 +80,7 @@
         <div class="lobby-layout">
           <header class="lobby-header">
             <div class="lobby-account" aria-label="캐릭터 레벨">
-              <div class="account-avatar"><img id="homeAvatar" src="assets/starter_boy_portrait.webp" alt=""></div>
+              <div class="account-avatar"><img id="homeAvatar" src="assets/starter_boy_portrait_v29.webp" alt=""></div>
               <div class="account-meta"><strong><span id="homeCharacterName">초보 탐험가</span> <span id="homeLevel">1</span><small> LV</small></strong><div class="account-track"><span id="homeProgressFill"></span></div></div>
             </div>
             <button type="button" class="lobby-wallet" data-panel="earn" aria-label="코인 획득소 열기">
@@ -100,7 +100,7 @@
               <canvas id="lobby3dCanvas" class="lobby-3d-canvas" aria-hidden="true"></canvas>
               <div id="lobbyTurn" class="lobby-turn">
                 <div class="lobby-idle">
-                  <img id="lobbyHero" draggable="false" src="assets/starter_boy_portrait.webp" alt="">
+                  <img id="lobbyHero" draggable="false" src="assets/starter_boy_portrait_v29.webp" alt="">
                 </div>
               </div>
             </div>
@@ -147,15 +147,15 @@
       <section id="drawer" class="drawer hidden" aria-label="게임 부가 메뉴" role="dialog" aria-modal="true">
         <div class="drawer-card"><div class="drawer-head"><h2 id="drawerTitle">메뉴</h2><button id="drawerClose" type="button" aria-label="닫기">✕</button></div><div id="drawerBody" class="drawer-body"></div></div>
       </section>
-      <div class="version">WEB 2.8 TEST · FULL-BODY STARTER ART</div>
+      <div class="version">WEB 2.9 TEST · STARTER FACE & MOTION</div>
     </section>
     <aside class="outside-note">연타로 토네이도 성장 · 누적 레벨과 코인은 이 브라우저에 저장돼요.</aside>
   </main>
-  <script src="systems.js?v=nov26-artatlas28" defer></script>
-  <script src="starter-skin.js?v=nov26-artatlas28" defer></script>
-  <script src="hero_turnaround.js?v=nov26-artatlas28" defer></script>
+  <script src="systems.js?v=nov27-face-motion29" defer></script>
+  <script src="starter-skin.js?v=nov27-face-motion29" defer></script>
+  <script src="hero_turnaround.js?v=nov27-face-motion29" defer></script>
   <script src="helmet-composer.js?v=23-catalog" defer></script>
-  <script src="starter-poses.js?v=nov26-artatlas28" defer></script>
-  <script src="game.js?v=nov26-artatlas28" defer></script>
+  <script src="starter-poses.js?v=nov27-face-motion29" defer></script>
+  <script src="game.js?v=nov27-face-motion29" defer></script>
 </body>
 </html>

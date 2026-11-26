@@ -4,8 +4,8 @@
 (function(){
   'use strict';
   const VIEW_SETS={
-    starter_boy:{name:'초보 탐험가 (남)',front:'assets/starter_boy_portrait.webp?v=28-full-body',back:null,actor:'uiji',starter:true},
-    starter_girl:{name:'초보 탐험가 (여)',front:'assets/starter_girl_portrait.webp?v=28-full-body',back:null,actor:'useoi',starter:true},
+    starter_boy:{name:'초보 탐험가 (남)',front:'assets/starter_boy_portrait_v29.webp?v=29-full-body',back:null,actor:'uiji',starter:true},
+    starter_girl:{name:'초보 탐험가 (여)',front:'assets/starter_girl_portrait_v29.webp?v=29-full-body',back:null,actor:'useoi',starter:true},
     useoi:{name:'우서',front:'assets/hero_intro.webp?v=11-frontback',back:'assets/hero_back_fixed.webp?v=12-backfix'},
     uiji:{name:'우지',front:'assets/uiji_intro.webp?v=16-uiji',back:null}
   };
@@ -46,7 +46,7 @@
       if(v.starter)window.HellStarterSkin?.preview(v.front,v.actor,url=>{
         if(!disposed&&character===id){images.front.src=url;images.back.src=url;}
       });
-      if(tip)tip.textContent=v.back?'‹ 좌우로 밀어 앞·뒷모습 바꾸기 ›':v.starter?'✦ 기본 복장 · 원본 얼굴 유지':'✦ 정면 미리보기 · 뒷모습 준비 중';
+      if(tip)tip.textContent=v.back?'‹ 좌우로 밀어 앞·뒷모습 바꾸기 ›':v.starter?'✦ 기본 복장 · 원형 참고':'✦ 정면 미리보기 · 뒷모습 준비 중';
       show('front');
       // Keep the original fallback visible while a new artwork is loading.
       const preload=new Image();
