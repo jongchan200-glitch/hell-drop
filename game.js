@@ -939,7 +939,11 @@
       if(sys.profile.selectedCharacter===character.id){$('homeAvatar').src=url;$('lobbyHero').src=url;}
     });
     $('characterIdentityName').textContent=character.name;
-    $('characterIdentitySubtitle').textContent=character.description;
+    $('characterIdentitySubtitle').textContent=character.starter?'기본 초보 복장 · 무료':'+3%p 최고속 · +2%p 감속';
+    $('lobbyClassTag').textContent=character.starter?'무료 기본 캐릭터':'원화 판매형';
+    $('lobbySpeedStat').textContent=statOf(character.id).speed+'%';
+    $('lobbyBrakeStat').textContent=statOf(character.id).brake+'%';
+    $('lobbyTraits').classList.toggle('is-premium',!character.starter);
     $('lobbyCharacter').setAttribute('aria-label',character.name+' 캐릭터');
     lobbyCtrl?.setCharacter(character.id);
   }
@@ -964,6 +968,15 @@
     const dots=characters.map((c,index)=>
       `<button type="button" class="wardrobe-dot ${index===selectedIndex?'is-selected':''}"
         data-character-index="${index}" aria-label="${c.name} 선택" aria-pressed="${index===selectedIndex}"></button>`).join('');
+    const picker=characters.map(c=>{
+      const selected=c.id===prof.selectedCharacter,owned=sys.ownsCharacter(c.id);
+      const label=selected?'✓ 사용 중':owned?'선택 가능':'🔒 코인 '+fmt(c.price);
+      return `<button type="button" class="starter-pick-card ${selected?'is-selected':''} ${owned?'':'is-locked'}"
+          data-character-pick="${c.id}" aria-label="${esc(c.name)} ${esc(label)}" aria-pressed="${selected}">
+          <span class="starter-pick-art"><img src="${c.front}" ${c.starter?'data-starter-face="'+c.id+'"':''} alt=""></span>
+          <span class="starter-pick-info"><strong>${esc(c.name)}</strong><small>⚡ ${statOf(c.id).speed}% · ❄ ${statOf(c.id).brake}%</small>
+          <em>${label}</em></span></button>`;
+    }).join('');
     const slots=[0,1].map(index=>{
       const id=wardrobe.quickSlots[index];
       const item=sys.ITEM_CATALOG.find(x=>x.id===id);
@@ -1010,6 +1023,10 @@
     const badge=helmet?`<span class="wardrobe-equipped-badge">${helmet.icon} ${helmet.name} 장착 중</span>`:
       '<span class="wardrobe-equipped-badge is-empty">헬멧 미착용</span>';
     return `<div class="wardrobe-root">
+      <div class="starter-pick-section">
+        <div class="starter-pick-heading"><b>캐릭터 선택</b><span>무료 기본 2종 · 원화 판매형 2종</span></div>
+        <div class="starter-pick-grid">${picker}</div>
+      </div>
       <div class="wardrobe-carousel" id="wardrobeCarousel" role="group" aria-label="캐릭터 좌우 스와이프 선택" tabindex="0">
         <button type="button" data-char-direction="-1" class="wardrobe-arrow" aria-label="이전 캐릭터">❮</button>
         <div class="wardrobe-portrait">
@@ -1018,12 +1035,13 @@
           </div>
           <div class="wardrobe-portrait-footer"><strong>${active.name}</strong>
             <span class="wardrobe-active-tag">✓ 사용 중</span></div>
+          <div class="starter-active-stats"><span>⚡ 최고속 ${statOf(active.id).speed}%</span><span>❄ 감속 ${statOf(active.id).brake}%</span></div>
           ${badge}
         </div>
         <button type="button" data-char-direction="1" class="wardrobe-arrow" aria-label="다음 캐릭터">❯</button>
       </div>
       <div class="wardrobe-dots">${dots}</div>
-      <p class="wardrobe-help">‹ 좌우로 밀어서 캐릭터 선택 · 장착 구성은 캐릭터마다 저장 ›</p>
+      <p class="wardrobe-help">캐릭터 카드를 터치해 선택 · 미보유 캐릭터는 상점에서 구매 · 장착 정보는 각각 저장</p>
       <div class="wardrobe-section">
         <div class="wardrobe-heading"><strong>🫧 출전 아이템</strong><small>2칸 · 플레이 중 버튼을 눌러 사용</small></div>
         <div class="wardrobe-quick-slots">${slots}</div>
@@ -1121,7 +1139,7 @@
        <div class="market-detail-head"><span class="market-large-art"><img src="${character.front}" ${character.starter?'data-starter-face="'+character.id+'"':''} alt=""></span>
        <div class="market-detail-title"><small>${character.starter?'무료 기본 캐릭터':'기존 원화 · 판매형'}</small>
        <strong>${esc(character.name)}</strong><b>최고속 ${statOf(character.id).speed}% · 감속 ${statOf(character.id).brake}%</b></div></div>
-       <p class="market-guide">${character.starter?'안전모 없이 시작하는 기본 캐릭터. 기존 2D 원화의 얼굴을 그대로 사용하고 망토 색을 바꾼 테스트 의상입니다.':
+       <p class="market-guide">${character.starter?'안전모 없는 기본 복장(밝은 티셔츠·반바지·파란 슬리퍼·베이지 망토)이며 원본 얼굴 픽셀을 보존한 전용 일러스트를 사용합니다.':
          '기존 원화 모습을 그대로 보존한 판매형 캐릭터입니다. 최고속도 +3%p, 감속력 +2%p. 기존 사용자의 보유 권리는 유지됩니다.'}</p>
        <div class="market-detail-bottom"><span>${owned?'보유 중':'🪙 '+fmt(character.price)}</span>
        ${owned?'<button type="button" data-market-go-character>캐릭터 화면</button>':
@@ -1161,6 +1179,16 @@
   }
   function mountWardrobeControls(){
     const body=$('drawerBody'),carousel=$('wardrobeCarousel');
+    body.querySelectorAll('[data-character-pick]').forEach(button=>button.addEventListener('click',()=>{
+      const id=button.dataset.characterPick,actor=sys.CHARACTER_CATALOG.find(c=>c.id===id);
+      if(!actor)return;
+      if(sys.ownsCharacter(id)){
+        wardrobePending=null;sys.selectCharacter(id);syncLobbyCharacter();openPanel('character');
+      }else{
+        marketTab='characters';marketGroup=null;marketSelected=null;marketCharacter=id;
+        openPanel('shop',actor.name+' 캐릭터는 코인 구매 후 사용할 수 있어요.');
+      }
+    }));
     const worn=body.querySelector('[data-worn-portrait]');
     if(worn){
       const who=sys.CHARACTER_CATALOG.find(x=>x.id===sys.profile.selectedCharacter);
