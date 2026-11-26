@@ -4,8 +4,10 @@
 (function(){
   'use strict';
   const VIEW_SETS={
-    useoi:{name:'우서이',front:'assets/hero_intro.webp?v=11-frontback',back:'assets/hero_back_fixed.webp?v=12-backfix'},
-    uiji:{name:'우이지',front:'assets/uiji_intro.webp?v=16-uiji',back:null}
+    starter_boy:{name:'초보 탐험가 (남)',front:'assets/uiji_intro.webp?v=16-uiji',back:null,actor:'uiji',starter:true},
+    starter_girl:{name:'초보 탐험가 (여)',front:'assets/hero_intro.webp?v=11-frontback',back:null,actor:'useoi',starter:true},
+    useoi:{name:'우서',front:'assets/hero_intro.webp?v=11-frontback',back:'assets/hero_back_fixed.webp?v=12-backfix'},
+    uiji:{name:'우지',front:'assets/uiji_intro.webp?v=16-uiji',back:null}
   };
   function mount(actor,opts={}){
     if(!actor)return null;
@@ -22,7 +24,7 @@
     const canvas=actor.querySelector('#lobby3dCanvas');
     if(canvas)canvas.hidden=true;
     actor.insertBefore(stage,old||null);
-    let character='useoi',side='front',active=false,held=null,startX=0,startY=0,disposed=false;
+    let character='starter_boy',side='front',active=false,held=null,startX=0,startY=0,disposed=false;
     const tip=document.querySelector('.character-turn-tip');
     function show(next){
       const v=VIEW_SETS[character];
@@ -37,11 +39,14 @@
     }
     function setCharacter(id){
       if(disposed)return;
-      character=VIEW_SETS[id]?id:'useoi';
+      character=VIEW_SETS[id]?id:'starter_boy';
       const v=VIEW_SETS[character];
       images.front.src=v.front;
       images.back.src=v.back||v.front;
-      if(tip)tip.textContent=v.back?'‹ 좌우로 밀어 앞·뒷모습 바꾸기 ›':'✦ 우이지 정면 미리보기 · 뒷모습 준비 중';
+      if(v.starter)window.HellStarterSkin?.preview(v.front,v.actor,url=>{
+        if(!disposed&&character===id){images.front.src=url;images.back.src=url;}
+      });
+      if(tip)tip.textContent=v.back?'‹ 좌우로 밀어 앞·뒷모습 바꾸기 ›':v.starter?'✦ 기본 복장 · 원본 얼굴 유지':'✦ 정면 미리보기 · 뒷모습 준비 중';
       show('front');
       // Keep the original fallback visible while a new artwork is loading.
       const preload=new Image();
@@ -73,7 +78,7 @@
         e.preventDefault();e.stopPropagation();show(side==='front'?'back':'front');
       }else if(e.key==='Home'){e.preventDefault();show('front');}
     });
-    setCharacter(opts.initial||'useoi');
+    setCharacter(opts.initial||'starter_boy');
     window.HellFall3DStatus={ready:true,true3D:false,model:'selectable-front-and-approved-back',rotation:'swipe toggle (useoi only)'};
     return {
       setCharacter,
