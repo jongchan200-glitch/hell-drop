@@ -53,8 +53,8 @@
       images[key]=img;
       if(key==='braking'){
         prepareCapeRig(img,capeRig);
-        const basic=window.HellStarterSkin?.getSprite(img,'useoi');
-        if(basic)prepareCapeRig(basic,starterCapeRig);
+        // Starter characters have their own pre-drawn animation frames.
+        // Do not process their huge premium textures on the main UI thread.
       }
     };
     img.onerror=()=>{}; img.src='assets/'+file+'.webp';
@@ -785,6 +785,15 @@
   }
   function drawHero(x,y,u,fold,elapsed,speed,dead,hopping,hopFrom){
     y+=Math.sin(elapsed*(10+fold*10))*(1.2+fold*1.5)*u;
+    // Two 2D starter actors have their own 6-pose x 6-frame hand-drawn
+    // costume images; the original two premium sprites stay untouched.
+    if(isStarter()&&window.HellStarterPoses?.draw({
+      ctx,x,y,u,who:currentActor(),fold,elapsed,speed,dead,hopping,
+      hopFrom,hopVisual:s.hopVisual,images
+    })){
+      if(s.helmetId)drawHelmet(x,y,u);
+      return;
+    }
     // WEB 2.4 optional true in-map skeletal costume player. Separate renderer;
     // switching it off restores BOTH original characters exactly as before.
     // Latest Work eight-pose key artwork: safe opt-in, original renderer fallback.
@@ -913,16 +922,27 @@
   $('start').addEventListener('click',()=>start());
   $('restart').addEventListener('click',()=>start());
   $('backHome').addEventListener('click',()=>{sys.audio.stop();s=makeGame('READY');$('drawer').classList.add('hidden');updateUI();});
-  boostBtn.addEventListener('pointerdown',e=>{if(s.stage!=='PLAYING')return;e.preventDefault();tapAccelerate();});
-  // No pointerup/hold listener: holding does not generate additional acceleration.
-  jumpBtn.addEventListener('pointerdown',e=>{if(s.stage!=='PLAYING')return;e.preventDefault();jump();jumpBtn.setPointerCapture(e.pointerId);});
-  for(let i=0;i<2;i++){
-    $('quickItem'+i).addEventListener('pointerdown',e=>{
+  // Pointerdown for immediate mobile response; click and legacy touch
+  // fallbacks for Galaxy/Samsung Internet configurations. A synthesized
+  // click after pointerdown must not jump a second time.
+  function bindGamePress(button,handler){
+    let lastPointer=-Infinity;
+    function press(e){
       if(s.stage!=='PLAYING')return;
-      e.preventDefault();useQuickItem(i);
-    });
+      if(e.type==='pointerdown' && e.pointerType==='mouse'&&e.button!==0)return;
+      const now=performance.now();
+      if(e.type==='click'&&now-lastPointer<450)return;
+      if(e.type==='pointerdown'||e.type==='touchstart')lastPointer=now;
+      if(e.cancelable)e.preventDefault();
+      handler();
+    }
+    button.addEventListener('pointerdown',press,{passive:false});
+    button.addEventListener('click',press);
+    if(!window.PointerEvent)button.addEventListener('touchstart',press,{passive:false});
   }
-  jumpBtn.addEventListener('pointerup',e=>{if(jumpBtn.hasPointerCapture(e.pointerId))jumpBtn.releasePointerCapture(e.pointerId);});
+  bindGamePress(boostBtn,tapAccelerate);
+  bindGamePress(jumpBtn,jump);
+  for(let i=0;i<2;i++)bindGamePress($('quickItem'+i),()=>useQuickItem(i));
   document.addEventListener('keydown',e=>{if(['Space','ArrowRight','Enter'].includes(e.code)){e.preventDefault();if(e.repeat||heldKeys.has(e.code))return;heldKeys.add(e.code);
     if(e.code==='Space')tapAccelerate();else if(e.code==='ArrowRight')jump();else if(e.code==='Enter'&&(s.stage==='READY'||s.stage==='OVER')&&document.activeElement?.tagName!=='BUTTON')start();}});
   document.addEventListener('keyup',e=>heldKeys.delete(e.code));
@@ -1450,5 +1470,5 @@
   })();
   applyControlSide();fit();updateUI();requestAnimationFrame(frame);
   // Expose read-only simple debug state for local test harnesses, never gameplay rewards.
-  window.HellFallTest={snapshot:()=>({stage:s.stage,depth:s.depth,speed:s.speed,timeLeft:s.timeLeft,wall:s.wall,hopProgress:s.hopProgress,hopVisual:s.hopVisual,boost:s.boost,fold:s.fold,cadence:s.cadence,tapCount:s.tapCount,runCoins:s.runCoins,hazards:s.obstacles.length,gates:s.timeGates.length,checkpoints:s.checkpointGates.length,checkpointFlash:s.checkpointFlash,lastCheckpointBonus:s.lastCheckpointBonus,boostSide:sys.profile.settings.boostSide,bubbleLeft:s.bubbleLeft,helmetCharges:s.helmetCharges,helmetId:s.helmetId,shieldFlash:s.shieldFlash,quickSlots:s.quickSlots.slice(),drinks:{speed:{...s.drinks.speed},brake:{...s.drinks.brake}},stats:effectiveStats(),character:sys.profile.selectedCharacter,profile:{...sys.profile}}),start:()=>start(false)};
+  window.HellFallTest={snapshot:()=>({stage:s.stage,depth:s.depth,speed:s.speed,timeLeft:s.timeLeft,wall:s.wall,hopProgress:s.hopProgress,hopVisual:s.hopVisual,boost:s.boost,fold:s.fold,cadence:s.cadence,tapCount:s.tapCount,runCoins:s.runCoins,hazards:s.obstacles.length,gates:s.timeGates.length,checkpoints:s.checkpointGates.length,checkpointFlash:s.checkpointFlash,lastCheckpointBonus:s.lastCheckpointBonus,boostSide:sys.profile.settings.boostSide,bubbleLeft:s.bubbleLeft,helmetCharges:s.helmetCharges,helmetId:s.helmetId,shieldFlash:s.shieldFlash,quickSlots:s.quickSlots.slice(),poseFrames:window.HellStarterPoses?.getCachedCount()||0,drinks:{speed:{...s.drinks.speed},brake:{...s.drinks.brake}},stats:effectiveStats(),character:sys.profile.selectedCharacter,profile:{...sys.profile}}),start:()=>start(false)};
 })();
