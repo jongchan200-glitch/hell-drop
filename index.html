@@ -8,7 +8,7 @@
   <title>지옥 낙하 · HELL FALL</title>
   <link rel="preload" href="assets/lobby_abyss.webp" as="image">
   <link rel="preload" href="assets/hero_intro.webp" as="image">
-  <link rel="stylesheet" href="style.css?v=24-joint">
+  <link rel="stylesheet" href="style.css?v=nov26-starter-visual2">
   <link rel="stylesheet" href="hero_turnaround.css?v=11-frontback">
 </head>
 <body>
@@ -78,7 +78,7 @@
           <header class="lobby-header">
             <div class="lobby-account" aria-label="캐릭터 레벨">
               <div class="account-avatar"><img id="homeAvatar" src="assets/hero_intro.webp" alt=""></div>
-              <div class="account-meta"><strong><span id="homeCharacterName">우서이</span> <span id="homeLevel">1</span><small> LV</small></strong><div class="account-track"><span id="homeProgressFill"></span></div></div>
+              <div class="account-meta"><strong><span id="homeCharacterName">초보 탐험가</span> <span id="homeLevel">1</span><small> LV</small></strong><div class="account-track"><span id="homeProgressFill"></span></div></div>
             </div>
             <button type="button" class="lobby-wallet" data-panel="earn" aria-label="코인 획득소 열기">
               <svg class="wallet-icon"><use href="#icon-coin"></use></svg>
@@ -93,7 +93,7 @@
           <div class="lobby-showcase" id="lobbyShowcase">
             <div class="lobby-backlight" aria-hidden="true"></div>
             <div class="lobby-shadow" aria-hidden="true"></div>
-            <div id="lobbyCharacter" class="lobby-character" tabindex="0" role="button" aria-label="우서이 앞뒷모습 전환. 좌우로 밀거나 방향키를 사용하세요">
+            <div id="lobbyCharacter" class="lobby-character" tabindex="0" role="button" aria-label="기본 탐험가 캐릭터 보기">
               <canvas id="lobby3dCanvas" class="lobby-3d-canvas" aria-hidden="true"></canvas>
               <div id="lobbyTurn" class="lobby-turn">
                 <div class="lobby-idle">
@@ -102,7 +102,12 @@
               </div>
             </div>
             <div class="showcase-ground" aria-hidden="true"></div>
-            <div class="character-identity"><span class="identity-diamond">✦</span><b id="characterIdentityName">우서이</b><i></i><span id="characterIdentitySubtitle">첫 번째 탐험가</span></div>
+            <div class="character-traits" id="lobbyTraits" aria-label="현재 캐릭터 능력치">
+              <span id="lobbyClassTag">무료 기본</span>
+              <strong>⚡ 최고속 <b id="lobbySpeedStat">70%</b></strong>
+              <strong>❄ 감속 <b id="lobbyBrakeStat">70%</b></strong>
+            </div>
+            <div class="character-identity"><span class="identity-diamond">✦</span><b id="characterIdentityName">초보 탐험가</b><i></i><span id="characterIdentitySubtitle">기본 탐험가</span></div>
             <div class="character-turn-tip"><span>‹</span> 좌우로 밀어 앞·뒷모습 바꾸기 <span>›</span></div>
           </div>
           <div class="lobby-bottom">
@@ -139,14 +144,14 @@
       <section id="drawer" class="drawer hidden" aria-label="게임 부가 메뉴" role="dialog" aria-modal="true">
         <div class="drawer-card"><div class="drawer-head"><h2 id="drawerTitle">메뉴</h2><button id="drawerClose" type="button" aria-label="닫기">✕</button></div><div id="drawerBody" class="drawer-body"></div></div>
       </section>
-      <div class="version">WEB 2.5 TEST · 2D STARTER + ITEM STATS</div>
+      <div class="version">WEB 2.6 TEST · STARTER CHARACTER VISUALS</div>
     </section>
     <aside class="outside-note">연타로 토네이도 성장 · 누적 레벨과 코인은 이 브라우저에 저장돼요.</aside>
   </main>
   <script src="systems.js?v=nov26-stats25" defer></script>
-  <script src="starter-skin.js?v=nov26-basic25" defer></script>
-  <script src="hero_turnaround.js?v=nov26-starter25" defer></script>
+  <script src="starter-skin.js?v=nov26-starter-visual2" defer></script>
+  <script src="hero_turnaround.js?v=nov26-starter-visual2" defer></script>
   <script src="helmet-composer.js?v=23-catalog" defer></script>
-  <script src="game.js?v=nov26-stats25" defer></script>
+  <script src="game.js?v=nov26-starter-visual2" defer></script>
 </body>
 </html>
