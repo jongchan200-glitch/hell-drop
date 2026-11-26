@@ -1141,14 +1141,16 @@
     const pos=chars.findIndex(c=>c.id===sys.profile.selectedCharacter);
     const next=indexOverride!==null?indexOverride:(pos+delta+chars.length)%chars.length;
     const target=chars[next];if(!target)return;
-    wardrobePending=null;sys.selectCharacter(target.id);
-    syncLobbyCharacter();openPanel('character');
+    if(!sys.selectCharacter(target.id)){
+      openPanel('character',target.name+'은(는) 상점에서 구매한 뒤 선택할 수 있어요.');return;
+    }
+    wardrobePending=null;syncLobbyCharacter();openPanel('character');
   }
   function assignWardrobeItem(itemId,target){
     const item=sys.ITEM_CATALOG.find(x=>x.id===itemId);
     const character=sys.profile.selectedCharacter;
     let ok=false;
-    if(target.hasAttribute('data-character-slot')&&item?.kind==='bubble'){
+    if(target.hasAttribute('data-character-slot')&&(item?.kind==='bubble'||item?.kind==='drink')){
       ok=sys.setCharacterSlot(character,Number(target.dataset.characterSlot),itemId);
     }else if(target.hasAttribute('data-gear-slot')&&item){
       ok=sys.setCharacterGear(character,target.dataset.gearSlot,itemId);
@@ -1163,7 +1165,13 @@
     if(worn){
       const who=sys.CHARACTER_CATALOG.find(x=>x.id===sys.profile.selectedCharacter);
       const wornHelmet=sys.wardrobeOf(sys.profile.selectedCharacter).gear.helmet;
-      if(who&&wornHelmet)window.HellHelmetComposer?.drawPortrait(worn,who.front,wornHelmet);
+      if(who&&wornHelmet){
+        if(who.starter&&window.HellStarterSkin)
+          window.HellStarterSkin.preview(who.front,who.actor,url=>{
+            if(worn.isConnected)window.HellHelmetComposer?.drawPortrait(worn,url,wornHelmet);
+          });
+        else window.HellHelmetComposer?.drawPortrait(worn,who.front,wornHelmet);
+      }
     }
     body.querySelectorAll('[data-char-direction]').forEach(button=>button.addEventListener('click',()=>{
       switchWardrobeCharacter(Number(button.dataset.charDirection));
@@ -1315,6 +1323,7 @@
     }
     $('drawerBody').innerHTML=(notice?'<div class="shop-notice" role="status">'+esc(notice)+'</div>':'')+html;
     $('drawer').classList.remove('hidden');
+    window.HellStarterSkin?.refreshPreviews($('drawerBody'));
     if(type==='character')mountWardrobeControls();
     if(type==='shop'){
       const redraw=(noticeText='')=>{
@@ -1342,6 +1351,10 @@
       }));
       $('drawerBody').querySelectorAll('[data-market-close]').forEach(b=>b.addEventListener('click',()=>{
         marketSelected=null;marketCharacter=null;redraw();
+      }));
+      $('drawerBody').querySelectorAll('[data-market-buy-character]').forEach(b=>b.addEventListener('click',()=>{
+        const result=sys.purchaseCharacter(b.dataset.marketBuyCharacter);
+        redraw(result.ok?result.character.name+' 구매 완료':result.reason);updateUI();
       }));
       $('drawerBody').querySelectorAll('[data-market-buy]').forEach(b=>b.addEventListener('click',()=>{
         const result=sys.purchase(b.dataset.marketBuy);
@@ -1406,5 +1419,5 @@
   })();
   applyControlSide();fit();updateUI();requestAnimationFrame(frame);
   // Expose read-only simple debug state for local test harnesses, never gameplay rewards.
-  window.HellFallTest={snapshot:()=>({stage:s.stage,depth:s.depth,speed:s.speed,timeLeft:s.timeLeft,wall:s.wall,hopProgress:s.hopProgress,hopVisual:s.hopVisual,boost:s.boost,fold:s.fold,cadence:s.cadence,tapCount:s.tapCount,runCoins:s.runCoins,hazards:s.obstacles.length,gates:s.timeGates.length,checkpoints:s.checkpointGates.length,checkpointFlash:s.checkpointFlash,lastCheckpointBonus:s.lastCheckpointBonus,boostSide:sys.profile.settings.boostSide,bubbleLeft:s.bubbleLeft,helmetCharges:s.helmetCharges,helmetId:s.helmetId,shieldFlash:s.shieldFlash,quickSlots:s.quickSlots.slice(),character:sys.profile.selectedCharacter,profile:{...sys.profile}}),start:()=>start(false)};
+  window.HellFallTest={snapshot:()=>({stage:s.stage,depth:s.depth,speed:s.speed,timeLeft:s.timeLeft,wall:s.wall,hopProgress:s.hopProgress,hopVisual:s.hopVisual,boost:s.boost,fold:s.fold,cadence:s.cadence,tapCount:s.tapCount,runCoins:s.runCoins,hazards:s.obstacles.length,gates:s.timeGates.length,checkpoints:s.checkpointGates.length,checkpointFlash:s.checkpointFlash,lastCheckpointBonus:s.lastCheckpointBonus,boostSide:sys.profile.settings.boostSide,bubbleLeft:s.bubbleLeft,helmetCharges:s.helmetCharges,helmetId:s.helmetId,shieldFlash:s.shieldFlash,quickSlots:s.quickSlots.slice(),drinks:{speed:{...s.drinks.speed},brake:{...s.drinks.brake}},stats:effectiveStats(),character:sys.profile.selectedCharacter,profile:{...sys.profile}}),start:()=>start(false)};
 })();
