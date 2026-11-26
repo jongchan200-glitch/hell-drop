@@ -1,12 +1,16 @@
 name: Hell Drop visual QA
 on:
   push:
-    branches: [main]
+    branches: [main, 'feature/starter-dedicated-poses-touch-20261126']
     paths:
       - '.github/workflows/visual-qa.yml'
       - 'starter-kit.js'
       - 'keypose-live.js'
       - 'index.html'
+      - 'game.js'
+      - 'starter-poses.js'
+      - 'starter-skin.js'
+      - 'systems.js'
       - '.github/qa/visual-qa.cjs'
   workflow_dispatch:
 permissions:
