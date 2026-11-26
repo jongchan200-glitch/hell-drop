@@ -78,7 +78,7 @@ const fs=require('fs');
         index===0?'uiji':'useoi',{timeout:12000}
       );
       const art=await page.evaluate(()=>window.HellStarterPoses?.status());
-      if(!window.HellStarterPoses?.usesWholeBodyArt)throw Error('Rejected vector body renderer still active');
+      if(!(await page.evaluate(()=>window.HellStarterPoses?.usesWholeBodyArt)))throw Error('Rejected vector body renderer still active');
       if(!art?.ready?.[index===0?'uiji':'useoi'])throw Error('Missing complete-body approved art '+JSON.stringify(art));
       console.log('QAART_'+name.toUpperCase().replace(/-/g,'_')+'='+JSON.stringify(art));
     }
