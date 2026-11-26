@@ -8,7 +8,7 @@
  * Rendered sprites are cached at 320px; no huge 2304px palette scan per frame.
  */
 (function(){
-  const SIZE=320, FRAMES=6, caches=new Map();
+  const SIZE=320, FRAMES=6, caches=new Map(),cleanFaces=new WeakMap();
   const poses=['glide','fold','fast','kickL','kickR','hit'];
   const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
   const rand=i=>Math.sin(i*6.293)*.5;
@@ -44,6 +44,22 @@
   }
   function drawHead(c,im,who,pose,phase){
     const {w,h}=srcSize(im);if(!w||!h)return;
+    // Girl's approved fall frame also contains the old bright red cape around
+    // her head. Clear ONLY those saturated cloth pixels (not hair/face) once.
+    if(who==='useoi'){
+      if(!cleanFaces.has(im)){
+        const face=document.createElement('canvas');face.width=w;face.height=h;
+        const fc=face.getContext('2d',{willReadFrequently:true});
+        fc.drawImage(im,0,0);const pixels=fc.getImageData(0,0,w,h);
+        const v=pixels.data;
+        for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+          const i=(y*w+x)*4,r=v[i],g=v[i+1],b=v[i+2];
+          if(r>147&&r>g*1.40&&r>b*1.39&&g<172&&b<139)v[i+3]=0;
+        }
+        fc.putImageData(pixels,0,0);cleanFaces.set(im,face);
+      }
+      im=cleanFaces.get(im);
+    }
     const isGirl=who==='useoi';
     // Every face is the *original approved artwork*, cropped in-image.
     // The rest of the original costume never enters these new sprites.
@@ -81,10 +97,10 @@
     // Legs and loose shorts are drawn in actual different leg angles.
     const lean=fast?7:fold?3:glide?12:hit?20:6;
     const legs=[
-      {x:142,tx:glide?112:fold?142:fast?150:kick?160-kickSign*45:124,
-        ty:glide?268:fold?268:fast?282:kick?260:256},
-      {x:180,tx:glide?210:fold?180:fast?177:kick?160+kickSign*64:199,
-        ty:glide?269:fold?270:fast?283:kick?261:255}
+      {x:142,tx:glide?106:fold?142:fast?150:kick?160-kickSign*54:124,
+        ty:glide?286:fold?285:fast?290:kick?278:281},
+      {x:180,tx:glide?214:fold?180:fast?177:kick?160+kickSign*72:199,
+        ty:glide?286:fold?285:fast?291:kick?278:281}
     ];
     for(let i=0;i<2;i++){
       const l=legs[i];limb(g,l.x,219,l.tx,l.ty,22,'#efbf94','#7a493b');
@@ -97,11 +113,11 @@
     line(g,'M127 239 Q139 248 150 242','#8f858b',2);
     line(g,'M171 242 Q188 249 198 238','#716c79',2);
     // Skin-colored exposed forearms and open hands.
-    const arms=glide?[[-1,-58,-1], [1,58,1]]:fold?[[-1,-33,-1],[1,33,1]]:
-      fast?[[-1,-20,-1],[1,20,1]]:
-      kick?[[-1,-55,-1],[1,42,1]]:[[-1,-47,-1],[1,45,1]];
+    const arms=glide?[[-1,-103,-1],[1,103,1]]:fold?[[-1,-36,-1],[1,36,1]]:
+      fast?[[-1,-27,-1],[1,27,1]]:
+      kick?[[-1,-105,-1],[1,87,1]]:[[-1,-75,-1],[1,75,1]];
     for(const [sign,dist] of arms){
-      const sx=160+sign*42, ex=160+dist, y0=167,y1=glide?147+flap*.27:fold?210:fast?224:kick?149:229;
+      const sx=160+sign*42, ex=160+dist, y0=167,y1=glide?155+flap*.27:fold?207:fast?223:kick?164:222;
       limb(g,sx,y0,ex,y1,20,'#f4c49d','#7c5345');
       ellipse(g,ex,y1,9,11,'#f3c29a','#865845',2,sign*.23);
     }
