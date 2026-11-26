@@ -11,7 +11,9 @@
   const previews=new Map(),pending=new Map();
   const clamp=v=>Math.max(0,Math.min(255,Math.round(v)));
   const imageSize=im=>({w:im?.naturalWidth||im?.width||0,h:im?.naturalHeight||im?.height||0});
-  const skin=(r,g,b)=>r>g*1.13&&g>b*1.10&&r>133&&g>72&&b>36;
+  // Do not mistake the bright RED cape for skin. Real skin has a much
+  // higher green/red and blue/green ratio than saturated cape fabric.
+  const skin=(r,g,b)=>r>g*1.08&&g>b*1.05&&r>130&&g>92&&b>65&&g>r*.57&&b>g*.55;
   function recolor(im,who){
     if(!im)return im;
     const {w,h}=imageSize(im);
