@@ -37,13 +37,29 @@
   let W=400,H=800,clock=0,lastFrame=0,s=makeGame(),best=readRecord(),heldKeys=new Set();
   const images={};
   const capeRig={core:null,left:null,right:null,ready:false};
+  const starterCapeRig={core:null,left:null,right:null,ready:false};
+  const statOf=(id)=>sys.characterStats(id);
+  const currentActor=()=>sys.CHARACTER_CATALOG.find(c=>c.id===s.runCharacter)?.actor||'useoi';
+  const isStarter=()=>!!sys.CHARACTER_CATALOG.find(c=>c.id===s.runCharacter)?.starter;
+  function effectiveStats(){
+    const c=statOf(s.runCharacter);
+    return {speed:Math.min(100,c.speed+(s.drinks.speed.left>0?s.drinks.speed.bonus:0)),
+      brake:Math.min(100,c.brake+(s.drinks.brake.left>0?s.drinks.brake.bonus:0))};
+  }
   // Only the original V4.2 reference family; no generated replacement faces.
   const IMAGE_FILES={falling:'hero_fall',braking:'hero_cape',jumpLeft:'hero_jump_left',jumpRight:'hero_jump_right',intro:'hero_intro',dizzy:'hero_hit',uiji:'uiji_intro',uijiMotion:'uiji_motion_atlas'};
   Object.entries(IMAGE_FILES).forEach(([key,file])=>{
-    const img=new Image(); img.onload=()=>{images[key]=img;if(key==='braking')prepareCapeRig(img);};
+    const img=new Image(); img.onload=()=>{
+      images[key]=img;
+      if(key==='braking'){
+        prepareCapeRig(img,capeRig);
+        const basic=window.HellStarterSkin?.getSprite(img,'useoi');
+        if(basic)prepareCapeRig(basic,starterCapeRig);
+      }
+    };
     img.onerror=()=>{}; img.src='assets/'+file+'.webp';
   });
-  function prepareCapeRig(original){
+  function prepareCapeRig(original,target=capeRig){
     // Create an articulated 3-layer puppet directly from the single original
     // 512px hero_cape image. No generated poses, no new character images.
     // Source pixels are never redrawn and the central face/body stays unchanged.
@@ -58,10 +74,10 @@
     const core=canvas(),cc=core.getContext('2d');cc.drawImage(original,0,0);
     for(const name of ['left','right']){
       const piece=canvas(),pc=piece.getContext('2d');pc.save();shape(pc,masks[name]);pc.clip();
-      pc.drawImage(original,0,0);pc.restore();capeRig[name]=piece;
+      pc.drawImage(original,0,0);pc.restore();target[name]=piece;
       cc.globalCompositeOperation='destination-out';cc.fillStyle='#fff';shape(cc,masks[name]);cc.fill();
     }
-    cc.globalCompositeOperation='source-over';capeRig.core=core;capeRig.ready=true;
+    cc.globalCompositeOperation='source-over';target.core=core;target.ready=true;
   }
   function readRecord(){try{return Number(localStorage.getItem('hell_fall_web_v42_best')||0)||0;}catch(_){return 0;}}
   function saveRecord(value){try{localStorage.setItem('hell_fall_web_v42_best',String(value));}catch(_){/*local file private mode*/}}
@@ -72,7 +88,7 @@
   function smooth(t){t=Math.max(0,Math.min(1,t));return t*t*(3-2*t);}
   function posX(g,p=g.hopProgress){return wallX(g.hopFrom)*(1-smooth(p))+wallX(g.wall)*smooth(p);}
   function rngSeed(seed){let x=(seed>>>0)||1;return()=>{x=(x+0x6D2B79F5)>>>0;let t=x;t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return ((t^(t>>>14))>>>0)/4294967296;};}
-  function makeGame(stage='READY'){return{seed:(Math.random()*1000000000)|0,stage,depth:0,speed:T.START,timeLeft:T.LIMIT,elapsed:0,introElapsed:0,boost:0,fold:0,lastTapAt:-1,tapPulse:0,tapCount:0,tapIntervals:[],cadence:0,wall:'L',hopFrom:'L',hopProgress:1,hopVisual:1,obstacles:[],timeGates:[],checkpointGates:[],coinGates:[],runCoins:0,nextObstacle:370,nextTimeGate:900,nextCheckpoint:1450,nextCoin:210,coinNumber:0,obstacleNumber:0,gateNumber:0,checkpointNumber:0,gateFlash:0,checkpointFlash:0,zoneFlash:0,lastBonus:0,lastCheckpointBonus:0,failure:'',bubbleLeft:0,bubbleColor:null,bubbleName:'',helmetId:null,helmetCharges:0,invuln:0,shieldFlash:0,runCharacter:'useoi',quickSlots:[null,null]};}
+  function makeGame(stage='READY'){return{seed:(Math.random()*1000000000)|0,stage,depth:0,speed:T.START,timeLeft:T.LIMIT,elapsed:0,introElapsed:0,boost:0,fold:0,lastTapAt:-1,tapPulse:0,tapCount:0,tapIntervals:[],cadence:0,wall:'L',hopFrom:'L',hopProgress:1,hopVisual:1,obstacles:[],timeGates:[],checkpointGates:[],coinGates:[],runCoins:0,nextObstacle:370,nextTimeGate:900,nextCheckpoint:1450,nextCoin:210,coinNumber:0,obstacleNumber:0,gateNumber:0,checkpointNumber:0,gateFlash:0,checkpointFlash:0,zoneFlash:0,lastBonus:0,lastCheckpointBonus:0,failure:'',bubbleLeft:0,bubbleColor:null,bubbleName:'',helmetId:null,helmetCharges:0,invuln:0,shieldFlash:0,runCharacter:'starter_boy',drinks:{speed:{bonus:0,left:0},brake:{bonus:0,left:0}},quickSlots:[null,null]};}
   function start(){
     applyControlSide();s=makeGame('PLAYING');
     // A bubble is a single-use purchase. Helmets are persistent owned equipment,
@@ -103,19 +119,34 @@
   }
   function useQuickItem(index){
     if(s.stage!=='PLAYING')return;
-    if(s.bubbleLeft>0){
-      s.shieldFlash=.25;return; // one protective bubble at a time
+    const id=s.quickSlots[index],item=sys.ITEM_CATALOG.find(i=>i.id===id);
+    if(!item)return;
+    if(item.kind==='bubble'&&s.bubbleLeft>0){s.shieldFlash=.25;return;}
+    if(item.kind==='drink'){
+      const active=s.drinks[item.stat];
+      // A weaker/same-tier drink never wastes a consumable; the two different
+      // attributes are allowed to coexist without interfering with bubbles.
+      if(!active||(active.left>0&&active.bonus>=item.bonus))return;
     }
     const result=sys.consumeCharacterSlot(s.runCharacter,index);
     if(!result.ok)return;
-    s.bubbleLeft=result.item.seconds;s.bubbleColor=result.item.color;
-    s.bubbleName=result.item.name;s.shieldFlash=.5;
+    if(item.kind==='bubble'){
+      s.bubbleLeft=item.seconds;s.bubbleColor=item.color;
+      s.bubbleName=item.name;s.shieldFlash=.5;
+    }else if(item.kind==='drink'){
+      s.drinks[item.stat]={bonus:item.bonus,left:item.seconds};
+    }
     s.quickSlots=sys.wardrobeOf(s.runCharacter).quickSlots.slice();
     sys.audio.effect('coin');updateUI();
   }
   function jump(){if(s.stage!=='PLAYING'||s.hopProgress<1)return;s.hopFrom=s.wall;s.wall=otherWall(s.wall);s.hopProgress=0;s.hopVisual=0;jumpBtn.classList.add('active');sys.audio.effect('jump');}
   function advance(dt){
     const old=s.depth,tier=tierOf(old);
+    for(const stat of ['speed','brake']){
+      const drink=s.drinks[stat];
+      if(drink.left>0){drink.left=Math.max(0,drink.left-dt);if(drink.left===0)drink.bonus=0;}
+    }
+    const stats=effectiveStats();
     // Recent inter-tap rhythm controls the gauge. Slow tapping holds a low
     // storm, and successive higher levels demand increasingly faster rhythms.
     // Max boost requires a sustained ~5 thumb-taps/second (V0.7 design).
@@ -127,10 +158,14 @@
     const rate=rawRate*Math.exp(-Math.max(0,silence-anticipation)*5.2);
     const demand=Math.max(0,Math.min(1,(rate-T.TAP_RATE_BASE)/T.TAP_RATE_RANGE));
     const targetBoost=Math.pow(demand,1.55);
-    const responseBoost=targetBoost>s.boost?T.RISE_RESPONSE:T.FALL_RESPONSE;
+    const responseBoost=targetBoost>s.boost?T.RISE_RESPONSE:T.FALL_RESPONSE*(stats.brake/70);
     const boost=s.boost+(targetBoost-s.boost)*(1-Math.exp(-responseBoost*dt));
-    const target=Math.min(T.MAX,T.GLIDE+tier*T.GLIDE_TIER+(T.BOOST_SPEED+tier*T.BOOST_TIER)*Math.pow(boost,1.15));
-    const response=target>s.speed?4.25:2.6;
+    // Existing 70% cadence curve remains identical. Stat % modifies its
+    // boosted ceiling; idle glide stays the same for fair obstacle timing.
+    const ceilingRatio=stats.speed/70;
+    const target=Math.min(T.MAX*ceilingRatio,T.GLIDE+tier*T.GLIDE_TIER+
+      (T.BOOST_SPEED+tier*T.BOOST_TIER)*Math.pow(boost,1.15)*ceilingRatio);
+    const response=target>s.speed?4.25:2.6*(stats.brake/70);
     const nextSpeed=s.speed+(target-s.speed)*(1-Math.exp(-response*dt));
     const fold=s.fold+(boost-s.fold)*(1-Math.exp(-(boost>s.fold?9.5:3.9)*dt));
     const depth=old+(s.speed+nextSpeed)*.5*dt,hop=Math.min(1,s.hopProgress+dt/T.HOP_SECONDS);
@@ -246,6 +281,8 @@
     const protection=[];
     if(playing&&s.bubbleLeft>0)protection.push('🫧 '+s.bubbleLeft.toFixed(1)+'초');
     if(playing&&s.helmetCharges>0)protection.push((s.helmetId==='helmet_frog'?'🐸':'🪖')+' '+s.helmetCharges+'회');
+    if(playing&&s.drinks.speed.left>0)protection.push('⚡ +'+s.drinks.speed.bonus+'% · '+Math.ceil(s.drinks.speed.left)+'초');
+    if(playing&&s.drinks.brake.left>0)protection.push('❄️ +'+s.drinks.brake.bonus+'% · '+Math.ceil(s.drinks.brake.left)+'초');
     $('protectionBadge').textContent=protection.join('   ·   ');
     $('protectionBadge').classList.toggle('hidden',protection.length===0);
     for(let index=0;index<2;index++){
@@ -253,7 +290,9 @@
       const id=s.quickSlots[index];
       const item=sys.ITEM_CATALOG.find(x=>x.id===id);
       const quantity=id?(sys.profile.consumables[id]||0):0;
-      const canUse=playing&&quantity>0&&s.bubbleLeft<=0;
+      const blocked=item?.kind==='bubble'?s.bubbleLeft>0:
+        item?.kind==='drink'&&s.drinks[item.stat].left>0&&s.drinks[item.stat].bonus>=item.bonus;
+      const canUse=playing&&quantity>0&&!blocked;
       $('quickItemIcon'+index).textContent=item?.icon||'＋';
       $('quickItemCount'+index).textContent=quantity?String(quantity):'';
       slot.disabled=!canUse;
@@ -284,7 +323,8 @@
     $('timeLabel').textContent=s.timeLeft.toFixed(1);
     $('timeLabel').style.color=s.timeLeft<8?COLORS.red:'white';
     $('timeCaption').classList.toggle('alert',s.timeLeft<6);
-    $('speedLabel').textContent='속도 '+Math.floor(s.speed)+' m/s · 난이도 '+(tierOf(s.depth)+1);
+    const currentStats=effectiveStats();
+    $('speedLabel').textContent='속도 '+Math.floor(s.speed)+' m/s · 최고 '+currentStats.speed+'% · 감속 '+currentStats.brake+'%';
     $('timeFill').style.width=(100*s.timeLeft/T.LIMIT)+'%';
     $('timeFill').classList.toggle('danger',s.timeLeft<6);
     boostBtn.classList.toggle('active',s.tapPulse>.6);
@@ -517,7 +557,7 @@
     ctx.restore();
   }
   function paintSprite(img,x,y,width,height,alpha){
-    if(!img?.naturalWidth || alpha<=0)return false;
+    if(!(img?.naturalWidth||img?.width) || alpha<=0)return false;
     ctx.save();ctx.globalAlpha*=alpha;
     const equipped=s.helmetId&&s.stage!=='READY'?window.HellHelmetComposer?.getSprite(img,s.helmetId):null;
     ctx.drawImage(equipped||img,x-width/2,y-height*.52,width,height);
@@ -528,8 +568,9 @@
   // has a separate shoulder pivot and moves continuously on every animation frame.
   // Unlike swapping generated poses, no interpolated frame can change the face.
   function drawLockedCapeSprite(img,x,y,u,fold,tilt,elapsed=0,opacity=1){
-    const {core,left,right}=capeRig;
-    if(!capeRig.ready){
+    const rig=isStarter()&&currentActor()==='useoi'?starterCapeRig:capeRig;
+    const {core,left,right}=rig;
+    if(!rig.ready){
       return paintSprite(img,x,y,165*u,165*u,opacity);
     }
     // This deliberately reveals a clear fold even at moderate thumb-tapping
@@ -554,7 +595,9 @@
     ctx.restore();return true;
   }
   function drawKickSprite(img,x,y,u,rot,scale,opacity){
-    if(!img?.naturalWidth||opacity<=0)return false;
+    if(isStarter()&&currentActor()==='useoi')
+      img=window.HellStarterSkin?.getSprite(img,'useoi')||img;
+    if(!(img?.naturalWidth||img?.width)||opacity<=0)return false;
     const size=151*u*scale;
     ctx.save();ctx.translate(x,y);ctx.rotate(rot);ctx.globalAlpha*=opacity;
     const fitted=s.helmetId&&s.stage!=='READY'?window.HellHelmetComposer?.getSprite(img,s.helmetId):null;
@@ -620,13 +663,14 @@
     cell(Math.floor(position+.5)%UIJI_FRAMES,alpha);
   }
   function drawUiji(x,y,u,fold,elapsed,speed,dead,hopping,hopFrom){
-    const atlas=images.uijiMotion;
-    const characterHelmet=s.runCharacter==='uiji'?s.helmetId:null;
+    const originalAtlas=images.uijiMotion;
+    const atlas=isStarter()?window.HellStarterSkin?.getSprite(originalAtlas,'uiji')||originalAtlas:originalAtlas;
+    const characterHelmet=s.helmetId;
     const fittedAtlas=characterHelmet&&atlas?.naturalWidth?
       (window.HellHelmetComposer?.getAtlas(atlas,characterHelmet)||atlas):atlas;
     if(!atlas?.naturalWidth){
       // No regression when image has not yet downloaded.
-      const standby=images.uiji;
+      const standby=isStarter()?window.HellStarterSkin?.getSprite(images.uiji,'uiji')||images.uiji:images.uiji;
       if(!paintSprite(standby,x,y,116*u,170*u,1))
         drawFallbackHero(x,y,u,false,elapsed,dead,hopping,hopFrom);
       return;
@@ -752,11 +796,12 @@
         hopVisual:s.hopVisual,wallEdge:(hopFrom==='L'?.197:.803)*W});
       return;
     }
-    if(sys.profile.selectedCharacter==='uiji'){
+    if(currentActor()==='uiji'){
       drawUiji(x,y,u,fold,elapsed,speed,dead,hopping,hopFrom);return;
     }
     if(dead){
-      if(!paintSprite(images.dizzy,x,y,139*u,139*u,1))drawFallbackHero(x,y,u,false,elapsed,true,false,hopFrom);
+      const dizzy=isStarter()?window.HellStarterSkin?.getSprite(images.dizzy,'useoi')||images.dizzy:images.dizzy;
+      if(!paintSprite(dizzy,x,y,139*u,139*u,1))drawFallbackHero(x,y,u,false,elapsed,true,false,hopFrom);
     }else if(hopping){
       const p=Math.min(1,Math.max(0,s.hopVisual));
       const side=hopFrom==='L'?1:-1;
