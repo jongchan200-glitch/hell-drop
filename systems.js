@@ -16,9 +16,13 @@
     {name:'내핵',title:'베토벤 월광소나타 3악장 · HARD 다이내믹 V6',file:'audio/zone_06.mp3',ready:true},
     {name:'지옥의 심연',title:'비발디 겨울 1악장 · ARCADE BOSS',file:'audio/zone_07.mp3',ready:true}
   ];
+  // Stable actor IDs preserve original 2D faces/motion. Starter costumes are
+  // derived from those exact same source pixels; premium art never changes.
   const CHARACTER_CATALOG=[
-    {id:'useoi',name:'우서이',description:'첫 번째 탐험가',front:'assets/hero_intro.webp',hasBack:true},
-    {id:'uiji',name:'우이지',description:'두 번째 탐험가',front:'assets/uiji_intro.webp',hasBack:false}
+    {id:'starter_boy',name:'초보 탐험가 (남)',description:'무료 기본 캐릭터 · 최고속도 70% · 감속 70%',front:'assets/uiji_intro.webp',actor:'uiji',starter:true,price:0,speedBonus:0,brakeBonus:0,hasBack:false},
+    {id:'starter_girl',name:'초보 탐험가 (여)',description:'무료 기본 캐릭터 · 최고속도 70% · 감속 70%',front:'assets/hero_intro.webp',actor:'useoi',starter:true,price:0,speedBonus:0,brakeBonus:0,hasBack:false},
+    {id:'useoi',name:'우서',description:'기존 원화 · 최고속도 +3%p · 감속 +2%p',front:'assets/hero_intro.webp',actor:'useoi',starter:false,price:240,speedBonus:3,brakeBonus:2,hasBack:true},
+    {id:'uiji',name:'우지',description:'기존 원화 · 최고속도 +3%p · 감속 +2%p',front:'assets/uiji_intro.webp',actor:'uiji',starter:false,price:240,speedBonus:3,brakeBonus:2,hasBack:false}
   ];
   // Beta balance: the exact prices can be adjusted without changing saved purchases.
   const ITEM_CATALOG=[
@@ -26,19 +30,36 @@
     {id:'bubble_20',name:'초록 버블 보호막',kind:'bubble',price:45,seconds:20,color:'#72f3a3',icon:'🟢',description:'플레이 중 사용하면 20초 보호'},
     {id:'bubble_30',name:'빨간 버블 보호막',kind:'bubble',price:80,seconds:30,color:'#ff7787',icon:'🔴',description:'플레이 중 사용하면 30초 보호'},
     {id:'helmet_basic',name:'탐험가 헬멧',kind:'helmet',price:160,hits:1,icon:'🪖',description:'장착 시 매 판 충돌 1회 방어'},
-    {id:'helmet_frog',name:'개구리 헬멧',kind:'helmet',price:320,hits:2,icon:'🐸',description:'장착 시 매 판 충돌 2회 방어'}
+    {id:'helmet_frog',name:'개구리 헬멧',kind:'helmet',price:320,hits:2,icon:'🐸',description:'장착 시 매 판 충돌 2회 방어'},
+    // Test prices / 20-second effect duration: tune after real phone play.
+    {id:'vitality_3',name:'활력 드링크 · 소',kind:'drink',stat:'speed',bonus:3,seconds:20,price:30,color:'#ffbb39',icon:'⚡',description:'20초 동안 최고속도 +3%p'},
+    {id:'vitality_5',name:'활력 드링크 · 중',kind:'drink',stat:'speed',bonus:5,seconds:20,price:55,color:'#ffad25',icon:'⚡',description:'20초 동안 최고속도 +5%p'},
+    {id:'vitality_10',name:'활력 드링크 · 대',kind:'drink',stat:'speed',bonus:10,seconds:20,price:100,color:'#ff803b',icon:'⚡',description:'20초 동안 최고속도 +10%p'},
+    {id:'calm_3',name:'침착 드링크 · 소',kind:'drink',stat:'brake',bonus:3,seconds:20,price:30,color:'#6bdafa',icon:'❄️',description:'20초 동안 연타 중단 시 감속력 +3%p'},
+    {id:'calm_5',name:'침착 드링크 · 중',kind:'drink',stat:'brake',bonus:5,seconds:20,price:55,color:'#3dbbe6',icon:'❄️',description:'20초 동안 연타 중단 시 감속력 +5%p'},
+    {id:'calm_10',name:'침착 드링크 · 대',kind:'drink',stat:'brake',bonus:10,seconds:20,price:100,color:'#3899e9',icon:'❄️',description:'20초 동안 연타 중단 시 감속력 +10%p'}
   ];
   const clamp=(v,a,b)=>Math.max(a,Math.min(b,Number.isFinite(+v)?+v:a));
   const int=(v)=>Math.max(0,Math.floor(Number(v)||0));
-  function newProfile(){return {coins:0,totalDepth:0,level:1,levelMigration:2,levelBaseDepth:0,levelBaseLevel:1,runs:0,worldCoins:0,inventory:[],selectedCharacter:'useoi',equippedHelmet:null,armedBubble:null,wardrobes:{},consumables:{},settings:{music:DEFAULT_MUSIC,sfx:.32,boostSide:'left',musicDefaultRevision:2},claimed:[]};}
+  function newProfile(){return {coins:0,totalDepth:0,level:1,levelMigration:2,levelBaseDepth:0,levelBaseLevel:1,runs:0,worldCoins:0,inventory:[],selectedCharacter:'starter_boy',ownedCharacters:['starter_boy','starter_girl'],characterOwnershipRevision:1,equippedHelmet:null,armedBubble:null,wardrobes:{},consumables:{},settings:{music:DEFAULT_MUSIC,sfx:.32,boostSide:'left',musicDefaultRevision:2},claimed:[]};}
   function load(){let obj={};try{obj=JSON.parse(localStorage.getItem(KEY)||'{}')||{}}catch(_){/* blocked */}
     const p={...newProfile(),...obj};p.coins=int(p.coins);p.totalDepth=int(p.totalDepth);p.runs=int(p.runs);p.worldCoins=int(p.worldCoins);
     p.inventory=Array.isArray(p.inventory)?p.inventory.filter(x=>typeof x==='string').slice(0,200):[];
     p.claimed=Array.isArray(p.claimed)?p.claimed.filter(x=>typeof x==='string').slice(0,200):[];
-    p.selectedCharacter=CHARACTER_CATALOG.some(c=>c.id===obj?.selectedCharacter)?obj.selectedCharacter:'useoi';
+    // Old installs had both heroes free. Grandfather them instead of
+    // silently locking a previously used character or removing saved gear.
+    const granted=new Set(['starter_boy','starter_girl']);
+    if(Array.isArray(obj?.ownedCharacters))for(const id of obj.ownedCharacters)
+      if(CHARACTER_CATALOG.some(c=>c.id===id))granted.add(id);
+    if(Object.keys(obj).length>0&&!obj.characterOwnershipRevision){
+      granted.add('useoi');granted.add('uiji');
+    }
+    p.ownedCharacters=Array.from(granted);
+    p.characterOwnershipRevision=1;
+    p.selectedCharacter=granted.has(obj?.selectedCharacter)?obj.selectedCharacter:'starter_boy';
     p.equippedHelmet=ITEM_CATALOG.some(x=>x.id===obj?.equippedHelmet&&x.kind==='helmet'&&p.inventory.includes(x.id))?obj.equippedHelmet:null;
     p.consumables={};
-    for(const item of ITEM_CATALOG.filter(x=>x.kind==='bubble')){
+    for(const item of ITEM_CATALOG.filter(x=>x.kind==='bubble'||x.kind==='drink')){
       const n=Number(obj?.consumables?.[item.id]);
       p.consumables[item.id]=Number.isFinite(n)?Math.max(0,Math.min(99,Math.floor(n))):0;
     }
@@ -54,7 +75,7 @@
           (character.id===legacyChar?[obj?.armedBubble||null,null]:[null,null]));
       const quickSlots=[0,1].map(i=>{
         const candidate=priorSlots[i];
-        return ITEM_CATALOG.some(x=>x.id===candidate&&x.kind==='bubble'&&p.consumables[x.id]>0)?candidate:null;
+        return ITEM_CATALOG.some(x=>x.id===candidate&&(x.kind==='bubble'||x.kind==='drink')&&p.consumables[x.id]>0)?candidate:null;
       });
       const oldGear=old.gear||{};
       const helmetCandidate=oldGear.helmet||(character.id===legacyChar?obj?.equippedHelmet:null);
@@ -122,26 +143,39 @@
     const item=ITEM_CATALOG.find(x=>x.id===id);
     if(!item)return {ok:false,reason:'판매 준비 중'};
     if(item.kind==='helmet'&&profile.inventory.includes(id))return {ok:false,reason:'이미 보유 중'};
-    if(item.kind==='bubble'&&profile.consumables[id]>=99)return {ok:false,reason:'최대 99개까지 보관 가능'};
+    if((item.kind==='bubble'||item.kind==='drink')&&profile.consumables[id]>=99)return {ok:false,reason:'최대 99개까지 보관 가능'};
     if(profile.coins<item.price)return {ok:false,reason:'코인이 부족해요'};
     profile.coins-=item.price;
     if(item.kind==='helmet'){
       profile.inventory.push(id);
-    }else if(item.kind==='bubble'){
+    }else if(item.kind==='bubble'||item.kind==='drink'){
       profile.consumables[id]=(profile.consumables[id]||0)+1;
     }
     // Purchasing only adds to the warehouse. It never auto-equips or activates.
     save();return {ok:true,item,coins:profile.coins};
   }
+  function ownsCharacter(id){return profile.ownedCharacters.includes(id);}
+  function purchaseCharacter(id){
+    const hero=CHARACTER_CATALOG.find(c=>c.id===id);
+    if(!hero)return {ok:false,reason:'없는 캐릭터'};
+    if(ownsCharacter(id))return {ok:false,reason:'이미 보유 중'};
+    if(profile.coins<hero.price)return {ok:false,reason:'코인이 부족해요'};
+    profile.coins-=hero.price;profile.ownedCharacters.push(id);save();
+    return {ok:true,character:hero,coins:profile.coins};
+  }
+  function characterStats(id){
+    const hero=CHARACTER_CATALOG.find(c=>c.id===id)||CHARACTER_CATALOG[0];
+    return {speed:70+(hero.speedBonus||0),brake:70+(hero.brakeBonus||0)};
+  }
   function selectCharacter(id){
-    if(!CHARACTER_CATALOG.some(c=>c.id===id))return false;
+    if(!CHARACTER_CATALOG.some(c=>c.id===id)||!ownsCharacter(id))return false;
     profile.selectedCharacter=id;save();return true;
   }
   function setCharacterSlot(characterId,index,itemId){
     const wardrobe=wardrobeOf(characterId);
     if(!wardrobe||!Number.isInteger(index)||index<0||index>1)return false;
     if(itemId!==null){
-      const item=ITEM_CATALOG.find(x=>x.id===itemId&&x.kind==='bubble');
+      const item=ITEM_CATALOG.find(x=>x.id===itemId&&(x.kind==='bubble'||x.kind==='drink'));
       if(!item||(profile.consumables[itemId]||0)<1)return false;
       const other=wardrobe.quickSlots[1-index];
       if(other===itemId&&(profile.consumables[itemId]||0)<2)return false;
@@ -161,7 +195,7 @@
     const wardrobe=wardrobeOf(characterId);
     if(!wardrobe||characterId!==profile.selectedCharacter||!Number.isInteger(index)||index<0||index>1)
       return {ok:false,reason:'잘못된 아이템 슬롯'};
-    const id=wardrobe.quickSlots[index],item=ITEM_CATALOG.find(x=>x.id===id&&x.kind==='bubble');
+    const id=wardrobe.quickSlots[index],item=ITEM_CATALOG.find(x=>x.id===id&&(x.kind==='bubble'||x.kind==='drink'));
     if(!item)return {ok:false,reason:'장착된 아이템이 없어'};
     if((profile.consumables[id]||0)<=0)return {ok:false,reason:'아이템이 부족해'};
     profile.consumables[id]--;
@@ -290,5 +324,5 @@
   };
   // The actual reward provider must validate the completed impression before calling this.
   // No fake ad credits, real-money checkout, or automatic reward bypass exists in v0.4.
-  window.HellSystems={profile,save,setting,awardRun,levelProgress,levelFromDepth,threshold,CHARACTER_CATALOG,ITEM_CATALOG,MUSIC_SLOTS,audio,purchase,selectCharacter,wardrobeOf,setCharacterSlot,setCharacterGear,consumeCharacterSlot,equipHelmet,armBubble,startLoadout};
+  window.HellSystems={profile,save,setting,awardRun,levelProgress,levelFromDepth,threshold,CHARACTER_CATALOG,ITEM_CATALOG,MUSIC_SLOTS,audio,purchase,purchaseCharacter,ownsCharacter,characterStats,selectCharacter,wardrobeOf,setCharacterSlot,setCharacterGear,consumeCharacterSlot,equipHelmet,armBubble,startLoadout};
 })();
