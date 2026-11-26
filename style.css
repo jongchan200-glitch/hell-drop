@@ -532,3 +532,46 @@ html,body{height:100%;overflow:hidden}
 .rig-setting-line{display:flex!important;flex-direction:column;gap:5px;margin:0!important;padding:9px;background:#101721;border:1px solid #ffffff28;border-radius:10px;font-size:11px!important}
 .rig-setting-line select{width:100%;min-height:36px;border:1px solid #91c8c099;border-radius:8px;padding:5px;background:#233342;color:#fff1da;font-size:12px}
 .rig-lab-link{display:block;margin-top:12px;text-align:center;color:#aaf0db;font-size:11px;font-weight:850;padding:11px;border:1px dashed #93c6b26e;border-radius:10px;text-decoration:none}
+
+
+/* WEB 2.6: starter and collectible heroes are visibly different everywhere. */
+.character-traits{
+  position:absolute;z-index:3;bottom:74px;left:50%;
+  transform:translateX(-50%);display:flex;align-items:center;justify-content:center;
+  gap:6px;white-space:nowrap;padding:7px 9px;border:1px solid #e4ceac76;
+  border-radius:12px;background:#0c121fdd;box-shadow:0 5px 18px #0008;
+  backdrop-filter:blur(9px);font-size:10px;color:#ffe6bf;
+}
+.character-traits>span{
+  padding:4px 6px;border-radius:8px;background:#4a715b80;
+  color:#c4ffdb;font-size:9px;font-weight:850;
+}
+.character-traits.is-premium>span{background:#78523999;color:#ffe0aa}
+.character-traits strong{font-size:10px;letter-spacing:-.025em}
+.character-traits b{color:#fff;font-size:11px}
+.starter-pick-section{border:1px solid #d3b78965;border-radius:16px;padding:11px 10px;background:linear-gradient(145deg,#3d354440,#0d1b29a0)}
+.starter-pick-heading{display:flex;justify-content:space-between;align-items:center;gap:6px;padding:0 1px 9px}
+.starter-pick-heading b{font-size:14px;color:#ffe7bb}
+.starter-pick-heading span{font-size:10px;color:#bfcabf}
+.starter-pick-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.starter-pick-card{min-width:0;display:flex;align-items:center;gap:6px;padding:7px 5px 7px 3px;min-height:108px;
+  border-radius:12px;border:1px solid #948b8577;color:#fcecd7;text-align:left;
+  background:linear-gradient(140deg,#34445788,#1b1f2e);cursor:pointer;box-shadow:inset 0 1px #ffffff0d}
+.starter-pick-card.is-selected{border:2px solid #71e3c7;background:linear-gradient(145deg,#266257aa,#182d36);
+ box-shadow:0 0 0 1px #50eaca33,inset 0 0 16px #9cf6e622}
+.starter-pick-card.is-locked{border-color:#96714b77;background:linear-gradient(145deg,#47392f8c,#211f2b)}
+.starter-pick-art{height:96px;flex:0 0 50px;display:flex;justify-content:center;align-items:flex-end}
+.starter-pick-art img{max-height:94px;max-width:54px;object-fit:contain;filter:drop-shadow(0 3px 4px #0007)}
+.starter-pick-info{min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:4px;line-height:1.25}
+.starter-pick-info strong{font-size:11px;overflow-wrap:anywhere;font-weight:900}
+.starter-pick-info small{font-size:9px;color:#bfdfd6;white-space:nowrap}
+.starter-pick-info em{font-size:9px;color:#ffe0a2;font-style:normal;font-weight:850}
+.starter-pick-card.is-selected .starter-pick-info em{color:#9dffe9}
+.starter-active-stats{display:flex;justify-content:center;gap:8px;margin:3px auto 5px;font-size:11px;font-weight:800;color:#a9f4df}
+.starter-active-stats span{border:1px solid #72c9b542;background:#152b38a8;border-radius:8px;padding:3px 7px}
+.wardrobe-portrait-art img[data-starter-face],
+.market-character-card img[data-starter-face]{filter:drop-shadow(0 5px 9px #0008)}
+@media(max-height:700px){
+ .character-traits{bottom:60px;padding:5px 7px}
+ .character-traits strong{font-size:9px}
+}
