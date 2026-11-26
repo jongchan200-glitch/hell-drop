@@ -1072,26 +1072,26 @@
     ];
     const groups=marketTab==='gear'?
       [{id:'helmet',label:'헬멧',desc:'머리 보호장비'},{id:'cape',label:'망토',desc:'외형 장비'},{id:'shoes',label:'신발',desc:'외형 장비'},{id:'pants',label:'바지',desc:'외형 장비'},{id:'top',label:'상의',desc:'외형 장비'}]:
-      marketTab==='items'?[{id:'bubble',label:'보호 버블',desc:'게임 중 사용'}]:[];
+      marketTab==='items'?[{id:'bubble',label:'보호 버블',desc:'게임 중 사용'},{id:'drink',label:'능력 드링크',desc:'활력·침착 · 3등급'}]:[];
     const shown=items.filter(i=>i.kind===marketGroup);
     const chosen=items.find(i=>i.id===marketSelected);
     const character=sys.CHARACTER_CATALOG.find(c=>c.id===marketCharacter);
-    const count=i=>i.kind==='bubble'?(prof.consumables[i.id]||0):(prof.inventory.includes(i.id)?1:0);
+    const count=i=>i.kind==='bubble'||i.kind==='drink'?(prof.consumables[i.id]||0):(prof.inventory.includes(i.id)?1:0);
     const coin=n=>'<span class="market-coin" aria-hidden="true"></span>'+fmt(n);
     const menu=sectionDefs.map(s=>`<button type="button" data-market-tab="${s.id}" class="market-main-tab ${marketTab===s.id?'active':''}" aria-pressed="${marketTab===s.id}"><b>${s.mark}</b><span>${s.label}</span></button>`).join('');
     const breadcrumb=marketGroup?`<button type="button" data-market-back class="market-back">‹ ${marketTab==='gear'?'장비':'아이템'} 목록</button>`:'';
     const folders=groups.map(g=>{
       const qty=items.filter(x=>x.kind===g.id).length,disabled=qty===0;
       return `<button type="button" class="market-folder ${disabled?'is-pending':''}" data-market-group="${g.id}" ${disabled?'disabled':''}>
-        <span class="market-folder-icon">${g.id==='helmet'?'<img src="assets/helmet_basic_full.svg" alt="">':g.id==='bubble'?'<span class="market-folder-orb"></span>':'✧'}</span>
+        <span class="market-folder-icon">${g.id==='helmet'?'<img src="assets/helmet_basic_full.svg" alt="">':g.id==='bubble'?'<span class="market-folder-orb"></span>':g.id==='drink'?'🧪':'✧'}</span>
         <strong>${g.label}</strong><small>${qty?qty+'종 상품':'준비 중'}</small><span class="market-folder-caret">›</span>
       </button>`;
     }).join('');
     const tiles=shown.map(i=>{
-      const qty=count(i),permanent=i.kind!=='bubble'&&qty;
+      const qty=count(i),permanent=i.kind==='helmet'&&qty;
       const short=i.kind==='bubble'?i.name.replace(' 버블 보호막',' 버블'):i.name;
       return `<button type="button" class="market-tile ${permanent?'is-owned':''}" data-market-item="${i.id}" aria-label="${esc(i.name)}, 상세 정보"><span class="market-art">${marketArt(i)}</span>
-       ${qty?'<span class="market-stock">'+(i.kind==='bubble'?'×'+qty:'보유')+'</span>':''}
+       ${qty?'<span class="market-stock">'+(i.kind==='bubble'||i.kind==='drink'?'×'+qty:'보유')+'</span>':''}
        <span class="market-name">${esc(short)}</span><span class="market-price">${permanent?'구매 완료':coin(i.price)}</span></button>`;
     }).join('');
     const cast=marketTab==='characters'?sys.CHARACTER_CATALOG.map(c=>
@@ -1099,12 +1099,14 @@
          <img src="${c.front}" alt=""><strong>${esc(c.name)}</strong><small>${c.id===prof.selectedCharacter?'사용 중':'무료 보유'}</small></button>`).join(''):'';
     let detail='';
     if(chosen){
-      const have=count(chosen),permanent=chosen.kind!=='bubble'&&have;
-      const guidance=chosen.kind==='bubble'?'캐릭터 화면에서 출전 슬롯에 장착하세요. 게임 중 직접 사용하면 1개 소모되며 충돌을 막아줍니다.':'한 번 구매하면 영구 보유합니다. 캐릭터 화면에서 장착하면 매 판 충돌 방어 횟수가 충전됩니다.';
+      const have=count(chosen),permanent=chosen.kind==='helmet'&&have;
+      const guidance=chosen.kind==='bubble'?'캐릭터 화면에서 출전 슬롯에 장착하세요. 게임 중 직접 사용하면 1개 소모되며 충돌을 막아줍니다.':
+        chosen.kind==='drink'?'출전 슬롯에 장착 후 게임 중 터치하여 사용. '+chosen.description+'. 활력·침착은 동시 사용 가능하며 같은 능력은 높은 등급 하나만 적용됩니다.':
+        '한 번 구매하면 영구 보유합니다. 캐릭터 화면에서 장착하면 매 판 충돌 방어 횟수가 충전됩니다.';
       detail=`<div class="market-overlay"><button type="button" class="market-shade" data-market-close aria-label="상품 상세 닫기"></button><section class="market-detail" role="dialog" aria-modal="true" aria-label="${esc(chosen.name)} 상세">
         <span class="market-handle"></span><button type="button" class="market-close" data-market-close aria-label="닫기">✕</button>
         <div class="market-detail-head"><span class="market-large-art">${marketArt(chosen,true)}</span><div class="market-detail-title">
-        <small>${chosen.kind==='bubble'?'소모품 · 보호막':'영구 장비 · 헬멧'}</small><strong>${esc(chosen.name)}</strong><b>${chosen.kind==='bubble'?chosen.seconds+'초 충돌 방어':'매 판 충돌 '+chosen.hits+'회 방어'}</b><span>${chosen.kind==='bubble'?'보유 '+have+'개':have?'보유 중':'미구매'}</span></div></div>
+        <small>${chosen.kind==='bubble'?'소모품 · 보호막':chosen.kind==='drink'?'소모품 · 능력 드링크':'영구 장비 · 헬멧'}</small><strong>${esc(chosen.name)}</strong><b>${chosen.kind==='bubble'?chosen.seconds+'초 충돌 방어':chosen.kind==='drink'?chosen.description:'매 판 충돌 '+chosen.hits+'회 방어'}</b><span>${chosen.kind==='bubble'||chosen.kind==='drink'?'보유 '+have+'개':have?'보유 중':'미구매'}</span></div></div>
         <p class="market-guide">${guidance}</p><div class="market-detail-bottom"><div><small>구매 가격</small><strong>${coin(chosen.price)}</strong></div>
         <button type="button" data-market-buy="${chosen.id}" ${permanent?'disabled':''}>${permanent?'보유 중':'구매하기'}</button></div></section></div>`;
     }else if(character){
@@ -1117,7 +1119,7 @@
     }
     const browsing=marketTab==='characters'?`<div class="market-character-grid">${cast}</div>`:
       marketTab==='skins'?'<p class="market-empty">등록된 스킨이 아직 없습니다. 실제 상품이 만들어지면 이곳에 추가됩니다.</p>':
-      marketGroup?`<div class="market-subhead">${breadcrumb}<strong>${marketGroup==='bubble'?'보호 버블':'헬멧'} <small>${shown.length}종</small></strong></div><div class="market-grid">${tiles}</div>`:
+      marketGroup?`<div class="market-subhead">${breadcrumb}<strong>${marketGroup==='bubble'?'보호 버블':marketGroup==='drink'?'능력 드링크':'헬멧'} <small>${shown.length}종</small></strong></div><div class="market-grid">${tiles}</div>`:
       `<div class="market-category-grid">${folders}</div>`;
     return `<div class="market-root"><p class="market-eyebrow">HELL DROP · MARKET</p><div class="market-wallet"><span>보유 코인</span><strong>${coin(prof.coins)}</strong></div>
       <nav class="market-main-tabs" aria-label="상점 대분류">${menu}</nav>
