@@ -785,11 +785,11 @@
   }
   function drawHero(x,y,u,fold,elapsed,speed,dead,hopping,hopFrom){
     y+=Math.sin(elapsed*(10+fold*10))*(1.2+fold*1.5)*u;
-    // Two 2D starter actors have their own 6-pose x 6-frame hand-drawn
-    // costume images; the original two premium sprites stay untouched.
+    // Free actors: three complete full-body source illustrations per character.
+    // No procedural vector body, no face collage, no alteration of paid art.
     if(isStarter()&&window.HellStarterPoses?.draw({
       ctx,x,y,u,who:currentActor(),fold,elapsed,speed,dead,hopping,
-      hopFrom,hopVisual:s.hopVisual,images
+      hopFrom,hopVisual:s.hopVisual,boost:s.boost,images
     })){
       if(s.helmetId)drawHelmet(x,y,u);
       return;
