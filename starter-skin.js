@@ -168,6 +168,9 @@
     return c;
   }
   function preview(src,who,done){
+    // A complete approved-style beginner portrait already includes its own clothes.
+    // Never run the legacy premium-art overlay on that file.
+    if(src.includes('starter_boy_original_face.webp')){done(src);return;}
     const key=src+'|'+who+'|outfit-v2';
     if(previews.has(key)){done(previews.get(key));return;}
     if(pending.has(key)){pending.get(key).push(done);return;}
@@ -189,7 +192,7 @@
     root.querySelectorAll('img[data-starter-face]').forEach(img=>{
       const id=img.dataset.starterFace;
       const who=id==='starter_boy'?'uiji':'useoi';
-      const src=who==='uiji'?'assets/uiji_intro.webp':'assets/hero_intro.webp';
+      const src=who==='uiji'?'assets/starter_boy_original_face.webp':'assets/hero_intro.webp';
       preview(src,who,url=>{if(img.isConnected&&img.dataset.starterFace===id)img.src=url;});
     });
   }
