@@ -935,6 +935,9 @@
     $('homeCharacterName').textContent=character.name;
     $('homeAvatar').src=character.front;
     $('lobbyHero').src=character.front; // preserve correct selected image while sprite preloads
+    if(character.starter)window.HellStarterSkin?.preview(character.front,character.actor,url=>{
+      if(sys.profile.selectedCharacter===character.id){$('homeAvatar').src=url;$('lobbyHero').src=url;}
+    });
     $('characterIdentityName').textContent=character.name;
     $('characterIdentitySubtitle').textContent=character.description;
     $('lobbyCharacter').setAttribute('aria-label',character.name+' 캐릭터');
@@ -985,21 +988,21 @@
        ${item?`<button type="button" class="wardrobe-remove" data-remove-gear="${key}" aria-label="${name} 벗기">×</button>`:''}
       </div>`;
     }).join('');
-    const available=sys.ITEM_CATALOG.filter(item=>item.kind==='bubble'?
+    const available=sys.ITEM_CATALOG.filter(item=>(item.kind==='bubble'||item.kind==='drink')?
       (prof.consumables[item.id]||0)>0:prof.inventory.includes(item.id));
-    const types=[['helmet','헬멧','장비'],['bubble','보호 버블','소모품']];
+    const types=[['helmet','헬멧','장비'],['bubble','보호 버블','소모품'],['drink','능력 드링크','소모품']];
     const inventory=types.map(([kind,title,sub])=>{
       const subitems=available.filter(x=>x.kind===kind);
       return `<details class="wardrobe-inventory-group" data-wardrobe-group="${kind}">
         <summary><strong>${title}</strong><span>${subitems.length}종 ${subitems.length?'· 펼쳐서 장착':'· 비어 있음'} <b>⌄</b></span></summary>
         <div class="wardrobe-inventory">
           ${subitems.map(item=>{
-            const count=item.kind==='bubble'?(prof.consumables[item.id]||0):1;
-            const icon=item.kind==='helmet'?marketArt(item):'<span class="wardrobe-bubble-art" style="--bubble:'+item.color+'"></span>';
+            const count=item.kind==='bubble'||item.kind==='drink'?(prof.consumables[item.id]||0):1;
+            const icon=item.kind==='helmet'||item.kind==='drink'?marketArt(item):'<span class="wardrobe-bubble-art" style="--bubble:'+item.color+'"></span>';
             return `<button type="button" class="wardrobe-inventory-item ${wardrobePending===item.id?'is-picked':''}"
               data-inventory-item="${item.id}" draggable="true" aria-pressed="${wardrobePending===item.id}">
               <span class="inventory-icon">${icon}</span><span class="inventory-name">${item.name.replace(' 버블 보호막',' 버블')}</span>
-              <strong class="inventory-count">${item.kind==='bubble'?'×'+count:'보유'}</strong>
+              <strong class="inventory-count">${item.kind==='bubble'||item.kind==='drink'?'×'+count:'보유'}</strong>
             </button>`;
           }).join('')||'<p class="wardrobe-empty-inventory">보유한 아이템이 없어요.</p>'}
         </div></details>`;
@@ -1011,7 +1014,7 @@
         <button type="button" data-char-direction="-1" class="wardrobe-arrow" aria-label="이전 캐릭터">❮</button>
         <div class="wardrobe-portrait">
           <div class="wardrobe-portrait-art">
-            ${helmet?'<canvas class="wardrobe-composed-portrait" data-worn-portrait aria-label="'+esc(active.name)+' 헬멧 착용 모습"></canvas>':'<img src="'+active.front+'" alt="'+esc(active.name)+' 캐릭터 일러스트" draggable="false">'}
+            ${helmet?'<canvas class="wardrobe-composed-portrait" data-worn-portrait aria-label="'+esc(active.name)+' 헬멧 착용 모습"></canvas>':'<img src="'+active.front+'" '+(active.starter?'data-starter-face="'+active.id+'"':'')+' alt="'+esc(active.name)+' 캐릭터 일러스트" draggable="false">'}
           </div>
           <div class="wardrobe-portrait-footer"><strong>${active.name}</strong>
             <span class="wardrobe-active-tag">✓ 사용 중</span></div>
@@ -1037,6 +1040,15 @@
     </div>`;
   }
   function marketArt(item,full=false){
+  if(item.kind==='drink'){
+    const c=item.color;
+    return '<svg viewBox="0 0 100 100" class="market-svg" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">'+
+      '<path d="M40 10h20v10H40z" fill="#f0e6cf" stroke="#48444d" stroke-width="3"/>'+
+      '<path d="M38 23h24l13 18v42q-25 14-50 0V41z" fill="'+c+'" stroke="#364350" stroke-width="4"/>'+
+      '<path d="M38 23h24l10 18H28z" fill="#ffffff55"/>'+
+      '<text x="50" y="64" text-anchor="middle" font-size="18" font-weight="900" fill="#17202e">'+item.bonus+'%</text>'+
+      '<circle cx="37" cy="37" r="4" fill="#fff" opacity=".65"/></svg>';
+  }
   if(item.kind==='helmet'){
     const asset=item.id==='helmet_frog'?'assets/helmet_frog_full.svg':'assets/helmet_basic_full.svg';
     return '<img class="market-svg" src="'+asset+'" alt="">';
