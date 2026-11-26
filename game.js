@@ -1096,7 +1096,11 @@
     }).join('');
     const cast=marketTab==='characters'?sys.CHARACTER_CATALOG.map(c=>
       `<button type="button" class="market-character-card" data-market-character="${c.id}" aria-label="${esc(c.name)} 정보">
-         <img src="${c.front}" alt=""><strong>${esc(c.name)}</strong><small>${c.id===prof.selectedCharacter?'사용 중':'무료 보유'}</small></button>`).join(''):'';
+          <img src="${c.front}" ${c.starter?'data-starter-face="'+c.id+'"':''} alt="">
+          <strong>${esc(c.name)}</strong>
+          <small>${c.id===prof.selectedCharacter?'사용 중':sys.ownsCharacter(c.id)?'보유 중':'🪙 '+fmt(c.price)}</small>
+          <small>최고속 ${statOf(c.id).speed}% · 감속 ${statOf(c.id).brake}%</small>
+      </button>`).join(''):'';
     let detail='';
     if(chosen){
       const have=count(chosen),permanent=chosen.kind==='helmet'&&have;
@@ -1110,12 +1114,18 @@
         <p class="market-guide">${guidance}</p><div class="market-detail-bottom"><div><small>구매 가격</small><strong>${coin(chosen.price)}</strong></div>
         <button type="button" data-market-buy="${chosen.id}" ${permanent?'disabled':''}>${permanent?'보유 중':'구매하기'}</button></div></section></div>`;
     }else if(character){
+      const owned=sys.ownsCharacter(character.id);
       detail=`<div class="market-overlay"><button type="button" class="market-shade" data-market-close aria-label="캐릭터 상세 닫기"></button>
-      <section class="market-detail" role="dialog" aria-modal="true" aria-label="${esc(character.name)} 상세"><span class="market-handle"></span>
-      <button type="button" class="market-close" data-market-close aria-label="닫기">✕</button>
-      <div class="market-detail-head"><span class="market-large-art"><img src="${character.front}" alt=""></span><div class="market-detail-title"><small>캐릭터 · 무료 보유</small><strong>${esc(character.name)}</strong><b>캐릭터 화면에서 선택 가능</b></div></div>
-      <p class="market-guide">이미 보유 중인 캐릭터예요. 새로운 캐릭터의 실제 구매 기능은 아직 추가되지 않았어요.</p>
-      <div class="market-detail-bottom"><span>보유 중</span><button type="button" data-market-go-character>캐릭터 화면</button></div></section></div>`;
+       <section class="market-detail" role="dialog" aria-modal="true" aria-label="${esc(character.name)} 상세"><span class="market-handle"></span>
+       <button type="button" class="market-close" data-market-close aria-label="닫기">✕</button>
+       <div class="market-detail-head"><span class="market-large-art"><img src="${character.front}" ${character.starter?'data-starter-face="'+character.id+'"':''} alt=""></span>
+       <div class="market-detail-title"><small>${character.starter?'무료 기본 캐릭터':'기존 원화 · 판매형'}</small>
+       <strong>${esc(character.name)}</strong><b>최고속 ${statOf(character.id).speed}% · 감속 ${statOf(character.id).brake}%</b></div></div>
+       <p class="market-guide">${character.starter?'안전모 없이 시작하는 기본 캐릭터. 기존 2D 원화의 얼굴을 그대로 사용하고 망토 색을 바꾼 테스트 의상입니다.':
+         '기존 원화 모습을 그대로 보존한 판매형 캐릭터입니다. 최고속도 +3%p, 감속력 +2%p. 기존 사용자의 보유 권리는 유지됩니다.'}</p>
+       <div class="market-detail-bottom"><span>${owned?'보유 중':'🪙 '+fmt(character.price)}</span>
+       ${owned?'<button type="button" data-market-go-character>캐릭터 화면</button>':
+         '<button type="button" data-market-buy-character="'+character.id+'">코인으로 구매</button>'}</div></section></div>`;
     }
     const browsing=marketTab==='characters'?`<div class="market-character-grid">${cast}</div>`:
       marketTab==='skins'?'<p class="market-empty">등록된 스킨이 아직 없습니다. 실제 상품이 만들어지면 이곳에 추가됩니다.</p>':
