@@ -1,81 +1,52 @@
 'use strict';
-const {chromium} = require('playwright');
+const {chromium}=require('playwright');
 const fs=require('fs');
 (async()=>{
   const browser=await chromium.launch({channel:'chrome',headless:true,args:['--no-sandbox']});
   const page=await browser.newPage({viewport:{width:390,height:844},deviceScaleFactor:1,isMobile:true,hasTouch:true});
   const errors=[];
   page.on('pageerror',e=>errors.push(e.message));
-  page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
-  for(const [name,query] of [['base','?rig=0&keypose=1'],['starter','?rig=0&keypose=1&starter=1']]){
+  // Validate plain launch as well as old bookmarked trial query: neither may
+  // load deprecated skeletal, key-pose or starter outfit rendering.
+  for(const [name,query,hero] of [
+    ['original-girl','?v=nov26-original-2d','useoi'],
+    ['old-test-link-safe','?rig=1&keypose=1&starter=1&workrig=1&v=nov26-original-2d','uiji']
+  ]){
     await page.goto('http://127.0.0.1:8765/'+query,{waitUntil:'domcontentloaded',timeout:30000});
-    await page.waitForFunction('window.HellKeypose?.ready',{timeout:20000});
+    await page.waitForFunction(()=>!!window.HellFallTest,{timeout:15000});
+    if(hero==='uiji'){
+      await page.locator('[data-panel="character"]').first().click();
+      await page.locator('[data-character-index="1"]').click();
+      await page.waitForTimeout(180);
+      await page.locator('#drawerClose').click().catch(async()=>{await page.keyboard.press('Escape')});
+    }
+    const profile=await page.evaluate(()=>window.HellFallTest.snapshot().character);
+    if(profile!==hero)throw Error('Selected wrong 2D character: '+profile+' expected '+hero);
     await page.locator('#start').click();
     await page.waitForTimeout(350);
-    const info=await page.evaluate(()=>({
-      stage:window.HellFallTest?.snapshot()?.stage,
-      keypose:window.HellKeypose?.ready,
-      starter:!!window.HellStarterKit,
-      kitLabels:document.querySelectorAll('#starterGearPanel label').length,
-      canvas:document.querySelector('canvas#scene')?.getBoundingClientRect().toJSON()
+    const check=await page.evaluate(()=>({
+      stage:window.HellFallTest.snapshot().stage,
+      hero:window.HellFallTest.snapshot().character,
+      workRigLoaded:!!window.HellWorkRig,
+      keyposeLoaded:!!window.HellKeypose,
+      starterLoaded:!!window.HellStarterKit,
+      v3Loaded:!!window.HellRigV2,
+      experimentalLinks:document.querySelectorAll('#keyposeGameEntry,#starterOutfitEntry,.work-rig-entry').length,
+      scene:document.querySelector('#scene')?.getBoundingClientRect().toJSON()
     }));
+    if(check.stage!=='PLAYING')throw Error('Game not playing: '+JSON.stringify(check));
+    if(check.workRigLoaded||check.keyposeLoaded||check.starterLoaded||check.v3Loaded||check.experimentalLinks)throw Error('Trial renderer still loaded: '+JSON.stringify(check));
     const shot='qa-shot-'+name+'.jpg';
-    await page.screenshot({path:shot,quality:50,type:'jpeg'});
-    console.log('QAINFO_'+name.toUpperCase()+'='+JSON.stringify(info));
-    console.log('QAIMAGE_'+name.toUpperCase()+'='+fs.readFileSync(shot).toString('base64'));
-    if(name==='starter'){
-      const prior=await page.evaluate(()=>window.HellFallTest?.snapshot());
-      await page.locator('#jump').tap();
-      await page.waitForTimeout(140);
-      const jumped=await page.evaluate(()=>window.HellFallTest?.snapshot());
-      await page.screenshot({path:'qa-shot-wall-kick.jpg',type:'jpeg',quality:52});
-      console.log('QAINFO_KICK='+JSON.stringify({before:prior?.hopVisual,after:jumped?.hopVisual,side:jumped?.wall}));
-      console.log('QAIMAGE_KICK='+fs.readFileSync('qa-shot-wall-kick.jpg').toString('base64'));
-      const before=await page.evaluate(()=>window.HellStarterKit?.revision);
-      await page.locator('#starterGearPanel button').click();
-      const checks=page.locator('#starterGearPanel input[type=checkbox]');
-      await checks.first().uncheck();
-      const after=await page.evaluate(()=>window.HellStarterKit?.revision);
-      if(after!==before+1)throw Error('Gear toggle failed');
-      await page.screenshot({path:'qa-shot-starter-toggle.jpg',quality:50,type:'jpeg'});
-      console.log('QAINFO_TOGGLE='+JSON.stringify({before,after,checkboxes:await checks.count()}));
-    }
+    await page.screenshot({path:shot,quality:55,type:'jpeg'});
+    console.log('QAINFO_'+name.toUpperCase().replace(/-/g,'_')+'='+JSON.stringify(check));
+    console.log('QAIMAGE_'+name.toUpperCase().replace(/-/g,'_')+'='+fs.readFileSync(shot).toString('base64'));
+    await page.locator('#jump').tap();
+    await page.waitForTimeout(130);
+    const hop=await page.evaluate(()=>({hopVisual:window.HellFallTest.snapshot().hopVisual,stage:window.HellFallTest.snapshot().stage}));
+    if(!(hop.hopVisual<1))throw Error('Wall jump not triggered '+JSON.stringify(hop));
+    await page.screenshot({path:'qa-shot-'+name+'-kick.jpg',quality:55,type:'jpeg'});
+    console.log('QAINFO_KICK_'+name.toUpperCase().replace(/-/g,'_')+'='+JSON.stringify(hop));
   }
-  // Render original 8 Work poses as a real-pixel contact sheet for visual fit QA.
-  const sheet=await page.evaluate(async()=>{
-    const pose=new Image();
-    pose.src='character-production/uiji-useoi/keypose-study/poses.png';
-    await pose.decode();
-    const boxes=[[54,15,349,402],[561,21,225,392],[991,19,243,403],[1391,19,336,395],[56,472,347,399],[513,449,304,422],[934,483,367,383],[1408,473,339,400]];
-    const c=document.createElement('canvas');c.width=1400;c.height=940;
-    const ink=c.getContext('2d');ink.fillStyle='#34313b';ink.fillRect(0,0,c.width,c.height);
-    for(let i=0;i<8;i++){
-      const [x,y,w,h]=boxes[i],col=i%4,row=Math.floor(i/4),cx=col*350+175,cy=row*470+240;
-      const scale=Math.min(315/w,390/h);
-      ink.drawImage(pose,x,y,w,h,cx-w*scale/2,cy-h*scale/2,w*scale,h*scale);
-      ink.fillStyle='white';ink.font='bold 27px sans-serif';ink.fillText('#'+i,col*350+14,row*470+33);
-    }
-    return c.toDataURL('image/jpeg',.6).split(',')[1];
-  });
-  console.log('QAIMAGE_ATLAS='+sheet);
-  const dressed=await page.evaluate(()=>{
-    if(!window.HellStarterKit||!window.HellKeypose?.testPoseTexture)return null;
-    window.HellStarterKit.gear.helmet=true;window.HellStarterKit.revision++;
-    const c=document.createElement('canvas');c.width=1400;c.height=940;
-    const ctx=c.getContext('2d');ctx.fillStyle='#383139';ctx.fillRect(0,0,c.width,c.height);
-    for(let i=0;i<8;i++){
-      const img=window.HellKeypose.testPoseTexture(i);
-      const col=i%4,row=Math.floor(i/4),cx=col*350+175,cy=row*470+240;
-      const scale=Math.min(315/img.width,390/img.height);
-      ctx.drawImage(img,cx-img.width*scale/2,cy-img.height*scale/2,img.width*scale,img.height*scale);
-      ctx.fillStyle='#fff';ctx.font='bold 27px sans-serif';ctx.fillText('#'+i,col*350+14,row*470+33);
-    }
-    return c.toDataURL('image/jpeg',.58).split(',')[1];
-  });
-  if(dressed)console.log('QAIMAGE_DRESSED='+dressed);
-  console.log('QAERRORS='+JSON.stringify(errors.slice(0,12)));
-  // Current app has known optional-resource 404s; make test gate depend on
-  // playable canvas/loaded 8-pose art instead of unrelated broken asset URLs.
-  if(!await page.evaluate(()=>window.HellKeypose?.ready))throw Error('pose renderer not ready');
+  if(errors.length)throw Error('Browser errors: '+JSON.stringify(errors.slice(0,6)));
   await browser.close();
 })().catch(e=>{console.error(e);process.exit(1)});
