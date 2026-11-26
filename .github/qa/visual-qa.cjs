@@ -129,11 +129,17 @@ const fs=require('fs');
       stage:before.stage,hero:before.character,stats:before.stats,starter:index<2,rig
     }));
     console.log('QAIMAGE_'+name.toUpperCase().replace(/-/g,'_')+'='+fs.readFileSync(shot).toString('base64'));
-    const priorWall=await page.evaluate(()=>window.HellFallTest.snapshot().wall);
+    // Start a separate fresh run for jump testing, before the first obstacle.
+    // The accelerated screenshot sequence may already reach collision depth.
+    await page.evaluate(()=>window.HellFallTest.start());
+    await page.waitForTimeout(150);
+    const jumpStart=await page.evaluate(()=>window.HellFallTest.snapshot());
+    if(jumpStart.stage!=='PLAYING'||jumpStart.depth>100)throw Error('Wall jump test did not start in safe zone '+JSON.stringify(jumpStart));
+    const priorWall=jumpStart.wall;
     await page.locator('#jump').tap();await page.waitForTimeout(120);
     if(index<2){
       const anim=await page.evaluate(()=>window.HellStarterPoses.status());
-      if(anim.lastPose!=='kick')throw Error('Complete-body wall-kick pose did not appear '+JSON.stringify(anim));
+      if(anim.lastPose!=='kick')throw Error('Complete-body wall-kick pose did not appear '+JSON.stringify({anim,snapshot:await page.evaluate(()=>window.HellFallTest.snapshot())}));
     }
     const firstHop=await page.evaluate(()=>window.HellFallTest.snapshot());
     if(!(firstHop.hopVisual<1)||firstHop.wall===priorWall)
