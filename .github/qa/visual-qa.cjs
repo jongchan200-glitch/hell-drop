@@ -51,7 +51,6 @@ const fs=require('fs');
     const before=await page.evaluate(()=>window.HellFallTest.snapshot());
     if(before.stage!=='PLAYING')throw Error('Game did not launch '+JSON.stringify(before.stage));
     if(before.character!==hero)throw Error('Run hero mismatch');
-    if(window!==undefined){} // keep this check browser-side only
     const rig=await page.evaluate(()=>({
       workRig:!!window.HellWorkRig,keypose:!!window.HellKeypose,
       starterKit:!!window.HellStarterKit,rigV2:!!window.HellRigV2,
