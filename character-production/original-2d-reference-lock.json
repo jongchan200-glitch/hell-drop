@@ -1,0 +1,58 @@
+{
+  "version": "2026-11-26",
+  "purpose": "Preserve the two approved 2D premium hero identities as immutable reference art. This manifest documents existing source; it changes no game rendering.",
+  "live_reference_commit": "81b54bf7d5a6d0f3868d3cafd610c0c1809aa4ca",
+  "renderer_status": {
+    "premium_uiji": "Original 2D 36-cell (3 modes x 12 frames) motion atlas. No Work skeletal renderer loaded.",
+    "premium_useoi": "Original 2D hero pictures with 3-layer cape motion and dedicated left/right wall-kick art. No Work skeletal renderer loaded.",
+    "legacy_experiments": "Work Rigby2D, rig-v3, keypose-live and starter-kit are not imported by current index.html."
+  },
+  "locked_original_art": {
+    "useoi": {
+      "id": "useoi",
+      "display_name": "우서",
+      "tier": "premium",
+      "sources": {
+        "assets/hero_intro.webp": "1081d4bd12f90257baa206e1fd1263d50a7a4557",
+        "assets/hero_cape.webp": "f71484837c9574699d7c7dab48d3ab20dea14d28",
+        "assets/hero_fall.webp": "e3969245b8c57b2e153a09d36191593178958444",
+        "assets/hero_jump_left.webp": "e69701a208840a712af37f6ec2987e7ed927a744",
+        "assets/hero_jump_right.webp": "d0517d97dbed4bf5bb9a3b16b4236c118eabd79d",
+        "assets/hero_hit.webp": "105e44cea6157e98ae0f503ee729af5da679e8fe"
+      }
+    },
+    "uiji": {
+      "id": "uiji",
+      "display_name": "우지",
+      "tier": "premium",
+      "sources": {
+        "assets/uiji_intro.webp": "6a001c0b9921de3c2b22bff75fd7ce174a86b5af",
+        "assets/uiji_motion_atlas.webp": "657c9587d9de3dd63c8bf2a9c148d2df9108d9a0"
+      }
+    }
+  },
+  "original_backup_sources_in_private_drive": [
+    "HellFall_V42_오프닝_양방향벽점프_원본백업.zip",
+    "HellFall_V41_딸캐릭터_속도20퍼센트감속.zip",
+    "uiji_intro_v16.webp",
+    "uiji_motion_atlas_v17.webp"
+  ],
+  "next_character_workflow": {
+    "order": [
+      "무료 초보 모험자 (남녀 외형을 먼저 완성)",
+      "점핑슈트 1종",
+      "캐릭터 작업 종료, 출시 준비"
+    ],
+    "first_target": "초보 모험자, 낡았지만 깔끔한 옷: 모자 없음, 크림 티셔츠, 검정/회색 반바지, 파란 슬리퍼, 베이지 보자기 망토",
+    "output_requirements": [
+      "Draw a self-contained complete character for every key motion; do NOT collage an original face on a vector stick-puppet body.",
+      "Use frozen original character identity as visual comparison for face, hair, expression and proportions. Reject drift.",
+      "Start with a full neutral-fall illustration, then redraw matching fully clothed poses for folded acceleration and left/right wall jumps.",
+      "Use multiple coherent sprite frames per action and original gameplay cadence; swap the entire full-body sprite by character ID.",
+      "No new Work/Rigby2D skeletal renderer and no recoloring-only hack.",
+      "Validate still frames, frame-to-frame identity, actual Android touch responsiveness, and home/shop/gameplay appearance before release."
+    ],
+    "current_starter_warning": "starter-poses.js is an unapproved interim vector/face-collage test and must NOT be accepted as the final character artwork.",
+    "release_gate": "Do not mark any new character complete until visually approved by user and checked against source pixels. Do not replace locked paid character originals."
+  }
+}
