@@ -4,8 +4,8 @@
 (function(){
   'use strict';
   const VIEW_SETS={
-    starter_boy:{name:'초보 탐험가 (남)',front:'assets/starter_boy_original_face.webp?v=26-basic-boy',back:null,actor:'uiji',starter:true},
-    starter_girl:{name:'초보 탐험가 (여)',front:'assets/hero_intro.webp?v=11-frontback',back:null,actor:'useoi',starter:true},
+    starter_boy:{name:'초보 탐험가 (남)',front:'assets/starter_boy_portrait.webp?v=28-full-body',back:null,actor:'uiji',starter:true},
+    starter_girl:{name:'초보 탐험가 (여)',front:'assets/starter_girl_portrait.webp?v=28-full-body',back:null,actor:'useoi',starter:true},
     useoi:{name:'우서',front:'assets/hero_intro.webp?v=11-frontback',back:'assets/hero_back_fixed.webp?v=12-backfix'},
     uiji:{name:'우지',front:'assets/uiji_intro.webp?v=16-uiji',back:null}
   };
