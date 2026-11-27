@@ -31,6 +31,8 @@ assert(balance.max.won&&balance.max.seconds>=300&&balance.max.seconds<=420&&bala
    await page.waitForFunction(()=>!!window.HellFallTest,{timeout:15000});
    await click('[data-initial-actor="'+actor+'"]');
    await page.waitForFunction(()=>!document.querySelector('#lobbyHero').hidden&&document.querySelector('#lobbyHero').naturalWidth>0);
+   // QA-only deterministic world; early obstacle walls are opposite the starting lane.
+   await page.evaluate(seed=>{Math.random=()=>((seed+.1)/1e9);},2);
  }
  async function shop(tab){await click('[data-panel="shop"]');await click('[data-market-tab="'+tab+'"]')}
  async function buySkin(id){
@@ -79,15 +81,16 @@ assert(balance.max.won&&balance.max.seconds>=300&&balance.max.seconds<=420&&bala
    assert.equal(before.displayDepth,Math.floor(before.depth/10));
    const hud=await page.locator('#depthLabel').textContent();
    assert(hud.endsWith('m'));
+   // Exercise two wall hops before accelerating into the first randomized hazard.
+   await page.locator('#jump').tap();await page.waitForTimeout(180);
+   const jumped=await snap();assert.equal(jumped.wall,'R');
+   await page.locator('#jump').tap();await page.waitForTimeout(180);
+   const returned=await snap();assert.equal(returned.wall,'L');
    await tapBoost(5);
    const boosted=await snap();
    assert(boosted.tapCount>=5&&boosted.speed>before.speed&&boosted.stage==='PLAYING','boost '+id+' '+JSON.stringify(boosted));
    if(id.startsWith('starter')||id.startsWith('wingsuit'))assert.equal(await page.evaluate(()=>window.HellStarterPoses.status().lastHero),id);
-   await page.locator('#jump').tap();await page.waitForTimeout(230);
-   const jumped=await snap();assert.equal(jumped.wall,'R');
-   await page.locator('#jump').tap();await page.waitForTimeout(230);
-   const returned=await snap();assert.equal(returned.wall,'L');
-   console.log('QASKIN_'+id+'='+JSON.stringify({speed:boosted.stats.speed,taps:boosted.tapCount,wall:returned.wall,displayDepth:returned.displayDepth}));
+   console.log('QASKIN_'+id+'='+JSON.stringify({speed:boosted.stats.speed,taps:boosted.tapCount,wall:returned.wall,displayDepth:boosted.displayDepth}));
    if(id.startsWith('wingsuit'))await shot('play-'+id);
  }
  // Real UI shopping, preparation, consumption, dragon and save.
@@ -115,7 +118,7 @@ assert(balance.max.won&&balance.max.seconds>=300&&balance.max.seconds<=420&&bala
  assert.equal(run.pet,'baby_dragon');assert.equal(run.stats.speed,77);assert.equal(run.stats.timeBonus,15);
  assert.equal(run.profile.consumables.time_15,1);assert.equal(run.profile.consumables.vitality_5,1);
  assert(run.profile.wardrobes.uiji.quickSlots.every(x=>x===null));assert.equal(run.runItems.length,2);assert(Number.isFinite(run.petX));
- await tapBoost();const a=await snap();await page.locator('#jump').tap();await page.waitForTimeout(260);const b=await snap();assert.notEqual(a.petX,b.petX);
+ const a=await snap();await page.locator('#jump').tap();await page.waitForTimeout(200);const shifted=await snap();assert.notEqual(a.petX,shifted.petX);await page.locator('#jump').tap();await page.waitForTimeout(180);await tapBoost();const b=await snap();assert.equal(b.stage,'PLAYING');
  assert.equal(b.stats.timeBonus,15);assert.equal(b.stats.speed,77);await shot('dragon-play');
  // Lifecycle pause must stop simulation. This also verifies retained web/native glue.
  await page.evaluate(()=>window.HellPlatform.setNativePaused(true));const pa=await snap();await page.waitForTimeout(300);const pb=await snap();assert.equal(pa.depth,pb.depth);await page.evaluate(()=>window.HellPlatform.setNativePaused(false));
