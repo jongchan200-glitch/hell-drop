@@ -152,6 +152,7 @@ assert(balance.max.won&&balance.max.seconds>=300&&balance.max.seconds<=420&&bala
  assert.equal(await page.locator('#homePet.coco-art:not(.hidden)').count(),1);
  await page.reload({waitUntil:'domcontentloaded'});await page.waitForFunction(()=>!!window.HellFallTest);
  assert.equal((await prof()).equippedPets.uiji,'coco');
+ await page.evaluate(()=>{Math.random=()=>2.1/1e9;});
  await click('#start');await page.waitForFunction(()=>['flap-up','flap-down'].includes(window.HellFallTest.snapshot().petPose));
  let cr=await snap();assert.equal(cr.pet,'coco');assert.equal(cr.stats.speed,73);assert.equal(cr.stats.brake,72);assert.equal(cr.stats.timeBonus,5);
  await shot('coco-flap');
