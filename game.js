@@ -13,15 +13,9 @@
   const sys=window.HellSystems; if(!sys)throw new Error('Missing systems.js');
   const vortexCanvas=$('vortexCanvas'), vortexCtx=vortexCanvas.getContext('2d');
   let lastReward={distance:0,foundCoins:0,bonus:0,levelUps:0,level:sys.profile.level,newBalance:sys.profile.coins};
-  const T = {
-    LIMIT:42, MAX:1560, START:124, GLIDE:112, GLIDE_TIER:8, BOOST_SPEED:510,
-    BOOST_TIER:35, MIN_TAP_INTERVAL:.055, TAP_RATE_BASE:.8, TAP_RATE_RANGE:4.0,
-    RISE_RESPONSE:1.2, FALL_RESPONSE:6.7, HOP_SECONDS:.155, ZONE_LENGTH:5000
-  };
-  const CHECKPOINT_GAPS=[1450,1600,1800,2000,2250,2500,2800];
-  const CHECKPOINT_BONUS=[5,4,2.5,2,1.5,1,1];
-  const CLOCK_GAPS=[900,1050,1160,1260,1400,1510,1670];
-  const CLOCK_BONUS=[5,5,5,4,4,3,3];
+  const B=window.HellBalance,T=B.T;
+  const {CHECKPOINT_GAPS,CHECKPOINT_BONUS,CLOCK_GAPS,CLOCK_BONUS}=B;
+  const dm=B.distance,meters=d=>dm(d).toLocaleString('ko-KR');
   const ZONES=['지표면 · 지하 동굴','깊은 암반층','마그마 지대','맨틀 지대','외핵','내핵','지옥의 심연'];
   const PALETTES=[
     {shadow:'#14151c',wall:'#352d32',facet:'#61504c',glow:'#ff974e',sky:'#0c101a'},
@@ -42,10 +36,12 @@
   const runSkin=()=>sys.SKIN_CATALOG.find(c=>c.id===s.runCharacter);
   const skinLabel=c=>c.starter?'기본 복장':c.kind==='wingsuit'?'윙슈트':'탐험가 스킨';
   function effectiveStats(){
-    const c=statOf(s.runCharacter);
-    return {speed:Math.min(100,c.speed+(s.drinks.speed.left>0?s.drinks.speed.bonus:0)),
-      brake:Math.min(100,c.brake+(s.drinks.brake.left>0?s.drinks.brake.bonus:0))};
+    const c=statOf(s.runCharacter),pet=s.pet;
+    return {speed:Math.min(100,c.speed+(pet?.speedBonus||0)+s.drinks.speed.bonus),
+      brake:Math.min(100,c.brake+(pet?.brakeBonus||0)+s.drinks.brake.bonus),timeBonus:(pet?.timeBonus||0)+s.drinks.time.bonus};
   }
+  const rewardTime=n=>B.reward(n,effectiveStats().timeBonus);
+  const assetAtlas=new Image();assetAtlas.src='assets/rpg_items_dragon_v33.webp';
   // Only the original V4.2 reference family; no generated replacement faces.
   const IMAGE_FILES={braking:'hero_cape',jumpLeft:'hero_jump_left',jumpRight:'hero_jump_right',dizzy:'hero_hit',uiji:'uiji_intro',uijiMotion:'uiji_motion_atlas'};
   Object.entries(IMAGE_FILES).forEach(([key,file])=>{
@@ -84,27 +80,30 @@
   }
   function readRecord(){return Number(window.HellPlatform.storage.read('hell_fall_web_v42_best')||0)||0;}
   function saveRecord(value){window.HellPlatform.storage.write('hell_fall_web_v42_best',String(value));}
-  function zoneOf(depth){return Math.min(6,Math.floor(depth/5000));}
-  function tierOf(depth){return Math.min(17,Math.floor(depth/2000));}
+  const zoneOf=B.zoneOf;
+  const tierOf=B.tierOf;
   function wallX(w){return w==='L'?.29:.71;}
   function otherWall(w){return w==='L'?'R':'L';}
   function smooth(t){t=Math.max(0,Math.min(1,t));return t*t*(3-2*t);}
   function posX(g,p=g.hopProgress){return wallX(g.hopFrom)*(1-smooth(p))+wallX(g.wall)*smooth(p);}
   function rngSeed(seed){let x=(seed>>>0)||1;return()=>{x=(x+0x6D2B79F5)>>>0;let t=x;t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return ((t^(t>>>14))>>>0)/4294967296;};}
-  function makeGame(stage='READY'){return{seed:(Math.random()*1000000000)|0,stage,depth:0,speed:T.START,timeLeft:T.LIMIT,elapsed:0,boost:0,fold:0,lastTapAt:-1,tapPulse:0,tapCount:0,tapIntervals:[],cadence:0,wall:'L',hopFrom:'L',hopProgress:1,hopVisual:1,obstacles:[],timeGates:[],checkpointGates:[],coinGates:[],runCoins:0,nextObstacle:370,nextTimeGate:900,nextCheckpoint:1450,nextCoin:210,coinNumber:0,obstacleNumber:0,gateNumber:0,checkpointNumber:0,gateFlash:0,checkpointFlash:0,zoneFlash:0,lastBonus:0,lastCheckpointBonus:0,failure:'',bubbleLeft:0,bubbleColor:null,bubbleName:'',helmetId:null,helmetCharges:0,invuln:0,shieldFlash:0,runCharacter:'starter_boy',drinks:{speed:{bonus:0,left:0},brake:{bonus:0,left:0}},quickSlots:[null,null]};}
+  function makeGame(stage='READY'){return{seed:(Math.random()*1000000000)|0,stage,depth:0,speed:T.START,timeLeft:T.LIMIT,elapsed:0,boost:0,fold:0,lastTapAt:-1,tapPulse:0,tapCount:0,tapIntervals:[],cadence:0,wall:'L',hopFrom:'L',hopProgress:1,hopVisual:1,obstacles:[],timeGates:[],checkpointGates:[],coinGates:[],runCoins:0,nextObstacle:370,nextTimeGate:B.FIRST_CLOCK,nextCheckpoint:B.FIRST_LINE,nextCoin:210,coinNumber:0,obstacleNumber:0,gateNumber:0,checkpointNumber:0,gateFlash:0,checkpointFlash:0,zoneFlash:0,lastBonus:0,lastCheckpointBonus:0,failure:'',bubbleCharges:0,bubbleColor:null,bubbleName:'',invuln:0,shieldFlash:0,runCharacter:'starter_boy',drinks:{speed:{bonus:0},brake:{bonus:0},time:{bonus:0}},pet:null,petX:null,runItems:[],won:false};}
   function start(){
     if(!sys.profile.identityChosen){openPanel('chooseActor');return;}
-    applyControlSide();s=makeGame('PLAYING');
-    // A bubble is a single-use purchase. Helmets are persistent owned equipment,
-    // recharged to 1 or 2 collision blocks for every new run.
+    if(s.stage==='PLAYING')return;
     const loadout=sys.startLoadout();
-    s.runCharacter=sys.profile.selectedCharacter;
+    if(!loadout.ok){openPanel('character',loadout.reason);return;}
+    applyControlSide();s=makeGame('PLAYING');
+    s.runCharacter=sys.profile.selectedCharacter;s.pet=loadout.pet;
+    s.runItems=loadout.items.map(i=>i.id);
+    for(const item of loadout.items){
+      if(item.kind==='bubble'){s.bubbleCharges=item.hits;s.bubbleColor=item.color;s.bubbleName=item.name;}
+      else s.drinks[item.stat].bonus=item.bonus;
+    }
     const wing=runSkin()?.kind==='wingsuit';
     boostBtn.querySelector('strong').textContent=wing?'급강하':'망토 접기';
     boostBtn.setAttribute('aria-label',wing?'윙슈트 급강하 연타 가속':'망토 접기 연타 가속');
-    s.quickSlots=loadout.quickSlots.slice();
-    s.bubbleLeft=0;s.bubbleColor=null;s.bubbleName='';
-    s.helmetId=loadout.helmetId;s.helmetCharges=loadout.helmetHits;
+    closePanel();
     lastReward={distance:0,foundCoins:0,bonus:0,levelUps:0,level:sys.profile.level,newBalance:sys.profile.coins};
     heldKeys.clear();sys.audio.unlock();sys.audio.startGamePlaylist();
     sys.audio.effect('start');updateUI();
@@ -124,35 +123,9 @@
     sys.audio.effect('tap');
     boostBtn.classList.remove('tap-burst');void boostBtn.offsetWidth;boostBtn.classList.add('tap-burst');
   }
-  function useQuickItem(index){
-    if(s.stage!=='PLAYING')return;
-    const id=s.quickSlots[index],item=sys.ITEM_CATALOG.find(i=>i.id===id);
-    if(!item)return;
-    if(item.kind==='bubble'&&s.bubbleLeft>0){s.shieldFlash=.25;return;}
-    if(item.kind==='drink'){
-      const active=s.drinks[item.stat];
-      // A weaker/same-tier drink never wastes a consumable; the two different
-      // attributes are allowed to coexist without interfering with bubbles.
-      if(!active||(active.left>0&&active.bonus>=item.bonus))return;
-    }
-    const result=sys.consumeCharacterSlot(s.runCharacter,index);
-    if(!result.ok)return;
-    if(item.kind==='bubble'){
-      s.bubbleLeft=item.seconds;s.bubbleColor=item.color;
-      s.bubbleName=item.name;s.shieldFlash=.5;
-    }else if(item.kind==='drink'){
-      s.drinks[item.stat]={bonus:item.bonus,left:item.seconds};
-    }
-    s.quickSlots=sys.wardrobeOf(s.runCharacter).quickSlots.slice();
-    sys.audio.effect('coin');updateUI();
-  }
   function jump(){if(s.stage!=='PLAYING'||s.hopProgress<1)return;s.hopFrom=s.wall;s.wall=otherWall(s.wall);s.hopProgress=0;s.hopVisual=0;jumpBtn.classList.add('active');sys.audio.effect('jump');}
   function advance(dt){
     const old=s.depth,tier=tierOf(old);
-    for(const stat of ['speed','brake']){
-      const drink=s.drinks[stat];
-      if(drink.left>0){drink.left=Math.max(0,drink.left-dt);if(drink.left===0)drink.bonus=0;}
-    }
     const stats=effectiveStats();
     // Recent inter-tap rhythm controls the gauge. Slow tapping holds a low
     // storm, and successive higher levels demand increasingly faster rhythms.
@@ -163,17 +136,7 @@
     const silence=s.lastTapAt<0?999:s.elapsed-s.lastTapAt;
     const anticipation=interval>0?Math.min(.43,Math.max(.23,interval*1.13)):.12;
     const rate=rawRate*Math.exp(-Math.max(0,silence-anticipation)*5.2);
-    const demand=Math.max(0,Math.min(1,(rate-T.TAP_RATE_BASE)/T.TAP_RATE_RANGE));
-    const targetBoost=Math.pow(demand,1.55);
-    const responseBoost=targetBoost>s.boost?T.RISE_RESPONSE:T.FALL_RESPONSE*(stats.brake/70);
-    const boost=s.boost+(targetBoost-s.boost)*(1-Math.exp(-responseBoost*dt));
-    // Existing 70% cadence curve remains identical. Stat % modifies its
-    // boosted ceiling; idle glide stays the same for fair obstacle timing.
-    const ceilingRatio=stats.speed/70;
-    const target=Math.min(T.MAX*ceilingRatio,T.GLIDE+tier*T.GLIDE_TIER+
-      (T.BOOST_SPEED+tier*T.BOOST_TIER)*Math.pow(boost,1.15)*ceilingRatio);
-    const response=target>s.speed?4.25:2.6*(stats.brake/70);
-    const nextSpeed=s.speed+(target-s.speed)*(1-Math.exp(-response*dt));
+    const {boost,speed:nextSpeed}=B.speedStep(old,s.speed,s.boost,rate,stats,dt);
     const fold=s.fold+(boost-s.fold)*(1-Math.exp(-(boost>s.fold?9.5:3.9)*dt));
     const depth=old+(s.speed+nextSpeed)*.5*dt,hop=Math.min(1,s.hopProgress+dt/T.HOP_SECONDS);
     // Visual kick has ~24 rendered frames at 60 FPS; physics collision timing stays unchanged.
@@ -199,7 +162,7 @@
       if(!s.checkpointGates.some(g=>Math.abs(g.depth-d)<200)){
         s.timeGates.push({depth:d,wall,bonus:CLOCK_BONUS[z],collected:false});
       }
-      s.nextTimeGate+=CLOCK_GAPS[z]+r()*200;s.gateNumber++;
+      s.nextTimeGate+=CLOCK_GAPS[z];s.gateNumber++;
     }
     // Hazards avoid BOTH types of time reward. Their collision rules are unchanged.
     s.obstacles=s.obstacles.filter(o=>o.depth>=old-100);
@@ -229,7 +192,7 @@
       if(g.collected||!(old<g.depth&&depth>=g.depth))continue;
       const along=Math.max(0,Math.min(1,(g.depth-old)/traveled));
       if(s.timeLeft<=dt*along)continue; // no rescue after already running out
-      checkpointBonus=g.bonus;remain=Math.min(T.LIMIT,remain+g.bonus);
+      checkpointBonus=rewardTime(g.bonus);remain=Math.min(T.LIMIT,remain+checkpointBonus);
       checkpointGlow=1.25;g.collected=true;sys.audio.effect('checkpoint');
     }
     for(const g of s.timeGates){
@@ -238,7 +201,7 @@
       if(s.timeLeft<=dt*along)continue;
       const p=Math.min(1,s.hopProgress+dt*along/T.HOP_SECONDS);
       if(Math.abs(posX(s,p)-wallX(g.wall))<=.12){
-        bonus=g.bonus;remain=Math.min(T.LIMIT,remain+bonus);
+        bonus=rewardTime(g.bonus);remain=Math.min(T.LIMIT,remain+bonus);
         glow=1.2;g.collected=true;sys.audio.effect('clock');
       }
     }
@@ -250,10 +213,9 @@
         coin.collected=true;s.runCoins+=coin.value;sys.audio.effect('coin');
       }
     }
-    let crashed=false,helmetCharges=s.helmetCharges;
+    let crashed=false,bubbleCharges=s.bubbleCharges;
     let invuln=Math.max(0,s.invuln-dt);
     let shieldFlash=Math.max(0,s.shieldFlash-dt);
-    const bubbleLeft=Math.max(0,s.bubbleLeft-dt);
     for(const o of s.obstacles){
       if(!(old<=o.depth+15&&depth>=o.depth-15))continue;
       const along=Math.max(0,Math.min(1,(o.depth-15-old)/traveled));
@@ -261,21 +223,15 @@
       if(Math.abs(posX(s,p)-wallX(o.wall))>=.18)continue;
       // Do not alter collision geometry: only intercept a fatal collision when
       // an active purchased defense is present.
-      if(s.bubbleLeft-dt*along>0||invuln>0){
-        shieldFlash=Math.max(shieldFlash,.24);
-        continue;
-      }
-      if(helmetCharges>0){
-        helmetCharges--;
-        invuln=.75; // avoid an immediate second hit in the same obstacle cluster
-        shieldFlash=.64;
-        sys.audio.effect('hit');continue;
+      if(invuln>0){shieldFlash=Math.max(shieldFlash,.24);continue;}
+      if(bubbleCharges>0){
+        bubbleCharges--;invuln=.75;shieldFlash=.64;sys.audio.effect('hit');continue;
       }
       crashed=true;break;
     }
-    Object.assign(s,{boost,fold,cadence:rate,tapPulse:Math.max(0,s.tapPulse-dt*3.3),speed:nextSpeed,depth,timeLeft:remain,elapsed:s.elapsed+dt,hopProgress:hop,hopVisual,gateFlash:glow,checkpointFlash:checkpointGlow,zoneFlash,lastBonus:bonus,lastCheckpointBonus:checkpointBonus,bubbleLeft,helmetCharges,invuln,shieldFlash});
+    Object.assign(s,{boost,fold,cadence:rate,tapPulse:Math.max(0,s.tapPulse-dt*3.3),speed:nextSpeed,depth:Math.min(B.CLEAR_DEPTH,depth),timeLeft:remain,elapsed:s.elapsed+dt,hopProgress:hop,hopVisual,gateFlash:glow,checkpointFlash:checkpointGlow,zoneFlash,lastBonus:bonus,lastCheckpointBonus:checkpointBonus,bubbleCharges,invuln,shieldFlash});
     if(hop>=1)jumpBtn.classList.remove('active');
-    if(crashed)finish('지층 장애물에 부딪혔어!');else if(remain<=0)finish('시간이 다 됐어!');
+    if(crashed)finish('지층 장애물에 부딪혔어!');else if(remain<=0)finish('시간이 다 됐어!');else if(s.depth>=B.CLEAR_DEPTH){s.won=true;finish('지옥의 심연 정복!');}
   }
   function updateUI(){
     const playing=s.stage==='PLAYING',over=s.stage==='OVER',ready=s.stage==='READY';
@@ -286,52 +242,38 @@
     $('vortexGauge').classList.toggle('hidden',!playing);
     $('runBadge').classList.toggle('hidden',!playing);
     const protection=[];
-    if(playing&&s.bubbleLeft>0)protection.push('🫧 '+s.bubbleLeft.toFixed(1)+'초');
-    if(playing&&s.helmetCharges>0)protection.push((s.helmetId==='helmet_frog'?'🐸':'🪖')+' '+s.helmetCharges+'회');
-    if(playing&&s.drinks.speed.left>0)protection.push('⚡ +'+s.drinks.speed.bonus+'% · '+Math.ceil(s.drinks.speed.left)+'초');
-    if(playing&&s.drinks.brake.left>0)protection.push('❄️ +'+s.drinks.brake.bonus+'% · '+Math.ceil(s.drinks.brake.left)+'초');
-    $('protectionBadge').textContent=protection.join('   ·   ');
+    if(playing&&s.bubbleCharges>0)protection.push('🫧 '+s.bubbleCharges+'회');
+    if(playing&&s.pet)protection.push('🐉 '+s.pet.name);
+    if(playing&&s.drinks.speed.bonus>0)protection.push('⚡ +'+s.drinks.speed.bonus+'%p');
+    if(playing&&s.drinks.brake.bonus>0)protection.push('❄ +'+s.drinks.brake.bonus+'%p');
+    if(playing&&s.drinks.time.bonus>0)protection.push('⏳ +'+s.drinks.time.bonus+'%');
+    $('protectionBadge').textContent=protection.join(' · ');
     $('protectionBadge').classList.toggle('hidden',protection.length===0);
-    for(let index=0;index<2;index++){
-      const slot=$('quickItem'+index);
-      const id=s.quickSlots[index];
-      const item=sys.ITEM_CATALOG.find(x=>x.id===id);
-      const quantity=id?(sys.profile.consumables[id]||0):0;
-      const blocked=item?.kind==='bubble'?s.bubbleLeft>0:
-        item?.kind==='drink'&&s.drinks[item.stat].left>0&&s.drinks[item.stat].bonus>=item.bonus;
-      const canUse=playing&&quantity>0&&!blocked;
-      $('quickItemIcon'+index).textContent=item?.icon||'＋';
-      $('quickItemCount'+index).textContent=quantity?String(quantity):'';
-      slot.disabled=!canUse;
-      slot.classList.toggle('is-empty',!quantity);
-      slot.title=item?item.name+' · '+quantity+'개':'캐릭터 화면에서 장착';
-      slot.setAttribute('aria-label',item?item.name+' 사용, 보유 '+quantity+'개':'빈 아이템 슬롯 '+(index+1));
-    }
     $('runCoinLabel').textContent=String(s.runCoins);
     const progress=sys.levelProgress(sys.profile.totalDepth);
     if(ready){
       $('homeLevel').textContent=sys.profile.level;
       $('homeCoin').textContent=sys.profile.coins.toLocaleString('ko-KR');
-      $('homeBest').textContent=Math.floor(best).toLocaleString('ko-KR');
-      $('homeTotal').textContent=sys.profile.totalDepth.toLocaleString('ko-KR');
+      $('homeBest').textContent=meters(best);
+      $('homeTotal').textContent=meters(sys.profile.totalDepth);renderHomePrep();
       $('homeProgressFill').style.width=(progress.ratio*100).toFixed(1)+'%';
     }
     if(over){
-      $('failure').textContent=s.failure;
-      $('finalDepth').innerHTML=Math.floor(s.depth)+' <small>m</small>';
-      $('finalBest').textContent='최고 기록 '+Math.floor(best).toLocaleString('ko-KR')+' m';
+      $('menuTitle').textContent=s.won?'최종 클리어!':'추락 종료!';$('failure').textContent=s.failure;
+      $('finalDepth').innerHTML=meters(s.depth)+' <small>m</small>';
+      $('finalBest').textContent='최고 기록 '+meters(best)+' m';
       $('earnedCoin').textContent='+'+lastReward.foundCoins;
       $('earnedLevel').textContent='+'+lastReward.bonus;
-      $('totalTravel').textContent='누적 '+sys.profile.totalDepth.toLocaleString('ko-KR')+'m · Lv.'+sys.profile.level;
+      $('totalTravel').textContent='누적 '+meters(sys.profile.totalDepth)+'m · Lv.'+sys.profile.level;
     }
     $('zoneLabel').textContent=(zoneOf(s.depth)+1)+'구역 · '+ZONES[zoneOf(s.depth)];
-    $('depthLabel').innerHTML=Math.floor(s.depth)+' <small>m</small>';
-    $('recordLabel').textContent='최고 '+Math.floor(Math.max(best,s.depth))+' m';
+    $('depthLabel').innerHTML=meters(s.depth)+' <small>m</small>';
+    $('recordLabel').textContent='최고 '+meters(Math.max(best,s.depth))+' m';
     $('timeLabel').textContent=s.timeLeft.toFixed(1);
     $('timeLabel').style.color=s.timeLeft<8?COLORS.red:'white';
     $('timeCaption').classList.toggle('alert',s.timeLeft<6);
     const currentStats=effectiveStats();
-    $('speedLabel').textContent='속도 '+Math.floor(s.speed)+' m/s · 최고 '+currentStats.speed+'% · 감속 '+currentStats.brake+'%';
+    $('speedLabel').textContent='속도 '+(s.speed/B.SCALE).toFixed(1)+' m/s · 최고 '+currentStats.speed+'% · 감속 '+currentStats.brake+'%';
     $('timeFill').style.width=(100*s.timeLeft/T.LIMIT)+'%';
     $('timeFill').classList.toggle('danger',s.timeLeft<6);
     boostBtn.classList.toggle('active',s.tapPulse>.6);
@@ -340,7 +282,7 @@
     toast.classList.add('hidden');toast.classList.remove('mint');
     if(playing && s.zoneFlash>0){toast.textContent=ZONES[zoneOf(s.depth)]+' 진입!';toast.style.opacity=String(Math.min(1,s.zoneFlash/1.5));toast.classList.remove('hidden');}
     if(playing && s.checkpointFlash>0){toast.textContent='⏱ 타임 라인 +'+s.lastCheckpointBonus+'초!';toast.style.opacity=String(Math.min(1,s.checkpointFlash));toast.classList.remove('hidden');toast.classList.add('mint');}
-    if(playing && s.gateFlash>0){toast.textContent='⏱ 아이템 +'+s.lastBonus.toFixed(0)+'초!';toast.style.opacity=String(Math.min(1,s.gateFlash/1.1));toast.classList.remove('hidden');toast.classList.add('mint');}
+    if(playing && s.gateFlash>0){toast.textContent='⏱ 아이템 +'+String(s.lastBonus)+'초!';toast.style.opacity=String(Math.min(1,s.gateFlash/1.1));toast.classList.remove('hidden');toast.classList.add('mint');}
   }
   function fit(){const bounds=gameRoot.getBoundingClientRect();if(!bounds.width||!bounds.height)return;W=bounds.width;H=bounds.height;const dpr=Math.min(window.devicePixelRatio||1,2.5);canvas.width=Math.round(W*dpr);canvas.height=Math.round(H*dpr);ctx.setTransform(dpr,0,0,dpr,0,0);}
   function gradient(x0,y0,x1,y1,stops){const g=ctx.createLinearGradient(x0,y0,x1,y1);stops.forEach(([t,c])=>g.addColorStop(t,c));return g;}
@@ -425,6 +367,7 @@
     // One approved renderer; physics position stays unchanged.
     drawHero(posX(s)*W,charY-arc,u,s.fold,s.elapsed,s.speed,s.stage==='OVER',s.hopVisual<1,s.hopFrom);
     drawBubble(posX(s)*W,charY-arc,u);
+    drawPet(posX(s)*W,charY-arc,u);
     if(s.speed>670){ctx.fillStyle='#ff4f6115';ctx.fillRect(0,0,W,H);}
     if(s.gateFlash>.72||s.checkpointFlash>.7){ctx.fillStyle='#6be1cd20';ctx.fillRect(0,0,W,H);}
   }
@@ -435,13 +378,13 @@
     ctx.fillStyle='#092e31b0';ctx.fillRect(x0,y-17*u,x1-x0,34*u);
     ctx.fillStyle=beam;ctx.fillRect(x0,y-2.5*u,x1-x0,5*u);
     disk(x0,y,8*u,'#6be1cdbb');disk(x1,y,8*u,'#6be1cdbb');
-    txt('TIME LINE  +'+g.bonus+'s',W*.5,y-7*u,12*u,'#e3fff6');
+    txt('TIME LINE  +'+rewardTime(g.bonus)+'s',W*.5,y-7*u,12*u,'#e3fff6');
     if(t>.5){ctx.strokeStyle='#b1fff43b';ctx.lineWidth=2*u;ctx.strokeRect(x0,y-19*u,x1-x0,38*u);}
   }
   function drawGate(g,y,u){const x=wallX(g.wall)*W,p=(Math.sin(s.elapsed*8)+1)/2;
     disk(x,y,43*u,`rgba(107,225,205,${.10+p*.08})`);disk(x,y,27*u,'#6be1cd35');disk(x,y,20*u,'#1a4d4b');
     ctx.beginPath();ctx.arc(x,y,18*u,0,Math.PI*2);ctx.strokeStyle=COLORS.mint;ctx.lineWidth=4*u;ctx.stroke();
-    line([[x,y-10*u],[x,y],[x+9*u,y+5*u]],COLORS.cream,3.3*u);disk(x,y,3*u,COLORS.cream);txt('+'+g.bonus+'s',x,y-37*u,11*u,COLORS.mint);
+    line([[x,y-10*u],[x,y],[x+9*u,y+5*u]],COLORS.cream,3.3*u);disk(x,y,3*u,COLORS.cream);txt('+'+rewardTime(g.bonus)+'s',x,y-37*u,11*u,COLORS.mint);
   }
   function drawCoin(coin,y,u){
     const x=wallX(coin.wall)*W;
@@ -544,8 +487,7 @@
   function paintSprite(img,x,y,width,height,alpha){
     if(!(img?.naturalWidth||img?.width) || alpha<=0)return false;
     ctx.save();ctx.globalAlpha*=alpha;
-    const equipped=s.helmetId&&s.stage!=='READY'?window.HellHelmetComposer?.getSprite(img,s.helmetId):null;
-    ctx.drawImage(equipped||img,x-width/2,y-height*.52,width,height);
+    ctx.drawImage(img,x-width/2,y-height*.52,width,height);
     ctx.restore();return true;
   }
   // V0.5 rig: THREE pixel-exact layers cut from the ORIGINAL hero_cape artwork.
@@ -575,16 +517,14 @@
       ctx.drawImage(wing.img,0,0,512,512);ctx.restore();
     }
     // Always paint the ORIGINAL central face/body on top of the flexible cloak.
-    const fitted=s.helmetId&&s.stage!=='READY'?window.HellHelmetComposer?.getSprite(core,s.helmetId):null;
-    ctx.drawImage(fitted||core,0,0,512,512);
+    ctx.drawImage(core,0,0,512,512);
     ctx.restore();return true;
   }
   function drawKickSprite(img,x,y,u,rot,scale,opacity){
     if(!(img?.naturalWidth||img?.width)||opacity<=0)return false;
     const size=151*u*scale;
     ctx.save();ctx.translate(x,y);ctx.rotate(rot);ctx.globalAlpha*=opacity;
-    const fitted=s.helmetId&&s.stage!=='READY'?window.HellHelmetComposer?.getSprite(img,s.helmetId):null;
-    ctx.drawImage(fitted||img,-size/2,-size*.52,size,size);
+    ctx.drawImage(img,-size/2,-size*.52,size,size);
     ctx.restore();return true;
   }
   function drawWallKickImpact(u,side,phase,y){
@@ -646,9 +586,7 @@
   }
   function drawUiji(x,y,u,fold,elapsed,speed,dead,hopping,hopFrom){
     const atlas=images.uijiMotion;
-    const characterHelmet=s.helmetId;
-    const fittedAtlas=characterHelmet&&atlas?.naturalWidth?
-      (window.HellHelmetComposer?.getAtlas(atlas,characterHelmet)||atlas):atlas;
+    const fittedAtlas=atlas;
     if(!atlas?.naturalWidth){
       // No regression when image has not yet downloaded.
       paintSprite(images.uiji,x,y,116*u,170*u,1);
@@ -714,38 +652,22 @@
       ctx.restore();
     }
   }
-  // Helmet is an independent overlay shared by all character IDs.
-  function drawHelmet(x,y,u){
-    if(!s.helmetId||s.stage==='READY')return;
-    const boy=currentActor()==='uiji';
-    const cy=y-(boy?65:59)*u;
-    ctx.save();ctx.translate(x,cy);
-    if(s.helmetId==='helmet_frog'){
-      ctx.fillStyle='#66b746';ctx.strokeStyle='#184f32';ctx.lineWidth=3*u;
-      ctx.beginPath();ctx.ellipse(0,4*u,30*u,21*u,0,Math.PI,Math.PI*2);ctx.lineTo(30*u,8*u);
-      ctx.quadraticCurveTo(0,13*u,-30*u,8*u);ctx.closePath();ctx.fill();ctx.stroke();
-      for(const off of [-20,20]){
-        disk(off*u,-14*u,12*u,'#7ae65a');disk(off*u,-16*u,7*u,'#e6fff3');
-        disk((off+2)*u,-17*u,3*u,'#1d3945');
-      }
-      line([[-26*u,9*u],[26*u,9*u]],'#a1f079',2*u);
-    }else{
-      const steel=ctx.createLinearGradient(-27*u,-17*u,24*u,18*u);
-      steel.addColorStop(0,'#bec7cc');steel.addColorStop(.5,'#677882');steel.addColorStop(1,'#232d38');
-      ctx.beginPath();ctx.ellipse(0,2*u,30*u,22*u,0,Math.PI,Math.PI*2);
-      ctx.lineTo(30*u,10*u);ctx.quadraticCurveTo(0,15*u,-30*u,10*u);ctx.closePath();
-      ctx.fillStyle=steel;ctx.fill();ctx.strokeStyle='#1a2228';ctx.lineWidth=3*u;ctx.stroke();
-      polygon([[-32*u,9*u],[32*u,9*u],[24*u,15*u],[-24*u,15*u]],'#cba86a','#36363c',2*u);
-      disk(0,-6*u,5*u,'#f4cc7c');
-    }
-    if(s.helmetCharges===0){
-      line([[-13*u,-9*u],[0,4*u],[-8*u,13*u]],'#2e253c',2*u);
-    }
-    ctx.restore();
+  // A single independent pet sprite follows the hero; no attachment to body pixels.
+  function drawPet(x,y,u){
+    if(!s.pet||!assetAtlas.naturalWidth)return;
+    const dest=x+(x<W*.5?64:-64)*u;
+    s.petX=s.petX===null?dest:s.petX+(dest-s.petX)*.18;
+    const xx=Math.max(34*u,Math.min(W-34*u,s.petX));
+    const fast=s.boost>.52,frame=fast?8:(Math.sin(s.elapsed*17)>0?6:7);
+    const size=(fast?58:67)*u;
+    ctx.save();ctx.translate(xx,y+(fast?-45:-55)*u+Math.sin(s.elapsed*9)*5*u);
+    if(xx>x)ctx.scale(-1,1);
+    ctx.rotate(fast?.25:Math.sin(s.elapsed*8)*.06);
+    ctx.drawImage(assetAtlas,(frame%3)*256,Math.floor(frame/3)*256,256,256,-size/2,-size/2,size,size);ctx.restore();
   }
   function drawBubble(x,y,u){
-    if(s.bubbleLeft<=0&&s.shieldFlash<=0)return;
-    const color=s.bubbleLeft>0?(s.bubbleColor||'#ffe579'):'#b5eaff';
+    if(s.bubbleCharges<=0&&s.shieldFlash<=0)return;
+    const color=s.bubbleCharges>0?(s.bubbleColor||'#ffe579'):'#b5eaff';
     const pulse=1+.024*Math.sin(s.elapsed*7);
     ctx.save();ctx.translate(x,y-5*u);ctx.scale(pulse,pulse);
     const g=ctx.createRadialGradient(-18*u,-31*u,8*u,0,0,110*u);
@@ -768,7 +690,6 @@
         ctx,x,y,u,who:s.runCharacter,fold,elapsed,speed,dead,hopping,
         hopFrom,hopVisual:s.hopVisual,boost:s.boost
       });
-      if(s.helmetId)drawHelmet(x,y,u);
       return;
     }
     if(currentActor()==='uiji'){
@@ -898,7 +819,6 @@
   }
   bindGamePress(boostBtn,tapAccelerate);
   bindGamePress(jumpBtn,jump);
-  for(let i=0;i<2;i++)bindGamePress($('quickItem'+i),()=>useQuickItem(i));
   document.addEventListener('keydown',e=>{if(['Space','ArrowRight','Enter'].includes(e.code)){e.preventDefault();if(e.repeat||heldKeys.has(e.code))return;heldKeys.add(e.code);
     if(e.code==='Space')tapAccelerate();else if(e.code==='ArrowRight')jump();else if(e.code==='Enter'&&(s.stage==='READY'||s.stage==='OVER')&&document.activeElement?.tagName!=='BUTTON')start();}});
   document.addEventListener('keyup',e=>heldKeys.delete(e.code));
@@ -916,115 +836,86 @@
     $('characterIdentityName').textContent=sys.actorName(character.actor);
     $('characterIdentitySubtitle').textContent=character.starter?'기본 복장 · 무료':skinLabel(character);
     $('lobbyClassTag').textContent=character.starter?'무료 기본 복장':skinLabel(character);
-    $('lobbySpeedStat').textContent=statOf(character.id).speed+'%';
-    $('lobbyBrakeStat').textContent=statOf(character.id).brake+'%';
+    const pet=sys.petOf(character.id),stats=statOf(character.id);
+    $('lobbySpeedStat').textContent=(stats.speed+(pet?.speedBonus||0))+'%';
+    $('lobbyBrakeStat').textContent=(stats.brake+(pet?.brakeBonus||0))+'%';
+    $('homePet').classList.toggle('hidden',!pet);
     $('lobbyTraits').classList.toggle('is-premium',!character.starter);
     $('lobbyCharacter').setAttribute('aria-label',character.name+' 캐릭터');
     lobbyCtrl?.setCharacter(character.id);
   }
-  // Per-character wardrobes: two consumable quick slots plus persistent gear.
-  // Swiping changes the selected hero; buying never consumes or equips items.
-  let wardrobePending=null;
-  const wardrobeExpanded=new Set();
-  const GEAR_SLOTS=[['helmet','🪖','헬멧']];
+  // WEB 3.3: the wearer and item art have separate roles.
+  let wardrobeTab='skins',previewMode=0,previewSerial=0,pendingSlot=null,slotOrigin='home',lastPrep='';
+  const SKIN_ART={starter_boy:0,uiji:1,wingsuit_boy:2,starter_girl:3,useoi:4,wingsuit_girl:5};
+  function atlasArt(i,extra=''){return '<span class="rpg-atlas '+extra+'" style="--atlas-x:'+((i%3)*50)+'%;--atlas-y:'+(Math.floor(i/3)*50)+'%" aria-hidden="true"></span>';}
+  function skinArt(c){return atlasArt(SKIN_ART[c.id]??0);}
+  function petArt(){return atlasArt(6,'pet-icon');}
+  function prepSlotsHTML(prof,origin){
+    const slots=sys.wardrobeOf(prof.selectedCharacter)?.quickSlots||[];
+    return Array.from({length:4},(_,i)=>{
+      const id=slots[i],item=sys.ITEM_CATALOG.find(x=>x.id===id),locked=i>=prof.slotCount;
+      const title=locked?'잠금 · '+sys.SLOT_PRICES[i]+'코인':item?item.name:'빈 슬롯 '+(i+1);
+      return '<button type="button" class="prep-slot '+(locked?'is-locked':item?'is-filled':'is-empty')+'" data-prep-slot="'+i+'" data-prep-origin="'+origin+'" aria-label="'+esc(title)+'"><span class="prep-icon">'+(locked?'🔒':item?marketArt(item):'+')+'</span><span class="prep-name">'+(locked?sys.SLOT_PRICES[i]+'🪙':item?esc(item.name.replace(' 드링크 · ',' ').replace(' 보호막','')):'슬롯 '+(i+1))+'</span></button>';
+    }).join('');
+  }
+  function renderHomePrep(){
+    const prof=sys.profile,w=sys.wardrobeOf(prof.selectedCharacter);if(!w)return;
+    const key=JSON.stringify([prof.activeActor,prof.slotCount,w.quickSlots,prof.coins]);
+    if(key===lastPrep)return;lastPrep=key;
+    $('homePrepSlots').innerHTML=prepSlotsHTML(prof,'home');
+  }
+  function returnToPrep(notice=''){
+    pendingSlot=null;marketSelected=null;marketCharacter=null;marketGroup=null;lastPrep='';
+    if(slotOrigin==='character'){wardrobeTab='items';openPanel('character',notice);}
+    else{closePanel();renderHomePrep();if(notice){$('homePrepNotice').textContent=notice;}}
+  }
+  function openPrepSlot(index,origin){
+    const prof=sys.profile,w=sys.wardrobeOf(prof.selectedCharacter);if(!w||!prof.identityChosen)return;
+    slotOrigin=origin;pendingSlot=index;marketSelected=null;marketCharacter=null;marketGroup=null;
+    if(index>=prof.slotCount){pendingSlot=prof.slotCount;openPanel('slotUnlock');return;}
+    if(w.quickSlots[index]){if(sys.setCharacterSlot(prof.selectedCharacter,index,null))returnToPrep('장착 해제 · 수량 유지');return;}
+    openPanel('loadout');
+  }
+  function loadoutHTML(prof){
+    const w=sys.wardrobeOf(prof.selectedCharacter),type=i=>i.kind==='bubble'?'bubble':i.stat;
+    const used=new Set(w.quickSlots.map(id=>sys.ITEM_CATALOG.find(i=>i.id===id)).filter(Boolean).map(type));
+    const owned=sys.ITEM_CATALOG.filter(i=>(prof.consumables[i.id]||0)>0);
+    return '<div class="rpg-picker"><p class="market-guide">슬롯 '+(pendingSlot+1)+'에 장착할 보유 아이템을 선택하세요. 출전 전에는 차감되지 않습니다.</p><div class="rpg-grid">'+(owned.map(i=>'<button class="rpg-card" type="button" data-loadout-item="'+i.id+'" '+(used.has(type(i))?'disabled':'')+'><span class="rpg-art">'+marketArt(i)+'</span><b>'+esc(i.name)+'</b><small>×'+prof.consumables[i.id]+(used.has(type(i))?' · 같은 능력 장착 중':'')+'</small></button>').join('')||'<p class="market-guide">보유한 소모품이 없어요. 상점에서 구매할 수 있어요.</p>')+'</div><button class="rpg-secondary" data-prep-back type="button">취소</button></div>';
+  }
+  function slotUnlockHTML(prof){
+    const i=prof.slotCount,price=sys.SLOT_PRICES[i];
+    return '<div class="info-card"><strong>출전 슬롯 '+(i+1)+' 영구 확장</strong><p>한 번 구매하면 모든 스킨과 캐릭터에서 계속 사용할 수 있습니다.</p><p>판매가 '+price+'코인 · 보유 '+prof.coins+'코인</p><button class="start-button" data-buy-slot="'+i+'" type="button" '+(prof.coins<price?'disabled':'')+'>구매하기</button><button class="rpg-secondary" data-prep-back type="button">취소</button></div>';
+  }
   function characterPanelHTML(prof,prog,fmt){
-    const characters=sys.skinsFor(prof.activeActor);
-    const selectedIndex=Math.max(0,characters.findIndex(c=>c.id===prof.selectedCharacter));
-    const active=characters[selectedIndex],wardrobe=sys.wardrobeOf(active.id);
-    const helmet=sys.ITEM_CATALOG.find(i=>i.id===wardrobe.gear.helmet);
-    const dots=characters.map((c,index)=>
-      `<button type="button" class="wardrobe-dot ${index===selectedIndex?'is-selected':''}"
-        data-character-index="${index}" aria-label="${c.name} 선택" aria-pressed="${index===selectedIndex}"></button>`).join('');
-    const picker=characters.map(c=>{
-      const selected=c.id===prof.selectedCharacter,owned=sys.ownsCharacter(c.id);
-      const label=selected?'✓ 장착 중':owned?'장착 가능':'🔒 코인 '+fmt(c.price);
-      return `<button type="button" class="starter-pick-card ${selected?'is-selected':''} ${owned?'':'is-locked'}"
-          data-character-pick="${c.id}" aria-label="${esc(c.name)} ${esc(label)}" aria-pressed="${selected}">
-          <span class="starter-pick-art"><img src="${c.front}" ${c.starter?'data-starter-face="'+c.id+'"':''} alt=""></span>
-          <span class="starter-pick-info"><strong>${esc(c.name)}</strong><small>⚡ ${statOf(c.id).speed}% · ❄ ${statOf(c.id).brake}%</small>
-          <em>${label}</em></span></button>`;
-    }).join('');
-    const slots=[0,1].map(index=>{
-      const id=wardrobe.quickSlots[index];
-      const item=sys.ITEM_CATALOG.find(x=>x.id===id);
-      const count=item?(prof.consumables[item.id]||0):0;
-      return `<div class="wardrobe-item-slot">
-        <button type="button" class="wardrobe-target ${item?'is-equipped':'is-empty'}"
-          data-character-slot="${index}" aria-label="소모품 ${index+1}번 슬롯 ${item?item.name:'비어 있음'}">
-          <span class="wardrobe-slot-icon">${item?.icon||'+'}</span>
-          <span class="wardrobe-slot-label">${item?item.name.replace(' 버블 보호막',' 버블'):'아이템 '+(index+1)}</span>
-          <span class="wardrobe-slot-count">${item?'보유 '+count+'개':'아이템을 끌어오세요'}</span>
-        </button>
-        ${item?`<button type="button" class="wardrobe-remove" data-remove-slot="${index}" aria-label="슬롯 ${index+1} 장착 해제">×</button>`:''}
-      </div>`;
-    }).join('');
-    const gear=GEAR_SLOTS.map(([key,icon,name])=>{
-      const id=wardrobe.gear[key],item=sys.ITEM_CATALOG.find(x=>x.id===id);
-      return `<div class="wardrobe-gear-cell">
-       <button type="button" data-gear-slot="${key}" class="wardrobe-gear-target ${item?'is-equipped':''}"
-         aria-label="${name} 장착 슬롯">
-         <span>${item?.icon||icon}</span><strong>${name}</strong><small>${item?item.name:'비어 있음'}</small>
-       </button>
-       ${item?`<button type="button" class="wardrobe-remove" data-remove-gear="${key}" aria-label="${name} 벗기">×</button>`:''}
-      </div>`;
-    }).join('');
-    const available=sys.ITEM_CATALOG.filter(item=>(item.kind==='bubble'||item.kind==='drink')?
-      (prof.consumables[item.id]||0)>0:prof.inventory.includes(item.id));
-    const types=[['helmet','헬멧','장비'],['bubble','보호 버블','소모품'],['drink','능력 드링크','소모품']];
-    const inventory=types.map(([kind,title,sub])=>{
-      const subitems=available.filter(x=>x.kind===kind);
-      return `<details class="wardrobe-inventory-group" data-wardrobe-group="${kind}">
-        <summary><strong>${title}</strong><span>${subitems.length}종 ${subitems.length?'· 펼쳐서 장착':'· 비어 있음'} <b>⌄</b></span></summary>
-        <div class="wardrobe-inventory">
-          ${subitems.map(item=>{
-            const count=item.kind==='bubble'||item.kind==='drink'?(prof.consumables[item.id]||0):1;
-            const icon=item.kind==='helmet'||item.kind==='drink'?marketArt(item):'<span class="wardrobe-bubble-art" style="--bubble:'+item.color+'"></span>';
-            return `<button type="button" class="wardrobe-inventory-item ${wardrobePending===item.id?'is-picked':''}"
-              data-inventory-item="${item.id}" draggable="true" aria-pressed="${wardrobePending===item.id}">
-              <span class="inventory-icon">${icon}</span><span class="inventory-name">${item.name.replace(' 버블 보호막',' 버블')}</span>
-              <strong class="inventory-count">${item.kind==='bubble'||item.kind==='drink'?'×'+count:'보유'}</strong>
-            </button>`;
-          }).join('')||'<p class="wardrobe-empty-inventory">보유한 아이템이 없어요.</p>'}
-        </div></details>`;
-    }).join('');
-    const badge=helmet?`<span class="wardrobe-equipped-badge">${helmet.icon} ${helmet.name} 장착 중</span>`:
-      '<span class="wardrobe-equipped-badge is-empty">헬멧 미착용</span>';
-    return `<div class="wardrobe-root">
-      <div class="actor-test-box"><div class="starter-pick-heading"><b>내 캐릭터 · ${sys.actorName(prof.activeActor)}</b><span>${sys.TEST_MODE?'TEST · 남녀 전환 가능':'최초 선택 고정'}</span></div>
-        ${sys.TEST_MODE?'<div class="actor-choice-row">'+sys.ACTOR_CATALOG.map(a=>'<button type="button" data-test-actor="'+a.id+'" aria-pressed="'+(a.id===prof.activeActor)+'">'+a.name+(a.id==='uiji'?' (남)':' (여)')+'</button>').join('')+'</div>':''}</div>
-      <div class="starter-pick-section">
-        <div class="starter-pick-heading"><b>스킨 선택</b><span>기본 무료 · 스킨 100~200코인</span></div>
-        <div class="starter-pick-grid">${picker}</div>
-      </div>
-      <div class="wardrobe-carousel" id="wardrobeCarousel" role="group" aria-label="스킨 좌우 스와이프 선택" tabindex="0">
-        <button type="button" data-char-direction="-1" class="wardrobe-arrow" aria-label="이전 스킨">❮</button>
-        <div class="wardrobe-portrait">
-          <div class="wardrobe-portrait-art">
-            ${helmet?'<canvas class="wardrobe-composed-portrait" data-worn-portrait aria-label="'+esc(active.name)+' 헬멧 착용 모습"></canvas>':'<img src="'+active.front+'" '+(active.starter?'data-starter-face="'+active.id+'"':'')+' alt="'+esc(active.name)+' 캐릭터 일러스트" draggable="false">'}
-          </div>
-          <div class="wardrobe-portrait-footer"><strong>${active.name}</strong>
-            <span class="wardrobe-active-tag">✓ 사용 중</span></div>
-          <div class="starter-active-stats"><span>⚡ 최고속 ${statOf(active.id).speed}%</span><span>❄ 감속 ${statOf(active.id).brake}%</span></div>
-          ${badge}
-        </div>
-        <button type="button" data-char-direction="1" class="wardrobe-arrow" aria-label="다음 스킨">❯</button>
-      </div>
-      <div class="wardrobe-dots">${dots}</div>
-      <p class="wardrobe-help">스킨 카드 터치로 장착 · 미보유 스킨은 상점에서 구매 · 같은 캐릭터의 장비 유지</p>
-      <div class="wardrobe-section">
-        <div class="wardrobe-heading"><strong>🫧 출전 아이템</strong><small>2칸 · 플레이 중 버튼을 눌러 사용</small></div>
-        <div class="wardrobe-quick-slots">${slots}</div>
-      </div>
-      <div class="wardrobe-section">
-        <div class="wardrobe-heading"><strong>🪖 기능성 보호 장비</strong><small>보관함에서 장착 · ×로 벗기기</small></div>
-        <div class="wardrobe-gear-slots">${gear}</div>
-      </div>
-      <div class="wardrobe-section">
-        <div class="wardrobe-heading"><strong>내 보관함</strong><small>종류 선택 → 아이템 선택 → 슬롯 장착</small></div>
-        <div class="wardrobe-inventory-groups">${inventory}</div>
-        <p id="wardrobeHint" class="wardrobe-hint">${wardrobePending?'선택한 아이템을 장착 슬롯에 눌러 넣어 주세요.':'아이템을 누르고 슬롯을 터치하거나, 직접 끌어다 놓으세요.'}</p>
-      </div>
-    </div>`;
+    const active=sys.SKIN_CATALOG.find(c=>c.id===prof.selectedCharacter)||sys.SKIN_CATALOG[0],pet=sys.petOf(active.id),stats=statOf(active.id);
+    const actorButtons=sys.TEST_MODE?'<div class="actor-choice-row">'+sys.ACTOR_CATALOG.map(a=>'<button type="button" data-test-actor="'+a.id+'" aria-pressed="'+(a.id===prof.activeActor)+'">'+a.name+(a.id==='uiji'?' (남)':' (여)')+'</button>').join('')+'</div>':'';
+    const skinTiles=sys.skinsFor(prof.activeActor).filter(c=>sys.ownsSkin(c.id)).map(c=>'<button type="button" class="rpg-card '+(c.id===active.id?'is-selected':'')+'" data-character-pick="'+c.id+'" aria-pressed="'+(c.id===active.id)+'"><span class="rpg-art">'+skinArt(c)+'</span><b>'+esc(skinLabel(c))+'</b><small>'+(c.id===active.id?'장착 중':'보유')+'</small></button>').join('');
+    const petTiles=sys.PET_CATALOG.filter(p=>prof.ownedPets.includes(p.id)).map(p=>'<button type="button" class="rpg-card '+(pet?.id===p.id?'is-selected':'')+'" data-equip-pet="'+p.id+'"><span class="rpg-art">'+petArt()+'</span><b>'+esc(p.name)+'</b><small>'+(pet?.id===p.id?'장착 중 · 터치 해제':'최고속 +'+p.speedBonus+'%p')+'</small></button>').join('');
+    const inventory=sys.ITEM_CATALOG.filter(i=>(prof.consumables[i.id]||0)>0).map(i=>'<div class="rpg-card"><span class="rpg-art">'+marketArt(i)+'</span><b>'+esc(i.name)+'</b><small>×'+prof.consumables[i.id]+'</small></div>').join('');
+    const tabs=[['skins','스킨'],['pets','펫'],['items','아이템']].map(([id,label])=>'<button type="button" data-wardrobe-tab="'+id+'" aria-pressed="'+(id===wardrobeTab)+'">'+label+'</button>').join('');
+    const contents=wardrobeTab==='skins'?'<div class="rpg-grid">'+skinTiles+'</div>':wardrobeTab==='pets'?'<div class="rpg-grid">'+(petTiles||'<p class="market-guide">보유한 펫이 없어요.</p>')+'</div>':'<div class="prep-grid">'+prepSlotsHTML(prof,'character')+'</div><p class="market-guide">빈 슬롯을 터치해 장착, 다시 터치해 해제 · 한 판용</p><div class="rpg-grid">'+(inventory||'<p class="market-guide">보유한 소모품이 없어요.</p>')+'</div>';
+    return '<div class="wardrobe-root"><div class="actor-test-box"><div class="starter-pick-heading"><b>내 캐릭터 · '+sys.actorName(prof.activeActor)+'</b><span>'+(sys.TEST_MODE?'TEST':'')+'</span></div>'+actorButtons+'</div>'+
+      '<div class="rpg-preview"><div class="rpg-preview-hero">'+(previewMode?'<canvas data-preview-canvas width="256" height="280" aria-label="스킨 동작 미리보기"></canvas>':'<img src="'+active.front+'" alt="'+esc(active.name)+'">')+(pet?'<span class="preview-dragon">'+petArt()+'</span>':'')+'</div><strong>'+esc(active.name)+'</strong><div class="starter-active-stats"><span>⚡ '+(stats.speed+(pet?.speedBonus||0))+'%</span><span>❄ '+(stats.brake+(pet?.brakeBonus||0))+'%</span></div><button class="rpg-secondary rpg-motion" type="button" data-preview-motion>'+['동작 보기','낙하 · 다음','급강하 · 다음','벽점프 · 정면'][previewMode]+'</button></div>'+
+      '<nav class="rpg-tabs" aria-label="내 보관함">'+tabs+'</nav>'+contents+'</div>';
+  }
+  function mountPreview(){
+    const canvas=$('drawerBody').querySelector('[data-preview-canvas]'),token=++previewSerial;
+    if(!canvas)return;const c=canvas.getContext('2d'),skin=sys.SKIN_CATALOG.find(x=>x.id===sys.profile.selectedCharacter),mode=previewMode;
+    const start=performance.now();
+    function render(now){
+      if(token!==previewSerial||!canvas.isConnected||$('drawer').classList.contains('hidden'))return;
+      const t=(now-start)/1000;c.clearRect(0,0,256,280);
+      if(skin.actions){
+        window.HellStarterPoses.draw({ctx:c,x:128,y:140,u:1.02,who:skin.id,fold:mode===2?.9:0,elapsed:t,speed:mode===2?650:112,dead:false,hopping:mode===3,hopFrom:'R',hopVisual:(t%0.9)/.9,boost:mode===2?.9:0});
+      }else if(skin.id==='uiji'&&images.uijiMotion?.naturalWidth){
+        const i=(mode-1)*12+Math.floor(t*10)%12;c.drawImage(images.uijiMotion,(i%6)*384,Math.floor(i/6)*384,384,384,30,34,196,196);
+      }else{
+        const img=mode===3?images.jumpRight:images.braking;
+        if(img?.naturalWidth){c.save();c.translate(128,140+Math.sin(t*8)*3);c.rotate(mode===2?-.19:mode===3?.14:0);c.drawImage(img,-106,-106,212,212);c.restore();}
+      }
+      requestAnimationFrame(render);
+    }
+    requestAnimationFrame(render);
   }
   function marketArt(item,full=false){
   if(item.kind==='drink'){
@@ -1036,266 +927,60 @@
       '<text x="50" y="64" text-anchor="middle" font-size="18" font-weight="900" fill="#17202e">'+item.bonus+'%</text>'+
       '<circle cx="37" cy="37" r="4" fill="#fff" opacity=".65"/></svg>';
   }
-  if(item.kind==='helmet'){
-    const asset=item.id==='helmet_frog'?'assets/helmet_frog_full.svg':'assets/helmet_basic_full.svg';
-    return '<img class="market-svg" src="'+asset+'" alt="">';
-  }
   const id="mark-"+item.id+(full?"-big":"-small");
   if(item.kind==="bubble"){
     const color={bubble_10:["#fff9c2","#ffb932","#a85424"],bubble_20:["#c5ffe9","#20d69a","#116f55"],bubble_30:["#ffe0d8","#f3437b","#8d295f"]}[item.id]||["#fff","#9ae","#457"];
     return `<svg viewBox="0 0 100 100" class="market-svg" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><defs><radialGradient id="${id}" cx="32%" cy="23%" r="80%"><stop stop-color="${color[0]}"/><stop offset=".44" stop-color="${color[1]}"/><stop offset="1" stop-color="${color[2]}"/></radialGradient></defs><circle cx="50" cy="50" r="38" fill="${color[1]}" opacity=".12"/><circle cx="50" cy="50" r="34" fill="url(#${id})" stroke="${color[0]}" stroke-width="2.8"/><path d="M27 45Q30 25 53 23" fill="none" stroke="#fff" stroke-width="5" opacity=".7" stroke-linecap="round"/><path d="m78 8 3 9 9 3-9 3-3 9-3-9-9-3 9-3z" fill="${color[0]}" opacity=".9"/><path d="M42 76q17 5 28-9" fill="none" stroke="${color[2]}" stroke-width="3" opacity=".6"/></svg>`;
   }
-  const frog=item.id==="helmet_frog",primary=frog?"#73c668":"#8aa5af",shadow=frog?"#285940":"#374a58",light=frog?"#ddffb9":"#f4ead8";
-  return `<svg viewBox="0 0 100 100" class="market-svg" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="${id}" x1="0" y1="0" x2="1" y2="1"><stop stop-color="${light}"/><stop offset=".46" stop-color="${primary}"/><stop offset="1" stop-color="${shadow}"/></linearGradient></defs><ellipse cx="50" cy="82" rx="32" ry="6" fill="#000" opacity=".25"/>${frog?'<circle cx="28" cy="27" r="13" fill="#72b861" stroke="#285940" stroke-width="3"/><circle cx="72" cy="27" r="13" fill="#72b861" stroke="#285940" stroke-width="3"/><circle cx="29" cy="26" r="6" fill="#fff"/><circle cx="71" cy="26" r="6" fill="#fff"/><circle cx="31" cy="27" r="2.7" fill="#273a34"/><circle cx="73" cy="27" r="2.7" fill="#273a34"/>':''}<path d="M15 69V58C15 33 29 20 50 20S85 33 85 58v11l-9 10H24z" fill="url(#${id})" stroke="${shadow}" stroke-width="3"/><path d="M23 52Q27 31 52 28" fill="none" stroke="${light}" opacity=".65" stroke-width="5" stroke-linecap="round"/>${frog?'<path d="M36 56q14 10 28 0" fill="none" stroke="#316746" stroke-width="3"/>':'<path d="M47 25h6v47h-6z" fill="#d6b778"/>'}<path d="M12 68Q50 76 88 68l-5 11Q50 89 17 79z" fill="#ad824e" stroke="#62462f" stroke-width="2"/><path d="M25 73q25 7 50 0" fill="none" stroke="#ffe6ac" opacity=".75" stroke-width="2"/></svg>`;
+  return '<span class="rpg-slot-art">🔓</span>';
 }
   let marketTab='items',marketGroup=null,marketSelected=null,marketCharacter=null;
   function shopPanelHTML(prof,fmt){
+    const sections=[['skins','스킨','✧'],['pets','펫','🐉'],['items','아이템','✳']];
+    const menu=sections.map(([id,label,icon])=>'<button type="button" data-market-tab="'+id+'" class="market-main-tab '+(marketTab===id?'active':'')+'" aria-pressed="'+(marketTab===id)+'"><b>'+icon+'</b><span>'+label+'</span></button>').join('');
+    const skins=sys.skinsFor(prof.activeActor).filter(c=>!c.starter).map(c=>({...c,kind:'skin'}));
+    const pets=sys.PET_CATALOG.map(p=>({...p,kind:'pet'}));
+    const slot=prof.slotCount<4?{id:'slot_'+prof.slotCount,kind:'slot',name:'출전 슬롯 '+(prof.slotCount+1)+' 확장',price:sys.SLOT_PRICES[prof.slotCount],description:'영구 슬롯 확장 · 모든 캐릭터 공용'}:null;
     const items=sys.ITEM_CATALOG;
-    const sectionDefs=[
-      {id:'skins',label:'스킨',mark:'✧'},
-      {id:'gear',label:'장비',mark:'⛨'},
-      {id:'items',label:'아이템',mark:'✳'}
-    ];
-    const groups=marketTab==='gear'?
-      [{id:'helmet',label:'헬멧',desc:'머리 보호장비'}]:
-      marketTab==='items'?[{id:'bubble',label:'보호 버블',desc:'게임 중 사용'},{id:'drink',label:'능력 드링크',desc:'활력·침착 · 3등급'}]:[];
-    const shown=items.filter(i=>i.kind===marketGroup);
-    const chosen=items.find(i=>i.id===marketSelected);
-    const character=sys.CHARACTER_CATALOG.find(c=>c.id===marketCharacter);
-    const count=i=>i.kind==='bubble'||i.kind==='drink'?(prof.consumables[i.id]||0):(prof.inventory.includes(i.id)?1:0);
+    const products=marketTab==='skins'?skins:marketTab==='pets'?pets:marketGroup==='slots'?(slot?[slot]:[]):items.filter(i=>i.kind===marketGroup);
+    const chosen=products.find(x=>x.id===(marketSelected||marketCharacter));
+    const owned=i=>i.kind==='skin'?sys.ownsSkin(i.id):i.kind==='pet'?prof.ownedPets.includes(i.id):false;
+    const art=i=>i.kind==='skin'?skinArt(i):i.kind==='pet'?petArt():marketArt(i);
+    const stats=i=>i.kind==='skin'?'최고속 '+statOf(i.id).speed+'% · 감속 '+statOf(i.id).brake+'%':i.kind==='pet'?'최고속 +'+i.speedBonus+'%p':i.description;
     const coin=n=>'<span class="market-coin" aria-hidden="true"></span>'+fmt(n);
-    const menu=sectionDefs.map(s=>`<button type="button" data-market-tab="${s.id}" class="market-main-tab ${marketTab===s.id?'active':''}" aria-pressed="${marketTab===s.id}"><b>${s.mark}</b><span>${s.label}</span></button>`).join('');
-    const breadcrumb=marketGroup?`<button type="button" data-market-back class="market-back">‹ ${marketTab==='gear'?'장비':'아이템'} 목록</button>`:'';
-    const folders=groups.map(g=>{
-      const qty=items.filter(x=>x.kind===g.id).length,disabled=qty===0;
-      return `<button type="button" class="market-folder ${disabled?'is-pending':''}" data-market-group="${g.id}" ${disabled?'disabled':''}>
-        <span class="market-folder-icon">${g.id==='helmet'?'<img src="assets/helmet_basic_full.svg" alt="">':g.id==='bubble'?'<span class="market-folder-orb"></span>':g.id==='drink'?'🧪':'✧'}</span>
-        <strong>${g.label}</strong><small>${qty?qty+'종 상품':'준비 중'}</small><span class="market-folder-caret">›</span>
-      </button>`;
-    }).join('');
-    const tiles=shown.map(i=>{
-      const qty=count(i),permanent=i.kind==='helmet'&&qty;
-      const short=i.kind==='bubble'?i.name.replace(' 버블 보호막',' 버블'):i.name;
-      return `<button type="button" class="market-tile ${permanent?'is-owned':''}" data-market-item="${i.id}" aria-label="${esc(i.name)}, 상세 정보"><span class="market-art">${marketArt(i)}</span>
-       ${qty?'<span class="market-stock">'+(i.kind==='bubble'||i.kind==='drink'?'×'+qty:'보유')+'</span>':''}
-       <span class="market-name">${esc(short)}</span><span class="market-price">${permanent?'구매 완료':coin(i.price)}</span></button>`;
-    }).join('');
-    const cast=marketTab==='skins'?sys.skinsFor(prof.activeActor).map(c=>
-      `<button type="button" class="market-character-card" data-market-character="${c.id}" aria-label="${esc(c.name)} 정보">
-          <img src="${c.front}" ${c.starter?'data-starter-face="'+c.id+'"':''} alt="">
-          <strong>${esc(c.name)}</strong>
-          <small>${c.id===prof.selectedCharacter?'사용 중':sys.ownsCharacter(c.id)?'보유 중':'🪙 '+fmt(c.price)}</small>
-          <small>최고속 ${statOf(c.id).speed}% · 감속 ${statOf(c.id).brake}%</small>
-      </button>`).join(''):'';
+    const tiles=products.map(i=>'<button type="button" class="rpg-card market-rpg-card '+(owned(i)?'is-owned':'')+'" '+(i.kind==='skin'?'data-market-character':'data-market-item')+'="'+i.id+'"><span class="rpg-art">'+art(i)+'</span><b>'+esc(i.kind==='skin'?skinLabel(i):i.name)+'</b><small class="market-price">'+(owned(i)?'보유 중':coin(i.price))+'</small>'+((prof.consumables[i.id]||0)>0?'<small>보유 '+prof.consumables[i.id]+'개</small>':'')+'</button>').join('');
+    const groups=[['bubble','보호 버블','🫧'],['drink','드링크','🧪'],['slots','슬롯 확장','🔓']];
+    const folders=groups.map(([id,label,icon])=>'<button type="button" class="market-folder" data-market-group="'+id+'"><span class="market-folder-icon">'+icon+'</span><strong>'+label+'</strong><small>'+(id==='slots'?'기본 2 · 최대 4':items.filter(i=>i.kind===id).length+'종')+'</small><span class="market-folder-caret">›</span></button>').join('');
     let detail='';
     if(chosen){
-      const have=count(chosen),permanent=chosen.kind==='helmet'&&have;
-      const guidance=chosen.kind==='bubble'?'캐릭터 화면에서 출전 슬롯에 장착하세요. 게임 중 직접 사용하면 1개 소모되며 충돌을 막아줍니다.':
-        chosen.kind==='drink'?'출전 슬롯에 장착 후 게임 중 터치하여 사용. '+chosen.description+'. 활력·침착은 동시 사용 가능하며 같은 능력은 높은 등급 하나만 적용됩니다.':
-        '한 번 구매하면 영구 보유합니다. 캐릭터 화면에서 장착하면 매 판 충돌 방어 횟수가 충전됩니다.';
-      detail=`<div class="market-overlay"><button type="button" class="market-shade" data-market-close aria-label="상품 상세 닫기"></button><section class="market-detail" role="dialog" aria-modal="true" aria-label="${esc(chosen.name)} 상세">
-        <span class="market-handle"></span><button type="button" class="market-close" data-market-close aria-label="닫기">✕</button>
-        <div class="market-detail-head"><span class="market-large-art">${marketArt(chosen,true)}</span><div class="market-detail-title">
-        <small>${chosen.kind==='bubble'?'소모품 · 보호막':chosen.kind==='drink'?'소모품 · 능력 드링크':'영구 장비 · 헬멧'}</small><strong>${esc(chosen.name)}</strong><b>${chosen.kind==='bubble'?chosen.seconds+'초 충돌 방어':chosen.kind==='drink'?chosen.description:'매 판 충돌 '+chosen.hits+'회 방어'}</b><span>${chosen.kind==='bubble'||chosen.kind==='drink'?'보유 '+have+'개':have?'보유 중':'미구매'}</span></div></div>
-        <p class="market-guide">${guidance}</p><div class="market-detail-bottom"><div><small>구매 가격</small><strong>${coin(chosen.price)}</strong></div>
-        <button type="button" data-market-buy="${chosen.id}" ${permanent?'disabled':''}>${permanent?'보유 중':'구매하기'}</button></div></section></div>`;
-    }else if(character){
-      const owned=sys.ownsCharacter(character.id);
-      detail=`<div class="market-overlay"><button type="button" class="market-shade" data-market-close aria-label="스킨 상세 닫기"></button>
-       <section class="market-detail" role="dialog" aria-modal="true" aria-label="${esc(character.name)} 상세"><span class="market-handle"></span>
-       <button type="button" class="market-close" data-market-close aria-label="닫기">✕</button>
-       <div class="market-detail-head"><span class="market-large-art"><img src="${character.front}" ${character.starter?'data-starter-face="'+character.id+'"':''} alt=""></span>
-       <div class="market-detail-title"><small>${character.starter?'무료 기본 스킨':skinLabel(character)}</small>
-       <strong>${esc(character.name)}</strong><b>최고속 ${statOf(character.id).speed}% · 감속 ${statOf(character.id).brake}%</b></div></div>
-       <p class="market-guide">${character.starter?'안전모 없는 기본 복장(밝은 티셔츠·반바지·파란 슬리퍼·베이지 망토)이며 기존 캐릭터 원화를 참고한 전용 일러스트를 사용합니다.':
-         character.kind==='wingsuit'?'날다람쥐처럼 팔과 다리 사이 날개를 펼치는 윙슈트. 연타하면 날개를 모아 급강하합니다. 최고속도 +6%p, 감속력 +5%p (임시). 구매 후 재장착 무료.':'같은 캐릭터의 탐험가 복장입니다. 전용 전신 원화와 모션을 사용하며 최고속도 +3%p, 감속력 +2%p. 구매 후 언제든 무료로 다시 장착할 수 있습니다.'}</p>
-       <div class="market-detail-bottom"><span>${owned?'보유 중':'🪙 '+fmt(character.price)}</span>
-       ${owned?'<button type="button" data-market-equip-skin="'+character.id+'" '+(character.id===prof.selectedCharacter?'disabled':'')+'>'+(character.id===prof.selectedCharacter?'장착 중':'장착하기')+'</button>':
-         '<button type="button" data-market-buy-character="'+character.id+'">코인으로 구매</button>'}</div></section></div>`;
+      const permanent=owned(chosen),attr=chosen.kind==='skin'?'data-market-buy-character':chosen.kind==='pet'?'data-market-buy-pet':chosen.kind==='slot'?'data-market-buy-slot':'data-market-buy';
+      const value=chosen.kind==='slot'?prof.slotCount:chosen.id;
+      const guide=chosen.kind==='skin'?(chosen.id.startsWith('wingsuit')?'날개를 펼쳐 낙하하고 급강하하는 윙슈트. ':'탐험가 전용 복장. ')+'구매 후 내 캐릭터에서 장착하세요.':chosen.kind==='pet'?'캐릭터 옆을 날아다니는 영구 펫. 내 캐릭터에서 장착하세요.':chosen.kind==='slot'?'한 번 구매하면 모든 캐릭터에서 영구적으로 사용할 수 있어요.':'출전 전에 장착하면 시작 시 1개 소모되며, 한 판 동안 적용됩니다.';
+      detail='<div class="market-overlay"><button type="button" class="market-shade" data-market-close aria-label="닫기"></button><section class="market-detail" role="dialog" aria-modal="true"><span class="market-handle"></span><button type="button" class="market-close" data-market-close aria-label="닫기">✕</button><div class="market-detail-head"><span class="market-large-art">'+art(chosen)+'</span><div class="market-detail-title"><small>'+({skin:'스킨',pet:'영구 펫',slot:'영구 확장',bubble:'한 판용 보호막',drink:'한 판용 드링크'}[chosen.kind])+'</small><strong>'+esc(chosen.name)+'</strong><b>'+esc(stats(chosen))+'</b></div></div><p class="market-guide">'+esc(guide)+'</p><div class="market-detail-bottom"><div><small>판매가</small><strong>'+coin(chosen.price)+'</strong></div><button type="button" '+attr+'="'+value+'" '+(permanent?'disabled':'')+'>'+(permanent?'보유 중':'구매하기')+'</button></div><button type="button" class="rpg-secondary" data-market-close>취소 / 닫기</button></section></div>';
     }
-    const browsing=marketTab==='skins'?`<div class="market-character-grid">${cast}</div>`:
-      marketGroup?`<div class="market-subhead">${breadcrumb}<strong>${marketGroup==='bubble'?'보호 버블':marketGroup==='drink'?'능력 드링크':'헬멧'} <small>${shown.length}종</small></strong></div><div class="market-grid">${tiles}</div>`:
-      `<div class="market-category-grid">${folders}</div>`;
-    return `<div class="market-root"><p class="market-eyebrow">HELL DROP · MARKET</p><div class="market-wallet"><span>보유 코인${sys.TEST_MODE?' · TEST':''}</span><strong>${coin(prof.coins)}</strong></div>
-      <nav class="market-main-tabs" aria-label="상점 대분류">${menu}</nav>
-      <div class="market-count"><strong>${sectionDefs.find(x=>x.id===marketTab)?.label||'상점'}</strong><span>${marketGroup?'상품을 눌러 상세보기':'종류를 선택해 펼쳐보세요'}</span></div>
-      ${browsing}<div class="market-footer">구매 후 캐릭터 보관함에서 장착할 수 있어요.</div>${detail}</div>`;
-  }
-  function switchWardrobeCharacter(delta,indexOverride=null){
-    const chars=sys.skinsFor(sys.profile.activeActor);
-    const pos=chars.findIndex(c=>c.id===sys.profile.selectedCharacter);
-    const next=indexOverride!==null?indexOverride:(pos+delta+chars.length)%chars.length;
-    const target=chars[next];if(!target)return;
-    if(!sys.selectCharacter(target.id)){
-      marketTab='skins';marketGroup=null;marketSelected=null;marketCharacter=target.id;openPanel('shop',target.name+'은(는) 구매 후 장착할 수 있어요.');return;
-    }
-    wardrobePending=null;syncLobbyCharacter();openPanel('character');
-  }
-  function assignWardrobeItem(itemId,target){
-    const item=sys.ITEM_CATALOG.find(x=>x.id===itemId);
-    const character=sys.profile.selectedCharacter;
-    let ok=false;
-    if(target.hasAttribute('data-character-slot')&&(item?.kind==='bubble'||item?.kind==='drink')){
-      ok=sys.setCharacterSlot(character,Number(target.dataset.characterSlot),itemId);
-    }else if(target.hasAttribute('data-gear-slot')&&item){
-      ok=sys.setCharacterGear(character,target.dataset.gearSlot,itemId);
-    }
-    wardrobePending=null;
-    const notice=ok?item.name+' 장착 완료':'종류가 맞지 않거나 수량이 부족해. 슬롯을 확인해 줘.';
-    openPanel('character',notice);
+    const browsing=marketTab==='items'&&!marketGroup?'<div class="market-category-grid">'+folders+'</div>':(marketTab==='items'?'<button type="button" class="market-back" data-market-back>‹ 아이템 목록</button>':'')+'<div class="rpg-grid">'+(tiles||'<p class="market-guide">모든 슬롯을 열었어요.</p>')+'</div>';
+    return '<div class="market-root"><p class="market-eyebrow">HELL DROP · MARKET</p><div class="market-wallet"><span>보유 코인'+(sys.TEST_MODE?' · TEST':'')+'</span><strong>'+coin(prof.coins)+'</strong></div><nav class="market-main-tabs" aria-label="상점 대분류">'+menu+'</nav>'+browsing+'<div class="market-footer">구매 후 캐릭터 보관함에서 장착할 수 있어요.</div>'+detail+'</div>';
   }
   function mountWardrobeControls(){
-    const body=$('drawerBody'),carousel=$('wardrobeCarousel');
-    body.querySelectorAll('[data-test-actor]').forEach(b=>b.addEventListener('click',()=>{
-      if(sys.selectActor(b.dataset.testActor)){wardrobePending=null;syncLobbyCharacter();updateUI();openPanel('character');}
-    }));
-    body.querySelectorAll('[data-character-pick]').forEach(button=>button.addEventListener('click',()=>{
-      const id=button.dataset.characterPick,actor=sys.CHARACTER_CATALOG.find(c=>c.id===id);
-      if(!actor)return;
-      if(sys.ownsCharacter(id)){
-        wardrobePending=null;sys.selectCharacter(id);syncLobbyCharacter();openPanel('character');
-      }else{
-        marketTab='skins';marketGroup=null;marketSelected=null;marketCharacter=id;
-        openPanel('shop',actor.name+' 스킨은 코인 구매 후 장착할 수 있어요.');
-      }
-    }));
-    const worn=body.querySelector('[data-worn-portrait]');
-    if(worn){
-      const who=sys.CHARACTER_CATALOG.find(x=>x.id===sys.profile.selectedCharacter);
-      const wornHelmet=sys.wardrobeOf(sys.profile.selectedCharacter).gear.helmet;
-      if(who&&wornHelmet){
-        window.HellHelmetComposer?.drawPortrait(worn,who.front,wornHelmet);
-      }
-    }
-    body.querySelectorAll('[data-char-direction]').forEach(button=>button.addEventListener('click',()=>{
-      switchWardrobeCharacter(Number(button.dataset.charDirection));
-    }));
-    body.querySelectorAll('[data-character-index]').forEach(button=>button.addEventListener('click',()=>{
-      switchWardrobeCharacter(0,Number(button.dataset.characterIndex));
-    }));
-    if(carousel){
-      let begin=null;
-      carousel.addEventListener('pointerdown',e=>{begin={id:e.pointerId,x:e.clientX,y:e.clientY};});
-      carousel.addEventListener('pointerup',e=>{
-        if(!begin||begin.id!==e.pointerId)return;
-        const dx=e.clientX-begin.x,dy=e.clientY-begin.y;begin=null;
-        if(Math.abs(dx)>=38&&Math.abs(dx)>Math.abs(dy)*1.2){
-          e.preventDefault();switchWardrobeCharacter(dx<0?1:-1);
-        }
-      });
-      carousel.addEventListener('pointercancel',()=>{begin=null;});
-      carousel.addEventListener('keydown',e=>{
-        if(e.key==='ArrowLeft'||e.key==='ArrowRight'){
-          e.preventDefault();switchWardrobeCharacter(e.key==='ArrowRight'?1:-1);
-        }
-      });
-    }
-    body.querySelectorAll('[data-wardrobe-group]').forEach(section=>{
-      section.open=wardrobeExpanded.has(section.dataset.wardrobeGroup)||!!(wardrobePending&&sys.ITEM_CATALOG.some(i=>i.id===wardrobePending&&i.kind===section.dataset.wardrobeGroup));
-      section.addEventListener('toggle',()=>{if(section.open)wardrobeExpanded.add(section.dataset.wardrobeGroup);else wardrobeExpanded.delete(section.dataset.wardrobeGroup);});
-    });
-    const active=sys.profile.selectedCharacter,wardrobe=sys.wardrobeOf(active);
-    body.querySelectorAll('[data-character-slot],[data-gear-slot]').forEach(target=>{
-      target.addEventListener('click',()=>{
-        if(wardrobePending){assignWardrobeItem(wardrobePending,target);return;}
-        const slot=target.dataset.characterSlot;
-        if(slot!==undefined){
-          const index=Number(slot);
-          if(wardrobe.quickSlots[index]){
-            sys.setCharacterSlot(active,index,null);openPanel('character','아이템 장착 해제 · 수량은 그대로 보관');
-          }else{
-            const hint=$('wardrobeHint');if(hint)hint.textContent='보관함에서 아이템을 먼저 선택해 줘.';
-          }
-        }else{
-          const gearSlot=target.dataset.gearSlot;
-          if(wardrobe.gear[gearSlot]){
-            sys.setCharacterGear(active,gearSlot,null);
-            openPanel('character','장비를 벗었어. 보관함에 그대로 남아 있어.');
-          }else{
-            const hint=$('wardrobeHint');if(hint)hint.textContent=gearSlot==='helmet'?
-              '보관함에서 보유 중인 헬멧을 선택하고 이 칸을 눌러 줘.':
-              '해당 종류의 장비가 상점에 추가되면 여기서 착용할 수 있어.';
-          }
-        }
-      });
-      target.addEventListener('dragover',e=>{e.preventDefault();target.classList.add('is-drop-target');});
-      target.addEventListener('dragleave',()=>target.classList.remove('is-drop-target'));
-      target.addEventListener('drop',e=>{
-        e.preventDefault();
-        const id=e.dataTransfer?.getData('text/plain')||wardrobePending;
-        target.classList.remove('is-drop-target');
-        if(id)assignWardrobeItem(id,target);
-      });
-    });
-    body.querySelectorAll('[data-remove-slot]').forEach(button=>button.addEventListener('click',()=>{
-      sys.setCharacterSlot(active,Number(button.dataset.removeSlot),null);
-      openPanel('character','아이템을 보관함으로 돌려놨어. 수량은 그대로야.');
-    }));
-    body.querySelectorAll('[data-remove-gear]').forEach(button=>button.addEventListener('click',()=>{
-      sys.setCharacterGear(active,button.dataset.removeGear,null);
-      openPanel('character','장비를 벗었어. 보관함에 그대로 남아 있어.');
-    }));
-    body.querySelectorAll('[data-inventory-item]').forEach(tile=>{
-      tile.addEventListener('click',()=>{
-        wardrobePending=wardrobePending===tile.dataset.inventoryItem?null:tile.dataset.inventoryItem;
-        body.querySelectorAll('[data-inventory-item]').forEach(b=>{
-          b.classList.toggle('is-picked',b.dataset.inventoryItem===wardrobePending);
-          b.setAttribute('aria-pressed',String(b.dataset.inventoryItem===wardrobePending));
-        });
-        const hint=$('wardrobeHint');
-        if(hint)hint.textContent=wardrobePending?
-          '선택한 '+(sys.ITEM_CATALOG.find(i=>i.id===wardrobePending)?.name||'아이템')+'을 위의 알맞은 슬롯에 터치해 줘.':
-          '아이템을 터치하거나 슬롯으로 끌어서 장착할 수 있어.';
-      });
-      tile.addEventListener('dragstart',e=>{
-        e.dataTransfer?.setData('text/plain',tile.dataset.inventoryItem);
-        if(e.dataTransfer)e.dataTransfer.effectAllowed='copy';
-      });
-      // Touchscreen drag/drop without relying on Safari's HTML drag support.
-      let drag=null;
-      tile.addEventListener('pointerdown',e=>{
-        if(e.pointerType==='mouse')return; // desktop uses native HTML drag
-        drag={id:e.pointerId,startX:e.clientX,startY:e.clientY,active:false,ghost:null};
-        tile.setPointerCapture?.(e.pointerId);
-      });
-      tile.addEventListener('pointermove',e=>{
-        if(!drag||drag.id!==e.pointerId)return;
-        const distance=Math.hypot(e.clientX-drag.startX,e.clientY-drag.startY);
-        if(!drag.active&&distance>12){
-          drag.active=true;
-          const ghost=document.createElement('div');
-          ghost.className='wardrobe-drag-ghost';
-          ghost.textContent=tile.textContent.trim();
-          document.body.appendChild(ghost);drag.ghost=ghost;
-        }
-        if(drag.active){
-          e.preventDefault();
-          drag.ghost.style.left=e.clientX+'px';
-          drag.ghost.style.top=e.clientY+'px';
-        }
-      });
-      tile.addEventListener('pointerup',e=>{
-        if(!drag||drag.id!==e.pointerId)return;
-        const {active:dragged,ghost}=drag;drag=null;
-        ghost?.remove();
-        if(dragged){
-          e.preventDefault();
-          const target=document.elementFromPoint?.(e.clientX,e.clientY)?.closest?.('[data-character-slot],[data-gear-slot]');
-          if(target)assignWardrobeItem(tile.dataset.inventoryItem,target);
-        }
-      });
-      tile.addEventListener('pointercancel',()=>{drag?.ghost?.remove();drag=null;});
-    });
+    const body=$('drawerBody');
+    body.querySelectorAll('[data-test-actor]').forEach(b=>b.addEventListener('click',()=>{if(sys.selectActor(b.dataset.testActor)){previewMode=0;syncLobbyCharacter();updateUI();openPanel('character');}}));
+    body.querySelectorAll('[data-character-pick]').forEach(b=>b.addEventListener('click',()=>{if(sys.equipSkin(b.dataset.characterPick)){syncLobbyCharacter();openPanel('character');}}));
+    body.querySelectorAll('[data-equip-pet]').forEach(b=>b.addEventListener('click',()=>{if(sys.equipPet(sys.petOf()?.id===b.dataset.equipPet?null:b.dataset.equipPet)){syncLobbyCharacter();openPanel('character');}}));
+    body.querySelectorAll('[data-wardrobe-tab]').forEach(b=>b.addEventListener('click',()=>{wardrobeTab=b.dataset.wardrobeTab;openPanel('character');}));
+    body.querySelector('[data-preview-motion]')?.addEventListener('click',()=>{previewMode=(previewMode+1)%4;openPanel('character');});
+    mountPreview();
   }
-  const titles={chooseActor:'캐릭터 선택',character:'캐릭터 · 스킨',shop:'상점',earn:'코인 획득소',records:'내 기록',settings:'설정'};
+  const titles={chooseActor:'캐릭터 선택',character:'캐릭터 · 보관함',loadout:'출전 아이템 선택',slotUnlock:'슬롯 확장',shop:'상점',earn:'코인 획득소',records:'내 기록',settings:'설정'};
   function openPanel(type,notice=''){if(!titles[type])return;sys.audio.unlock();$('drawerTitle').textContent=titles[type];$('drawer').querySelector('.drawer-card').classList.toggle('is-market',type==='shop');
     const prof=sys.profile,prog=sys.levelProgress(prof.totalDepth),fmt=n=>Number(n).toLocaleString('ko-KR');
     let html='';
     if(type==='chooseActor')html=`<div class="actor-onboarding"><p>함께 지옥을 탐험할 캐릭터를 선택하세요.</p><div class="starter-pick-grid">${sys.ACTOR_CATALOG.map(a=>{const c=sys.SKIN_CATALOG.find(x=>x.id===a.base);return '<button class="actor-onboard-card" type="button" data-initial-actor="'+a.id+'"><img src="'+c.front+'" alt=""><strong>'+a.name+(a.id==='uiji'?' (남)':' (여)')+'</strong><small>무료 기본 복장</small></button>'}).join('')}</div><p class="muted">${sys.TEST_MODE?'테스트용: 이후 캐릭터 메뉴에서 남녀 전환 가능 · 코인 1,000개로 구매 시험':'최초 선택한 캐릭터로 계속 성장합니다.'}</p></div>`;
     else if(type==='character')html=characterPanelHTML(prof,prog,fmt);
     else if(type==='shop')html=shopPanelHTML(prof,fmt);
+    else if(type==='loadout')html=loadoutHTML(prof);
+    else if(type==='slotUnlock')html=slotUnlockHTML(prof);
     else if(type==='earn')html=`<div class="banner">🪙 현재 코인 <b>${fmt(prof.coins)}</b><br><small>게임 중 수집 · 누적 레벨업 · 선택형 광고 · 코인 구매</small></div><div class="info-card"><strong>무료로 얻기</strong>게임에서 코인 줍기 / 누적 낙하로 레벨업</div><div class="info-card"><strong>▶ 보상형 광고</strong><span class="muted">광고 서비스 연동 전이어서 현재 시청·코인 지급을 사용할 수 없어.</span></div><div class="info-card"><strong>코인 구매</strong><span class="muted">현금 결제는 추후 설계·심사 후 연결할 예정이야. 현재 결제 기능 없음.</span></div>`;
-    else if(type==='records')html=`<div class="banner">🏆 최고 낙하 <b>${fmt(Math.floor(best))}m</b></div><div class="info-card"><strong>누적 낙하</strong>${fmt(prof.totalDepth)}m · Lv.${prof.level}<br><span class="muted">다음 레벨까지 ${fmt(prog.next-prog.within)}m</span></div><div class="info-card"><strong>플레이 횟수</strong>${fmt(prof.runs)}판 완료</div><div class="info-card"><strong>획득 코인 기록</strong>게임에서 수집 ${fmt(prof.worldCoins)}코인 · 현재 보유 ${fmt(prof.coins)}코인</div>`;
+    else if(type==='records')html=`<div class="banner">🏆 최고 낙하 <b>${meters(best)}m</b></div><div class="info-card"><strong>누적 낙하</strong>${meters(prof.totalDepth)}m · Lv.${prof.level}<br><span class="muted">다음 레벨까지 ${meters(prog.next-prog.within)}m</span></div><div class="info-card"><strong>플레이 횟수</strong>${fmt(prof.runs)}판 완료</div><div class="info-card"><strong>획득 코인 기록</strong>게임에서 수집 ${fmt(prof.worldCoins)}코인 · 현재 보유 ${fmt(prof.coins)}코인</div>`;
     else if(type==='settings')html=`<div class="info-card"><strong>🎮 가속·벽점프 버튼 위치</strong><span class="muted">휴대폰을 잡고 연타하기 편한 손으로 가속 버튼을 옮길 수 있어. 선택은 자동 저장돼.</span><div class="control-layout-choices" role="group" aria-label="가속 버튼 방향"><button type="button" class="control-layout-choice" data-boost-side="left" aria-pressed="${prof.settings.boostSide!=='right'}">🌪️ 가속 왼쪽<br><small>점프 오른쪽</small></button><button type="button" class="control-layout-choice" data-boost-side="right" aria-pressed="${prof.settings.boostSide==='right'}">🌪️ 가속 오른쪽<br><small>점프 왼쪽</small></button></div></div><div class="info-card"><strong>🔊 음량 설정</strong><span class="muted">BGM은 배경음악이야. 홈은 무음이니까 아래 음악의 ▶ 미리듣기를 켜고 슬라이더를 움직이면 바로 확인할 수 있어.</span><label for="musicRange">BGM (배경음악) <span id="musicValue">${Math.round(prof.settings.music*100)}%</span><input id="musicRange" type="range" min="0" max="100" value="${Math.round(prof.settings.music*100)}"></label><label for="sfxRange">효과음 <span id="sfxValue">${Math.round(prof.settings.sfx*100)}%</span><input id="sfxRange" type="range" min="0" max="100" value="${Math.round(prof.settings.sfx*100)}"></label></div><div class="info-card"><strong>🎵 게임 음악 미리듣기</strong><span class="muted">게임에서 7곡이 순서대로 이어져. 홈은 무음이며 ▶는 선택한 곡의 미리듣기야.</span><ul class="slot-list music-preview-list">${sys.MUSIC_SLOTS.slice(1).map((v,i)=>`<li><span>${(i+1)+'번 곡'} · ${esc(v.title||v.name)}</span><button type="button" data-music-preview="${i+1}" aria-label="${esc(v.title||v.name)} 미리듣기">▶</button></li>`).join('')}</ul></div>`;
     $('drawerBody').innerHTML=(notice?'<div class="shop-notice" role="status">'+esc(notice)+'</div>':'')+html;
     $('drawer').classList.remove('hidden');
@@ -1305,6 +990,12 @@
       else openPanel('chooseActor','저장 실패 · 다시 선택해 주세요.');
     }));
     if(type==='character')mountWardrobeControls();
+    else previewSerial++;
+    if(type==='loadout'||type==='slotUnlock'){
+      $('drawerBody').querySelectorAll('[data-prep-back]').forEach(b=>b.addEventListener('click',()=>returnToPrep()));
+      $('drawerBody').querySelectorAll('[data-loadout-item]').forEach(b=>b.addEventListener('click',()=>{if(sys.setCharacterSlot(prof.selectedCharacter,pendingSlot,b.dataset.loadoutItem))returnToPrep('장착 완료 · 출전 시 차감');else openPanel('loadout','장착할 수 없는 아이템입니다.');}));
+      $('drawerBody').querySelectorAll('[data-buy-slot]').forEach(b=>b.addEventListener('click',()=>{const r=sys.purchaseSlot(Number(b.dataset.buySlot));if(r.ok){updateUI();returnToPrep('슬롯 영구 확장 완료');}else openPanel('slotUnlock',r.reason);}));
+    }
     if(type==='shop'){
       const redraw=(noticeText='')=>{
         const panel=$('drawer').querySelector('.drawer-card'),offset=panel.scrollTop;
@@ -1323,10 +1014,6 @@
       $('drawerBody').querySelectorAll('[data-market-character]').forEach(b=>b.addEventListener('click',()=>{
         marketCharacter=b.dataset.marketCharacter;marketSelected=null;redraw();
       }));
-      $('drawerBody').querySelectorAll('[data-market-equip-skin]').forEach(b=>b.addEventListener('click',()=>{
-        if(sys.equipSkin(b.dataset.marketEquipSkin)){marketCharacter=null;syncLobbyCharacter();updateUI();redraw('스킨 장착 완료 · 추가 코인 차감 없음');}
-        else redraw('장착할 수 없는 스킨입니다.');
-      }));
       $('drawerBody').querySelectorAll('[data-market-item]').forEach(b=>b.addEventListener('click',()=>{
         marketSelected=b.dataset.marketItem;marketCharacter=null;redraw();
       }));
@@ -1335,11 +1022,13 @@
       }));
       $('drawerBody').querySelectorAll('[data-market-buy-character]').forEach(b=>b.addEventListener('click',()=>{
         const result=sys.purchaseCharacter(b.dataset.marketBuyCharacter);
-        redraw(result.ok?result.character.name+' 구매 완료':result.reason);updateUI();
+        if(result.ok)marketCharacter=null;redraw(result.ok?result.character.name+' 구매 완료 · 보관함에서 장착':result.reason);updateUI();
       }));
+      $('drawerBody').querySelectorAll('[data-market-buy-pet]').forEach(b=>b.addEventListener('click',()=>{const r=sys.purchasePet(b.dataset.marketBuyPet);if(r.ok)marketSelected=null;redraw(r.ok?'펫 구매 완료 · 보관함에서 장착':r.reason);updateUI();}));
+      $('drawerBody').querySelectorAll('[data-market-buy-slot]').forEach(b=>b.addEventListener('click',()=>{const r=sys.purchaseSlot(Number(b.dataset.marketBuySlot));if(r.ok)marketSelected=null;redraw(r.ok?'슬롯 영구 확장 완료':r.reason);updateUI();}));
       $('drawerBody').querySelectorAll('[data-market-buy]').forEach(b=>b.addEventListener('click',()=>{
         const result=sys.purchase(b.dataset.marketBuy);
-        redraw(result.ok?result.item.name+' 구매 완료':result.reason);
+        if(result.ok)marketSelected=null;redraw(result.ok?result.item.name+' 구매 완료':result.reason);
         updateUI();
       }));
     }
@@ -1367,8 +1056,10 @@
       });
     }
   }
+  document.addEventListener('click',e=>{const b=e.target.closest?.('[data-prep-slot]');if(b&&s.stage!=='PLAYING')openPrepSlot(Number(b.dataset.prepSlot),b.dataset.prepOrigin);});
   document.querySelectorAll('[data-panel]').forEach(button=>button.addEventListener('click',()=>{if(button.dataset.panel==='shop'){marketTab='items';marketGroup=null;marketSelected=null;marketCharacter=null;}openPanel(button.dataset.panel);}));
   function closePanel(){
+    previewSerial++;pendingSlot=null;marketSelected=null;marketCharacter=null;marketGroup=null;
     if(!sys.profile.identityChosen){openPanel('chooseActor');return;}
     $('drawerClose').disabled=false;
     $('drawer').classList.add('hidden');
@@ -1393,5 +1084,5 @@
   applyControlSide();fit();updateUI();requestAnimationFrame(frame);
   if(!sys.profile.identityChosen)openPanel('chooseActor');
   // Expose read-only simple debug state for local test harnesses, never gameplay rewards.
-  if(sys.TEST_MODE)window.HellFallTest={snapshot:()=>({stage:s.stage,depth:s.depth,speed:s.speed,timeLeft:s.timeLeft,wall:s.wall,hopProgress:s.hopProgress,hopVisual:s.hopVisual,boost:s.boost,fold:s.fold,cadence:s.cadence,tapCount:s.tapCount,runCoins:s.runCoins,hazards:s.obstacles.length,gates:s.timeGates.length,checkpoints:s.checkpointGates.length,checkpointFlash:s.checkpointFlash,lastCheckpointBonus:s.lastCheckpointBonus,boostSide:sys.profile.settings.boostSide,bubbleLeft:s.bubbleLeft,helmetCharges:s.helmetCharges,helmetId:s.helmetId,shieldFlash:s.shieldFlash,quickSlots:s.quickSlots.slice(),poseFrames:window.HellStarterPoses?.getCachedCount()||0,drinks:{speed:{...s.drinks.speed},brake:{...s.drinks.brake}},stats:effectiveStats(),character:sys.profile.selectedCharacter,profile:{...sys.profile}}),start:()=>start(false)};
+  if(sys.TEST_MODE)window.HellFallTest={snapshot:()=>({stage:s.stage,depth:s.depth,speed:s.speed,timeLeft:s.timeLeft,wall:s.wall,hopProgress:s.hopProgress,hopVisual:s.hopVisual,boost:s.boost,fold:s.fold,cadence:s.cadence,tapCount:s.tapCount,runCoins:s.runCoins,hazards:s.obstacles.length,gates:s.timeGates.length,checkpoints:s.checkpointGates.length,checkpointFlash:s.checkpointFlash,lastCheckpointBonus:s.lastCheckpointBonus,boostSide:sys.profile.settings.boostSide,bubbleCharges:s.bubbleCharges,pet:s.pet?.id||null,shieldFlash:s.shieldFlash,runItems:s.runItems.slice(),won:s.won,poseFrames:window.HellStarterPoses?.getCachedCount()||0,drinks:{speed:{...s.drinks.speed},brake:{...s.drinks.brake},time:{...s.drinks.time}},displayDepth:dm(s.depth),stats:effectiveStats(),character:sys.profile.selectedCharacter,profile:{...sys.profile}}),start:()=>start(false)};
 })();

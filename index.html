@@ -11,8 +11,8 @@
   <link rel="preload" href="assets/starter_girl_portrait_v29.webp" as="image">
   <link rel="preload" href="assets/starter_boy_actions_v29.webp" as="image">
   <link rel="preload" href="assets/starter_girl_actions_v29.webp" as="image">
-  <link rel="stylesheet" href="style.css?v=nov27-wing32">
-  <link rel="stylesheet" href="hero_turnaround.css?v=nov27-wing32">
+  <link rel="stylesheet" href="style.css?v=nov27-rpg33">
+  <link rel="stylesheet" href="hero_turnaround.css?v=nov27-rpg33">
 </head>
 <body>
   <svg class="svg-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
@@ -56,16 +56,6 @@
           <span class="button-icon" aria-hidden="true">🌪️</span><strong>망토 접기</strong>
           <small id="boostHint">더 빠르게 연타!</small>
         </button>
-        <div class="item-quickbar" role="group" aria-label="게임 중 사용하는 아이템 슬롯 두 개">
-          <button type="button" id="quickItem0" class="quick-item-btn is-empty" aria-label="빈 아이템 슬롯 1" disabled>
-            <span id="quickItemIcon0" class="quick-item-icon">＋</span>
-            <span id="quickItemCount0" class="quick-item-count"></span>
-          </button>
-          <button type="button" id="quickItem1" class="quick-item-btn is-empty" aria-label="빈 아이템 슬롯 2" disabled>
-            <span id="quickItemIcon1" class="quick-item-icon">＋</span>
-            <span id="quickItemCount1" class="quick-item-count"></span>
-          </button>
-        </div>
         <button type="button" id="jump" class="stone-button jump" aria-label="벽 점프">
           <span class="button-icon" aria-hidden="true">👟</span><strong>벽 점프</strong><small>한 번 누르기</small>
         </button>
@@ -99,6 +89,7 @@
             <div id="lobbyCharacter" class="lobby-character" tabindex="0" role="button" aria-label="기본 탐험가 캐릭터 보기">
               <div class="turnaround-stage"><img id="lobbyHero" class="turnaround-pose is-selected" draggable="false" alt=""></div>
             </div>
+            <span id="homePet" class="home-dragon hidden" aria-hidden="true"></span>
             <div class="showcase-ground" aria-hidden="true"></div>
             <div class="character-traits" id="lobbyTraits" aria-label="현재 캐릭터 능력치">
               <span id="lobbyClassTag">무료 기본</span>
@@ -110,6 +101,7 @@
           </div>
           <div class="lobby-bottom">
             <div class="lobby-summary"><div><small>PERSONAL BEST</small><strong><svg><use href="#icon-trophy"></use></svg><span id="homeBest">0</span><i>m</i></strong></div><div class="summary-divider"></div><div><small>TOTAL DESCENT</small><strong><svg><use href="#icon-spark"></use></svg><span id="homeTotal">0</span><i>m</i></strong></div></div>
+            <div class="home-prep"><div class="home-prep-head"><strong>출전 아이템</strong><small id="homePrepNotice">한 판용 · 시작 시 차감</small></div><div id="homePrepSlots" class="prep-grid"></div></div>
             <button type="button" class="lobby-play" id="start"><span class="play-insignia"><svg><use href="#icon-play"></use></svg></span><span class="play-copy"><strong>지옥으로 뛰어들기</strong><small>지하 세계 탐험 시작</small></span><svg class="play-arrow"><use href="#icon-arrow"></use></svg></button>
             <nav id="homeNav" class="lobby-nav" aria-label="게임 홈 메뉴">
               <button type="button" data-panel="character"><svg><use href="#icon-person"></use></svg><span>캐릭터</span></button>
@@ -142,15 +134,15 @@
       <section id="drawer" class="drawer hidden" aria-label="게임 부가 메뉴" role="dialog" aria-modal="true">
         <div class="drawer-card"><div class="drawer-head"><h2 id="drawerTitle">메뉴</h2><button id="drawerClose" type="button" aria-label="닫기">✕</button></div><div id="drawerBody" class="drawer-body"></div></div>
       </section>
-      <div class="version">WEB 3.2 TEST · WINGSUIT</div>
+      <div class="version">WEB 3.3 TEST · RPG</div>
     </section>
     <aside class="outside-note">연타로 토네이도 성장 · 누적 레벨과 코인은 이 브라우저에 저장돼요.</aside>
   </main>
-  <script src="platform.js?v=nov27-wing32" defer></script>
-  <script src="systems.js?v=nov27-wing32" defer></script>
-  <script src="hero_turnaround.js?v=nov27-wing32" defer></script>
-  <script src="helmet-composer.js?v=nov27-wing32" defer></script>
-  <script src="starter-poses.js?v=nov27-wing32" defer></script>
-  <script src="game.js?v=nov27-wing32" defer></script>
+  <script src="platform.js?v=nov27-rpg33" defer></script>
+  <script src="balance.js?v=nov27-rpg33" defer></script>
+  <script src="systems.js?v=nov27-rpg33" defer></script>
+  <script src="hero_turnaround.js?v=nov27-rpg33" defer></script>
+  <script src="starter-poses.js?v=nov27-rpg33" defer></script>
+  <script src="game.js?v=nov27-rpg33" defer></script>
 </body>
 </html>

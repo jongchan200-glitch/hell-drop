@@ -4,7 +4,6 @@ hero_turnaround.css
 platform.js
 systems.js
 hero_turnaround.js
-helmet-composer.js
 starter-poses.js
 game.js
 assets/lobby_abyss.webp
@@ -20,8 +19,6 @@ assets/hero_jump_left.webp
 assets/hero_jump_right.webp
 assets/uiji_intro.webp
 assets/uiji_motion_atlas.webp
-assets/helmet_basic_full.svg
-assets/helmet_frog_full.svg
 audio/menu.mp3
 audio/zone_01.m4a
 audio/zone_02.m4a
@@ -34,3 +31,5 @@ assets/wingsuit_boy_portrait.webp
 assets/wingsuit_boy_actions.webp
 assets/wingsuit_girl_portrait.webp
 assets/wingsuit_girl_actions.webp
+balance.js
+assets/rpg_items_dragon_v33.webp

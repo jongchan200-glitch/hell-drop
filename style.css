@@ -562,3 +562,44 @@ html,body{height:100%;overflow:hidden}
 
 /* WEB 3.0 actor identity and skin wardrobe */
 .market-main-tabs{grid-template-columns:repeat(3,minmax(0,1fr))}.actor-test-box{border:1px solid #d3b78965;border-radius:14px;padding:10px;background:#172333}.actor-choice-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}.actor-choice-row button,.actor-onboard-card{border:1px solid #b99a6b80;border-radius:12px;background:#252c3b;color:#ffe7bb;padding:12px;cursor:pointer;font-weight:800}.actor-choice-row button[aria-pressed=true]{border:2px solid #71e3c7;background:#24564f;color:#c7fff2}.actor-onboarding{display:grid;gap:14px;text-align:center;padding:8px 0}.actor-onboard-card{display:flex;flex-direction:column;align-items:center;gap:8px;min-width:0}.actor-onboard-card img{width:100%;height:190px;object-fit:contain}.actor-onboard-card small{font-size:11px;color:#cbd4cd}#drawerClose:disabled{opacity:.35;pointer-events:none}
+
+/* WEB 3.3 — separate icon inventory, one portrait, independent pet, four preparation slots */
+.controls{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.controls #boost{order:1}.controls #jump{order:2}.controls.boost-right #boost{order:2}.controls.boost-right #jump{order:1}
+.rpg-atlas,.home-dragon{display:inline-block;width:100%;aspect-ratio:1;background-image:url("assets/rpg_items_dragon_v33.webp");background-size:300% 300%;background-position:var(--atlas-x,0%) var(--atlas-y,0%);background-repeat:no-repeat}
+.rpg-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.rpg-card{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-width:0;min-height:106px;border:1px solid #a38b6c80;border-radius:12px;background:radial-gradient(ellipse at 50% 28%,#6450478f,#212536 76%);color:#fce8c8;padding:6px;font:inherit;text-align:center;overflow:hidden}
+button.rpg-card{cursor:pointer;touch-action:manipulation}
+.rpg-card.is-selected{border:2px solid #75dfc8;box-shadow:inset 0 0 12px #59c7b12b}
+.rpg-card:disabled{opacity:.45;cursor:default}
+.rpg-card b{font-size:11px;line-height:1.2;word-break:keep-all}
+.rpg-card small{font-size:10px;color:#b0e2d4}
+.rpg-art{width:100%;max-width:90px;aspect-ratio:1;display:grid;place-items:center}
+.rpg-art svg,.prep-icon svg{width:100%;height:100%;max-width:100%;max-height:100%}
+.rpg-preview{padding:6px 8px 10px;background:radial-gradient(ellipse at center,#74594160,#171a29 75%);border:1px solid #b39b7460;border-radius:15px;text-align:center}
+.rpg-preview-hero{position:relative;display:grid;place-items:center;height:clamp(160px,30svh,240px);overflow:hidden}
+.rpg-preview-hero>img{height:100%;max-width:100%;object-fit:contain;animation:rpgIdle 3.2s ease-in-out infinite}
+.rpg-preview-hero>canvas{position:relative;width:auto;height:100%;max-width:100%;inset:auto;object-fit:contain}
+.preview-dragon{position:absolute;right:12%;top:22%;width:65px;pointer-events:none;animation:rpgIdle 1.4s ease-in-out infinite}
+.home-dragon{position:absolute;width:clamp(48px,17vw,82px);height:auto;right:9%;top:28%;z-index:4;--atlas-x:0%;--atlas-y:100%;animation:rpgIdle 1.4s ease-in-out infinite;pointer-events:none;filter:drop-shadow(0 4px 8px #0008)}
+@keyframes rpgIdle{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+.rpg-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:6px}
+.rpg-tabs button,.rpg-secondary{border:1px solid #b79e7780;color:#efdfc1;background:#252a39;border-radius:9px;padding:8px 6px;font-weight:800;cursor:pointer}
+.rpg-tabs button[aria-pressed="true"]{color:#c7ffec;border-color:#6bd9c4;background:#284b4d}
+.rpg-secondary{width:100%;margin-top:7px}
+.rpg-motion{width:auto;padding:4px 16px;font-size:11px}
+.rpg-slot-art{font-size:38px}
+.market-large-art .rpg-atlas{height:auto;width:100%}
+.market-rpg-card{min-height:132px}
+.market-rpg-card .rpg-art{max-width:92px}
+.home-prep{margin:-4px 0 9px}
+.home-prep-head{display:flex;justify-content:space-between;gap:6px;align-items:center;margin:0 2px 4px}
+.home-prep-head strong{font-size:10px;color:#f4dab6}.home-prep-head small{font-size:9px;color:#bba99f;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.prep-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}
+.prep-slot{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-width:0;min-height:55px;padding:3px;border:1px dashed #9e9a9b9c;border-radius:9px;background:#1b2030;color:#d5d2d1;cursor:pointer;touch-action:manipulation}
+.prep-slot.is-filled{background:#253d3d;border:1px solid #6ed2c0;color:#bdf7d9}
+.prep-slot.is-locked{border:1px solid #7b6754;background:#221e2a;color:#d2ac79}
+.prep-icon{height:30px;width:30px;display:grid;place-items:center;font-size:20px}
+.prep-name{max-width:100%;font-size:9px;line-height:1.15;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media(max-height:660px){.home-prep{margin:0 0 5px}.home-prep-head{margin-bottom:2px}.prep-slot{min-height:42px}.prep-icon{height:23px;width:23px}.prep-name{font-size:8px}}
+@media(prefers-reduced-motion:reduce){.rpg-preview-hero>img,.preview-dragon,.home-dragon{animation:none}}
