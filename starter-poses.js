@@ -1,23 +1,27 @@
 'use strict';
-/* WEB 2.9: independent standing portraits + three whole-body action drawings.
+/* WEB 3.2: catalog-driven independent standing portraits + three whole-body action drawings.
    Transform the complete art only; no face collage or skeletal/vector bodies.
    Motion is still three authored poses, not 36 separately illustrated frames. */
 (function(){
   const W=384,H=450;
-  const actors={uiji:'boy',useoi:'girl'}, atlases={}, portraits={},loaded={},failures={};
+  const atlases={}, portraits={},loaded={},failures={};
+  const keyOf=who=>who==='uiji'?'starter_boy':who==='useoi'?'starter_girl':who;
   let draws=0,lastPose='glide',lastHero='uiji',lastMotionPhase=0;
-  for(const [who,sex] of Object.entries(actors)){
+  for(const skin of window.HellSystems.SKIN_CATALOG.filter(s=>s.actions)){
+    const who=skin.id;
     const a=new Image(),p=new Image();
     loaded[who]=false;
     a.onload=()=>{atlases[who]=a;loaded[who]=true;};
     a.onerror=()=>{failures[who]='Action atlas unavailable';};
     p.onload=()=>{portraits[who]=p;};
-    a.src='assets/starter_'+sex+'_actions_v29.webp';
-    p.src='assets/starter_'+sex+'_portrait_v29.webp';
+    a.src=skin.actions;
+    p.src=skin.front;
   }
   const clamp=v=>Math.max(0,Math.min(1,v));
   const smooth=v=>{v=clamp(v);return v*v*(3-2*v);};
   function draw({ctx,x,y,u,who,fold,elapsed,speed,dead,hopping,hopFrom,hopVisual,boost=0}){
+    who=keyOf(who);
+    const wing=who.startsWith('wingsuit_');
     const img=atlases[who];
     if(!img?.naturalWidth){
       const p=portraits[who];
@@ -38,7 +42,7 @@
       // Bend and rock in the wind, with the knees already raised in the artwork.
       sx=1+.035*wave;sy=1-.022*wave;rot=.047*wave+.012*wave2;dy=3.2*wave2;
     }else if(pose==='fast'){
-      sx=.94+.018*wave;sy=1.08+.025*wave;rot=-.08+.035*wave2;dy=2.6*wave;
+      sx=(wing?.82:.94)+.018*wave;sy=(wing?1.15:1.08)+.025*wave;rot=-.08+.035*wave2;dy=2.6*wave;
     }else{
       const impact=1-smooth(p/.20),travel=smooth((p-.12)/.56);
       rot=side*(-.20+.49*travel)*(1-landing);
@@ -67,6 +71,6 @@
     return true;
   }
   window.HellStarterPoses={draw,poses:['glide','fast','kick'],frames:12,usesWholeBodyArt:true,
-    ready:who=>!!loaded[who],getCachedCount:()=>draws,
-    status:()=>({ready:{...loaded},failures:{...failures},source:'v29 independent portraits and whole-body action art',draws,lastPose,lastHero,lastMotionPhase})};
+    ready:who=>!!loaded[keyOf(who)],getCachedCount:()=>draws,
+    status:()=>({ready:{...loaded},failures:{...failures},source:'catalog-driven whole-body action art',draws,lastPose,lastHero,lastMotionPhase})};
 })();

@@ -22,12 +22,14 @@
   // Free starter portraits use approved complete-body game illustrations.
   // The premium Uiji/Useoi original artwork is immutable.
   const CHARACTER_CATALOG=[
-    {id:'starter_boy',name:'우지 기본 복장',description:'무료 기본 스킨 · 최고속도 70% · 감속 70%',front:'assets/starter_boy_portrait_v29.webp',actor:'uiji',starter:true,price:0,speedBonus:0,brakeBonus:0,hasBack:false},
-    {id:'starter_girl',name:'우서 기본 복장',description:'무료 기본 스킨 · 최고속도 70% · 감속 70%',front:'assets/starter_girl_portrait_v29.webp',actor:'useoi',starter:true,price:0,speedBonus:0,brakeBonus:0,hasBack:false},
+    {id:'starter_boy',name:'우지 기본 복장',description:'무료 기본 스킨 · 최고속도 70% · 감속 70%',front:'assets/starter_boy_portrait_v29.webp',actor:'uiji',actions:'assets/starter_boy_actions_v29.webp',starter:true,price:0,speedBonus:0,brakeBonus:0,hasBack:false},
+    {id:'starter_girl',name:'우서 기본 복장',description:'무료 기본 스킨 · 최고속도 70% · 감속 70%',front:'assets/starter_girl_portrait_v29.webp',actor:'useoi',actions:'assets/starter_girl_actions_v29.webp',starter:true,price:0,speedBonus:0,brakeBonus:0,hasBack:false},
     {id:'useoi',name:'우서 탐험가 스킨',description:'기존 원화 · 최고속도 +3%p · 감속 +2%p',front:'assets/hero_intro.webp',actor:'useoi',starter:false,price:100,speedBonus:3,brakeBonus:2,hasBack:true},
-    {id:'uiji',name:'우지 탐험가 스킨',description:'기존 원화 · 최고속도 +3%p · 감속 +2%p',front:'assets/uiji_intro.webp',actor:'uiji',starter:false,price:100,speedBonus:3,brakeBonus:2,hasBack:false}
+    {id:'uiji',name:'우지 탐험가 스킨',description:'기존 원화 · 최고속도 +3%p · 감속 +2%p',front:'assets/uiji_intro.webp',actor:'uiji',starter:false,price:100,speedBonus:3,brakeBonus:2,hasBack:false},
+    {id:'wingsuit_boy',name:'우지 윙슈트',description:'윙슈트 · 최고속도 +6%p · 감속 +5%p',front:'assets/wingsuit_boy_portrait.webp',actions:'assets/wingsuit_boy_actions.webp',actor:'uiji',starter:false,kind:'wingsuit',price:200,speedBonus:6,brakeBonus:5,hasBack:false},
+    {id:'wingsuit_girl',name:'우서 윙슈트',description:'윙슈트 · 최고속도 +6%p · 감속 +5%p',front:'assets/wingsuit_girl_portrait.webp',actions:'assets/wingsuit_girl_actions.webp',actor:'useoi',starter:false,kind:'wingsuit',price:200,speedBonus:6,brakeBonus:5,hasBack:false}
   ];
-  // Rendering IDs are stable for existing art. Domain objects are two actors and four skins.
+  // Rendering IDs are stable for existing art. Domain objects are two actors and six skins.
   const SKIN_CATALOG=CHARACTER_CATALOG;
   const actorOf=id=>SKIN_CATALOG.find(c=>c.id===id)?.actor;
   const baseOf=actor=>ACTOR_CATALOG.find(a=>a.id===actor)?.base;

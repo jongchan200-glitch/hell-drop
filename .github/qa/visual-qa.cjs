@@ -13,20 +13,22 @@ const fs=require('fs');
   }
   // Every check uses real mobile viewport, real game buttons and live physics.
   for(const [name,query,hero,index] of [
-    ['starter-boy','?v=nov27-clean31','starter_boy',0],
-    ['starter-girl','?v=nov27-clean31','starter_girl',1],
-    ['premium-girl','?rig=1&keypose=1&starter=1&workrig=1&v=nov27-clean31','useoi',2],
-    ['premium-boy','?v=nov27-clean31','uiji',3]
+    ['starter-boy','?v=nov27-wing32','starter_boy',0],
+    ['starter-girl','?v=nov27-wing32','starter_girl',1],
+    ['premium-girl','?rig=1&keypose=1&starter=1&workrig=1&v=nov27-wing32','useoi',2],
+    ['premium-boy','?v=nov27-wing32','uiji',3],
+    ['wing-boy','?v=nov27-wing32','wingsuit_boy',4],
+    ['wing-girl','?v=nov27-wing32','wingsuit_girl',5]
   ]){
     await reset(query);
-    await page.locator('[data-initial-actor="'+((index===0||index===3)?'uiji':'useoi')+'"]').click();
+    await page.locator('[data-initial-actor="'+((index===0||index===3||index===4)?'uiji':'useoi')+'"]').click();
     const startStats=await page.evaluate(()=>({
       profile:window.HellSystems.profile,
       catalog:window.HellSystems.CHARACTER_CATALOG,
       items:window.HellSystems.ITEM_CATALOG
     }));
     if(startStats.items.filter(i=>i.kind==='drink').length!==6)throw Error('Missing six stat drinks');
-    if(startStats.catalog.length!==4||startStats.profile.coins!==1000)throw Error('Expected four skins and exact test grant');
+    if(startStats.catalog.length!==6||startStats.profile.coins!==1000)throw Error('Expected six skins and exact test grant');
     if(index===0||index===1){
       await page.waitForFunction(()=>{const i=document.getElementById('lobbyHero');return i?.src.includes('starter_')&&!i.hidden&&i.naturalWidth>100},{timeout:15000});
       const pre=await page.evaluate(()=>({
@@ -46,7 +48,7 @@ const fs=require('fs');
           transformed:document.querySelectorAll('.starter-pick-card img[src*="_portrait_v29.webp"]').length,
           starter:document.querySelector('[data-starter-face="starter_boy"]')?.src.includes('/assets/starter_boy_portrait_v29.webp')
         }));
-        if(chooser.count!==2||chooser.transformed!==1||!chooser.starter)throw Error('Character cards visually stale '+JSON.stringify(chooser));
+        if(chooser.count!==3||chooser.transformed!==1||!chooser.starter)throw Error('Character cards visually stale '+JSON.stringify(chooser));
         await page.screenshot({path:'qa-shot-starter-choice.jpg',type:'jpeg',quality:65});
         console.log('QAIMAGE_STARTER_CHOICE='+fs.readFileSync('qa-shot-starter-choice.jpg').toString('base64'));
         await page.locator('#drawerClose').click();
@@ -79,14 +81,14 @@ const fs=require('fs');
       });
       if(!stocked.a||!stocked.b||!stocked.x||!stocked.y)throw Error('Drink purchase/equip failed '+JSON.stringify(stocked));
     }
-    if(index<2){
+    if(index<2||index>=4){
       await page.waitForFunction(
         actor=>window.HellStarterPoses?.ready?.(actor),
-        index===0?'uiji':'useoi',{timeout:12000}
+        hero,{timeout:12000}
       );
       const art=await page.evaluate(()=>window.HellStarterPoses?.status());
       if(!(await page.evaluate(()=>window.HellStarterPoses?.usesWholeBodyArt)))throw Error('Rejected vector body renderer still active');
-      if(!art?.ready?.[index===0?'uiji':'useoi'])throw Error('Missing complete-body approved art '+JSON.stringify(art));
+      if(!art?.ready?.[hero])throw Error('Missing complete-body approved art '+JSON.stringify(art));
       console.log('QAART_'+name.toUpperCase().replace(/-/g,'_')+'='+JSON.stringify(art));
     }
     await page.locator('#start').click();await page.waitForTimeout(320);
@@ -115,8 +117,12 @@ const fs=require('fs');
       if(active.profile.consumables.vitality_5!==0||active.profile.consumables.calm_10!==0)throw Error('Drink consumption not persistent');
       console.log('QADRINKS='+JSON.stringify({stats:active.stats,drink:active.drinks,consumed:true}));
     }
-    if(index>=2 && (before.stats.speed!==73||before.stats.brake!==72))throw Error('Premium stats wrong '+JSON.stringify(before.stats));
-    if(index<2){
+    if((index===2||index===3) && (before.stats.speed!==73||before.stats.brake!==72))throw Error('Premium stats wrong '+JSON.stringify(before.stats));
+    if(index>=4){
+      if(before.stats.speed!==76||before.stats.brake!==75||before.profile.coins!==800)throw Error('Wing stats/price wrong');
+      if(await page.locator('#boost strong').textContent()!=='급강하')throw Error('Wing boost label wrong');
+    }
+    if(index<2||index>=4){
       await page.screenshot({path:'qa-shot-'+name+'-glide.jpg',type:'jpeg',quality:60});
       console.log('QAIMAGE_GLIDE_'+name.toUpperCase().replace(/-/g,'_')+'='+fs.readFileSync('qa-shot-'+name+'-glide.jpg').toString('base64'));
       // Real browser thumb events: five successive taps must accelerate,
@@ -131,7 +137,7 @@ const fs=require('fs');
       if(boosted.boost<.08)throw Error('Rapid thumb tapping did not accelerate '+JSON.stringify({boost:boosted.boost,speed:boosted.speed}));
       if(boosted.poseFrames<1)throw Error('Starter action atlas was not drawn');
       const anim=await page.evaluate(()=>window.HellStarterPoses.status());
-      if(anim.lastPose!=='fast')throw Error('After acceleration the complete-body fast pose did not appear '+JSON.stringify(anim));
+      if(anim.lastPose!=='fast'||anim.lastHero!==hero)throw Error('After acceleration the complete-body fast pose did not appear '+JSON.stringify(anim));
       console.log('QATOUCH_'+name.toUpperCase().replace(/-/g,'_')+'='+JSON.stringify({
         taps:boosted.tapCount,boost:boosted.boost,speed:boosted.speed,frames:boosted.poseFrames
       }));
@@ -152,9 +158,9 @@ const fs=require('fs');
     if(jumpStart.stage!=='PLAYING'||jumpStart.depth>100)throw Error('Wall jump test did not start in safe zone '+JSON.stringify(jumpStart));
     const priorWall=jumpStart.wall;
     await page.locator('#jump').tap();await page.waitForTimeout(120);
-    if(index<2){
+    if(index<2||index>=4){
       const anim=await page.evaluate(()=>window.HellStarterPoses.status());
-      if(anim.lastPose!=='kick')throw Error('Complete-body wall-kick pose did not appear '+JSON.stringify({anim,snapshot:await page.evaluate(()=>window.HellFallTest.snapshot())}));
+      if(anim.lastPose!=='kick'||anim.lastHero!==hero)throw Error('Complete-body wall-kick pose did not appear '+JSON.stringify({anim,snapshot:await page.evaluate(()=>window.HellFallTest.snapshot())}));
     }
     const firstHop=await page.evaluate(()=>window.HellFallTest.snapshot());
     if(!(firstHop.hopVisual<1)||firstHop.wall===priorWall)
@@ -173,7 +179,7 @@ const fs=require('fs');
     }
   }
   // Actual UI purchase test, same shared test wallet across both actors.
-  await reset('?v=nov27-clean31');
+  await reset('?v=nov27-wing32');
   await page.screenshot({path:'qa-shot-actor-onboarding.jpg',type:'jpeg',quality:65});
   console.log('QAIMAGE_ACTOR_ONBOARDING='+fs.readFileSync('qa-shot-actor-onboarding.jpg').toString('base64'));
   await page.locator('[data-initial-actor="uiji"]').click();
@@ -213,6 +219,16 @@ const fs=require('fs');
   p=await page.evaluate(()=>window.HellSystems.profile);
   if(p.coins!==780||p.selectedCharacter!=='uiji'||p.accountActor!=='uiji'||p.equippedSkins.useoi!=='useoi'||p.ownedSkins.length!==4||p.consumables.bubble_10!==1)throw Error('Persistent wallet/skins/actor failed '+JSON.stringify(p));
   console.log('QAWALLET='+JSON.stringify({coins:p.coins,owned:p.ownedSkins,active:p.activeActor,equipped:p.equippedSkins,bubble:p.consumables.bubble_10}));
+  await page.locator('[data-panel="character"]').first().click();
+  await buyAndEquip('wingsuit_boy');
+  await page.locator('[data-panel="character"]').first().click();
+  await page.locator('[data-test-actor="useoi"]').click();
+  await buyAndEquip('wingsuit_girl');
+  await page.reload({waitUntil:'domcontentloaded'});
+  await page.waitForFunction(()=>!!window.HellFallTest);
+  p=await page.evaluate(()=>window.HellSystems.profile);
+  if(p.coins!==380||p.ownedSkins.length!==6||p.equippedSkins.uiji!=='wingsuit_boy'||p.equippedSkins.useoi!=='wingsuit_girl')throw Error('Wing wallet persistence failed '+JSON.stringify(p));
+  console.log('QAWINGS='+JSON.stringify({coins:p.coins,equipped:p.equippedSkins,owned:p.ownedSkins}));
   await page.evaluate(()=>{localStorage.clear();localStorage.setItem('hell_fall_profile_v1',JSON.stringify({selectedCharacter:'useoi',coins:42,runs:4,totalDepth:5000,inventory:['helmet_basic'],wardrobes:{useoi:{quickSlots:[null,null],gear:{helmet:'helmet_basic'}}}}));});
   await page.reload({waitUntil:'domcontentloaded'});
   await page.locator('[data-initial-actor="useoi"]').click();

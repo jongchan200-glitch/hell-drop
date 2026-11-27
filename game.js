@@ -39,7 +39,8 @@
   const capeRig={core:null,left:null,right:null,ready:false};
   const statOf=(id)=>sys.characterStats(id);
   const currentActor=()=>sys.CHARACTER_CATALOG.find(c=>c.id===s.runCharacter)?.actor||'useoi';
-  const isStarter=()=>!!sys.CHARACTER_CATALOG.find(c=>c.id===s.runCharacter)?.starter;
+  const runSkin=()=>sys.SKIN_CATALOG.find(c=>c.id===s.runCharacter);
+  const skinLabel=c=>c.starter?'기본 복장':c.kind==='wingsuit'?'윙슈트':'탐험가 스킨';
   function effectiveStats(){
     const c=statOf(s.runCharacter);
     return {speed:Math.min(100,c.speed+(s.drinks.speed.left>0?s.drinks.speed.bonus:0)),
@@ -98,6 +99,9 @@
     // recharged to 1 or 2 collision blocks for every new run.
     const loadout=sys.startLoadout();
     s.runCharacter=sys.profile.selectedCharacter;
+    const wing=runSkin()?.kind==='wingsuit';
+    boostBtn.querySelector('strong').textContent=wing?'급강하':'망토 접기';
+    boostBtn.setAttribute('aria-label',wing?'윙슈트 급강하 연타 가속':'망토 접기 연타 가속');
     s.quickSlots=loadout.quickSlots.slice();
     s.bubbleLeft=0;s.bubbleColor=null;s.bubbleName='';
     s.helmetId=loadout.helmetId;s.helmetCharges=loadout.helmetHits;
@@ -759,9 +763,9 @@
     y+=Math.sin(elapsed*(10+fold*10))*(1.2+fold*1.5)*u;
     // Free actors: three complete full-body source illustrations per character.
     // No procedural vector body, no face collage, no alteration of paid art.
-    if(isStarter()){
+    if(runSkin()?.actions){
       window.HellStarterPoses.draw({
-        ctx,x,y,u,who:currentActor(),fold,elapsed,speed,dead,hopping,
+        ctx,x,y,u,who:s.runCharacter,fold,elapsed,speed,dead,hopping,
         hopFrom,hopVisual:s.hopVisual,boost:s.boost
       });
       if(s.helmetId)drawHelmet(x,y,u);
@@ -910,8 +914,8 @@
     $('homeCharacterName').textContent=sys.actorName(character.actor);
     $('homeAvatar').src=character.front;
     $('characterIdentityName').textContent=sys.actorName(character.actor);
-    $('characterIdentitySubtitle').textContent=character.starter?'기본 복장 · 무료':'탐험가 스킨';
-    $('lobbyClassTag').textContent=character.starter?'무료 기본 복장':'탐험가 스킨';
+    $('characterIdentitySubtitle').textContent=character.starter?'기본 복장 · 무료':skinLabel(character);
+    $('lobbyClassTag').textContent=character.starter?'무료 기본 복장':skinLabel(character);
     $('lobbySpeedStat').textContent=statOf(character.id).speed+'%';
     $('lobbyBrakeStat').textContent=statOf(character.id).brake+'%';
     $('lobbyTraits').classList.toggle('is-premium',!character.starter);
@@ -989,7 +993,7 @@
       <div class="actor-test-box"><div class="starter-pick-heading"><b>내 캐릭터 · ${sys.actorName(prof.activeActor)}</b><span>${sys.TEST_MODE?'TEST · 남녀 전환 가능':'최초 선택 고정'}</span></div>
         ${sys.TEST_MODE?'<div class="actor-choice-row">'+sys.ACTOR_CATALOG.map(a=>'<button type="button" data-test-actor="'+a.id+'" aria-pressed="'+(a.id===prof.activeActor)+'">'+a.name+(a.id==='uiji'?' (남)':' (여)')+'</button>').join('')+'</div>':''}</div>
       <div class="starter-pick-section">
-        <div class="starter-pick-heading"><b>스킨 선택</b><span>기본 무료 · 탐험가 100코인</span></div>
+        <div class="starter-pick-heading"><b>스킨 선택</b><span>기본 무료 · 스킨 100~200코인</span></div>
         <div class="starter-pick-grid">${picker}</div>
       </div>
       <div class="wardrobe-carousel" id="wardrobeCarousel" role="group" aria-label="스킨 좌우 스와이프 선택" tabindex="0">
@@ -1101,10 +1105,10 @@
        <section class="market-detail" role="dialog" aria-modal="true" aria-label="${esc(character.name)} 상세"><span class="market-handle"></span>
        <button type="button" class="market-close" data-market-close aria-label="닫기">✕</button>
        <div class="market-detail-head"><span class="market-large-art"><img src="${character.front}" ${character.starter?'data-starter-face="'+character.id+'"':''} alt=""></span>
-       <div class="market-detail-title"><small>${character.starter?'무료 기본 스킨':'기존 원화 · 탐험가 스킨'}</small>
+       <div class="market-detail-title"><small>${character.starter?'무료 기본 스킨':skinLabel(character)}</small>
        <strong>${esc(character.name)}</strong><b>최고속 ${statOf(character.id).speed}% · 감속 ${statOf(character.id).brake}%</b></div></div>
        <p class="market-guide">${character.starter?'안전모 없는 기본 복장(밝은 티셔츠·반바지·파란 슬리퍼·베이지 망토)이며 기존 캐릭터 원화를 참고한 전용 일러스트를 사용합니다.':
-         '같은 캐릭터의 탐험가 복장입니다. 전용 전신 원화와 모션을 사용하며 최고속도 +3%p, 감속력 +2%p. 구매 후 언제든 무료로 다시 장착할 수 있습니다.'}</p>
+         character.kind==='wingsuit'?'날다람쥐처럼 팔과 다리 사이 날개를 펼치는 윙슈트. 연타하면 날개를 모아 급강하합니다. 최고속도 +6%p, 감속력 +5%p (임시). 구매 후 재장착 무료.':'같은 캐릭터의 탐험가 복장입니다. 전용 전신 원화와 모션을 사용하며 최고속도 +3%p, 감속력 +2%p. 구매 후 언제든 무료로 다시 장착할 수 있습니다.'}</p>
        <div class="market-detail-bottom"><span>${owned?'보유 중':'🪙 '+fmt(character.price)}</span>
        ${owned?'<button type="button" data-market-equip-skin="'+character.id+'" '+(character.id===prof.selectedCharacter?'disabled':'')+'>'+(character.id===prof.selectedCharacter?'장착 중':'장착하기')+'</button>':
          '<button type="button" data-market-buy-character="'+character.id+'">코인으로 구매</button>'}</div></section></div>`;

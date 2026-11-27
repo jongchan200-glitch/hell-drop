@@ -30,3 +30,7 @@ audio/zone_04.mp3
 audio/zone_05.mp3
 audio/zone_06.mp3
 audio/zone_07.mp3
+assets/wingsuit_boy_portrait.webp
+assets/wingsuit_boy_actions.webp
+assets/wingsuit_girl_portrait.webp
+assets/wingsuit_girl_actions.webp
