@@ -93,6 +93,7 @@
   function rngSeed(seed){let x=(seed>>>0)||1;return()=>{x=(x+0x6D2B79F5)>>>0;let t=x;t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return ((t^(t>>>14))>>>0)/4294967296;};}
   function makeGame(stage='READY'){return{seed:(Math.random()*1000000000)|0,stage,depth:0,speed:T.START,timeLeft:T.LIMIT,elapsed:0,introElapsed:0,boost:0,fold:0,lastTapAt:-1,tapPulse:0,tapCount:0,tapIntervals:[],cadence:0,wall:'L',hopFrom:'L',hopProgress:1,hopVisual:1,obstacles:[],timeGates:[],checkpointGates:[],coinGates:[],runCoins:0,nextObstacle:370,nextTimeGate:900,nextCheckpoint:1450,nextCoin:210,coinNumber:0,obstacleNumber:0,gateNumber:0,checkpointNumber:0,gateFlash:0,checkpointFlash:0,zoneFlash:0,lastBonus:0,lastCheckpointBonus:0,failure:'',bubbleLeft:0,bubbleColor:null,bubbleName:'',helmetId:null,helmetCharges:0,invuln:0,shieldFlash:0,runCharacter:'starter_boy',drinks:{speed:{bonus:0,left:0},brake:{bonus:0,left:0}},quickSlots:[null,null]};}
   function start(){
+    if(!sys.profile.identityChosen){openPanel('chooseActor');return;}
     applyControlSide();s=makeGame('PLAYING');
     // A bubble is a single-use purchase. Helmets are persistent owned equipment,
     // recharged to 1 or 2 collision blocks for every new run.
@@ -955,15 +956,15 @@
   let lobbyCtrl=null;
   function syncLobbyCharacter(){
     const character=sys.CHARACTER_CATALOG.find(c=>c.id===sys.profile.selectedCharacter)||sys.CHARACTER_CATALOG[0];
-    $('homeCharacterName').textContent=character.name;
+    $('homeCharacterName').textContent=sys.actorName(character.actor);
     $('homeAvatar').src=character.front;
     $('lobbyHero').src=character.front; // preserve correct selected image while sprite preloads
     if(character.starter)window.HellStarterSkin?.preview(character.front,character.actor,url=>{
       if(sys.profile.selectedCharacter===character.id){$('homeAvatar').src=url;$('lobbyHero').src=url;}
     });
-    $('characterIdentityName').textContent=character.name;
-    $('characterIdentitySubtitle').textContent=character.starter?'기본 초보 복장 · 무료':'+3%p 최고속 · +2%p 감속';
-    $('lobbyClassTag').textContent=character.starter?'무료 기본 캐릭터':'원화 판매형';
+    $('characterIdentityName').textContent=sys.actorName(character.actor);
+    $('characterIdentitySubtitle').textContent=character.starter?'기본 복장 · 무료':'탐험가 스킨';
+    $('lobbyClassTag').textContent=character.starter?'무료 기본 복장':'탐험가 스킨';
     $('lobbySpeedStat').textContent=statOf(character.id).speed+'%';
     $('lobbyBrakeStat').textContent=statOf(character.id).brake+'%';
     $('lobbyTraits').classList.toggle('is-premium',!character.starter);
@@ -974,7 +975,7 @@
   // Swiping changes the selected hero; buying never consumes or equips items.
   let wardrobePending=null;
   const wardrobeExpanded=new Set();
-  const GEAR_SLOTS=[['helmet','🪖','헬멧'],['cape','🦸','망토'],['shoes','👟','신발'],['pants','👖','바지'],['top','👕','상의']];
+  const GEAR_SLOTS=[['helmet','🪖','헬멧']];
   function helmetPreviewMarkup(helmetId,characterId){
     if(!helmetId)return '';
     const frog=helmetId==='helmet_frog';
@@ -984,7 +985,7 @@
     return '<svg class="wardrobe-helmet-art '+characterId+'" viewBox="0 0 100 54" role="img" aria-label="장착 중인 헬멧" xmlns="http://www.w3.org/2000/svg">'+art+'</svg>';
   }
   function characterPanelHTML(prof,prog,fmt){
-    const characters=sys.CHARACTER_CATALOG;
+    const characters=sys.skinsFor(prof.activeActor);
     const selectedIndex=Math.max(0,characters.findIndex(c=>c.id===prof.selectedCharacter));
     const active=characters[selectedIndex],wardrobe=sys.wardrobeOf(active.id);
     const helmet=sys.ITEM_CATALOG.find(i=>i.id===wardrobe.gear.helmet);
@@ -993,7 +994,7 @@
         data-character-index="${index}" aria-label="${c.name} 선택" aria-pressed="${index===selectedIndex}"></button>`).join('');
     const picker=characters.map(c=>{
       const selected=c.id===prof.selectedCharacter,owned=sys.ownsCharacter(c.id);
-      const label=selected?'✓ 사용 중':owned?'선택 가능':'🔒 코인 '+fmt(c.price);
+      const label=selected?'✓ 장착 중':owned?'장착 가능':'🔒 코인 '+fmt(c.price);
       return `<button type="button" class="starter-pick-card ${selected?'is-selected':''} ${owned?'':'is-locked'}"
           data-character-pick="${c.id}" aria-label="${esc(c.name)} ${esc(label)}" aria-pressed="${selected}">
           <span class="starter-pick-art"><img src="${c.front}" ${c.starter?'data-starter-face="'+c.id+'"':''} alt=""></span>
@@ -1046,12 +1047,14 @@
     const badge=helmet?`<span class="wardrobe-equipped-badge">${helmet.icon} ${helmet.name} 장착 중</span>`:
       '<span class="wardrobe-equipped-badge is-empty">헬멧 미착용</span>';
     return `<div class="wardrobe-root">
+      <div class="actor-test-box"><div class="starter-pick-heading"><b>내 캐릭터 · ${sys.actorName(prof.activeActor)}</b><span>${sys.TEST_MODE?'TEST · 남녀 전환 가능':'최초 선택 고정'}</span></div>
+        ${sys.TEST_MODE?'<div class="actor-choice-row">'+sys.ACTOR_CATALOG.map(a=>'<button type="button" data-test-actor="'+a.id+'" aria-pressed="'+(a.id===prof.activeActor)+'">'+a.name+(a.id==='uiji'?' (남)':' (여)')+'</button>').join('')+'</div>':''}</div>
       <div class="starter-pick-section">
-        <div class="starter-pick-heading"><b>캐릭터 선택</b><span>무료 기본 2종 · 원화 판매형 2종</span></div>
+        <div class="starter-pick-heading"><b>스킨 선택</b><span>기본 무료 · 탐험가 100코인</span></div>
         <div class="starter-pick-grid">${picker}</div>
       </div>
-      <div class="wardrobe-carousel" id="wardrobeCarousel" role="group" aria-label="캐릭터 좌우 스와이프 선택" tabindex="0">
-        <button type="button" data-char-direction="-1" class="wardrobe-arrow" aria-label="이전 캐릭터">❮</button>
+      <div class="wardrobe-carousel" id="wardrobeCarousel" role="group" aria-label="스킨 좌우 스와이프 선택" tabindex="0">
+        <button type="button" data-char-direction="-1" class="wardrobe-arrow" aria-label="이전 스킨">❮</button>
         <div class="wardrobe-portrait">
           <div class="wardrobe-portrait-art">
             ${helmet?'<canvas class="wardrobe-composed-portrait" data-worn-portrait aria-label="'+esc(active.name)+' 헬멧 착용 모습"></canvas>':'<img src="'+active.front+'" '+(active.starter?'data-starter-face="'+active.id+'"':'')+' alt="'+esc(active.name)+' 캐릭터 일러스트" draggable="false">'}
@@ -1061,16 +1064,16 @@
           <div class="starter-active-stats"><span>⚡ 최고속 ${statOf(active.id).speed}%</span><span>❄ 감속 ${statOf(active.id).brake}%</span></div>
           ${badge}
         </div>
-        <button type="button" data-char-direction="1" class="wardrobe-arrow" aria-label="다음 캐릭터">❯</button>
+        <button type="button" data-char-direction="1" class="wardrobe-arrow" aria-label="다음 스킨">❯</button>
       </div>
       <div class="wardrobe-dots">${dots}</div>
-      <p class="wardrobe-help">캐릭터 카드를 터치해 선택 · 미보유 캐릭터는 상점에서 구매 · 장착 정보는 각각 저장</p>
+      <p class="wardrobe-help">스킨 카드 터치로 장착 · 미보유 스킨은 상점에서 구매 · 같은 캐릭터의 장비 유지</p>
       <div class="wardrobe-section">
         <div class="wardrobe-heading"><strong>🫧 출전 아이템</strong><small>2칸 · 플레이 중 버튼을 눌러 사용</small></div>
         <div class="wardrobe-quick-slots">${slots}</div>
       </div>
       <div class="wardrobe-section">
-        <div class="wardrobe-heading"><strong>👕 캐릭터 꾸미기</strong><small>보관함에서 장착 · ×로 벗기기</small></div>
+        <div class="wardrobe-heading"><strong>🪖 기능성 보호 장비</strong><small>보관함에서 장착 · ×로 벗기기</small></div>
         <div class="wardrobe-gear-slots">${gear}</div>
       </div>
       <div class="wardrobe-section">
@@ -1106,13 +1109,12 @@
   function shopPanelHTML(prof,fmt){
     const items=sys.ITEM_CATALOG;
     const sectionDefs=[
-      {id:'characters',label:'캐릭터',mark:'✦'},
       {id:'skins',label:'스킨',mark:'✧'},
       {id:'gear',label:'장비',mark:'⛨'},
       {id:'items',label:'아이템',mark:'✳'}
     ];
     const groups=marketTab==='gear'?
-      [{id:'helmet',label:'헬멧',desc:'머리 보호장비'},{id:'cape',label:'망토',desc:'외형 장비'},{id:'shoes',label:'신발',desc:'외형 장비'},{id:'pants',label:'바지',desc:'외형 장비'},{id:'top',label:'상의',desc:'외형 장비'}]:
+      [{id:'helmet',label:'헬멧',desc:'머리 보호장비'}]:
       marketTab==='items'?[{id:'bubble',label:'보호 버블',desc:'게임 중 사용'},{id:'drink',label:'능력 드링크',desc:'활력·침착 · 3등급'}]:[];
     const shown=items.filter(i=>i.kind===marketGroup);
     const chosen=items.find(i=>i.id===marketSelected);
@@ -1135,7 +1137,7 @@
        ${qty?'<span class="market-stock">'+(i.kind==='bubble'||i.kind==='drink'?'×'+qty:'보유')+'</span>':''}
        <span class="market-name">${esc(short)}</span><span class="market-price">${permanent?'구매 완료':coin(i.price)}</span></button>`;
     }).join('');
-    const cast=marketTab==='characters'?sys.CHARACTER_CATALOG.map(c=>
+    const cast=marketTab==='skins'?sys.skinsFor(prof.activeActor).map(c=>
       `<button type="button" class="market-character-card" data-market-character="${c.id}" aria-label="${esc(c.name)} 정보">
           <img src="${c.front}" ${c.starter?'data-starter-face="'+c.id+'"':''} alt="">
           <strong>${esc(c.name)}</strong>
@@ -1156,34 +1158,33 @@
         <button type="button" data-market-buy="${chosen.id}" ${permanent?'disabled':''}>${permanent?'보유 중':'구매하기'}</button></div></section></div>`;
     }else if(character){
       const owned=sys.ownsCharacter(character.id);
-      detail=`<div class="market-overlay"><button type="button" class="market-shade" data-market-close aria-label="캐릭터 상세 닫기"></button>
+      detail=`<div class="market-overlay"><button type="button" class="market-shade" data-market-close aria-label="스킨 상세 닫기"></button>
        <section class="market-detail" role="dialog" aria-modal="true" aria-label="${esc(character.name)} 상세"><span class="market-handle"></span>
        <button type="button" class="market-close" data-market-close aria-label="닫기">✕</button>
        <div class="market-detail-head"><span class="market-large-art"><img src="${character.front}" ${character.starter?'data-starter-face="'+character.id+'"':''} alt=""></span>
-       <div class="market-detail-title"><small>${character.starter?'무료 기본 캐릭터':'기존 원화 · 판매형'}</small>
+       <div class="market-detail-title"><small>${character.starter?'무료 기본 스킨':'기존 원화 · 탐험가 스킨'}</small>
        <strong>${esc(character.name)}</strong><b>최고속 ${statOf(character.id).speed}% · 감속 ${statOf(character.id).brake}%</b></div></div>
        <p class="market-guide">${character.starter?'안전모 없는 기본 복장(밝은 티셔츠·반바지·파란 슬리퍼·베이지 망토)이며 기존 캐릭터 원화를 참고한 전용 일러스트를 사용합니다.':
-         '기존 원화 모습을 그대로 보존한 판매형 캐릭터입니다. 최고속도 +3%p, 감속력 +2%p. 기존 사용자의 보유 권리는 유지됩니다.'}</p>
+         '같은 캐릭터의 탐험가 복장입니다. 전용 전신 원화와 모션을 사용하며 최고속도 +3%p, 감속력 +2%p. 구매 후 언제든 무료로 다시 장착할 수 있습니다.'}</p>
        <div class="market-detail-bottom"><span>${owned?'보유 중':'🪙 '+fmt(character.price)}</span>
-       ${owned?'<button type="button" data-market-go-character>캐릭터 화면</button>':
+       ${owned?'<button type="button" data-market-equip-skin="'+character.id+'" '+(character.id===prof.selectedCharacter?'disabled':'')+'>'+(character.id===prof.selectedCharacter?'장착 중':'장착하기')+'</button>':
          '<button type="button" data-market-buy-character="'+character.id+'">코인으로 구매</button>'}</div></section></div>`;
     }
-    const browsing=marketTab==='characters'?`<div class="market-character-grid">${cast}</div>`:
-      marketTab==='skins'?'<p class="market-empty">등록된 스킨이 아직 없습니다. 실제 상품이 만들어지면 이곳에 추가됩니다.</p>':
+    const browsing=marketTab==='skins'?`<div class="market-character-grid">${cast}</div>`:
       marketGroup?`<div class="market-subhead">${breadcrumb}<strong>${marketGroup==='bubble'?'보호 버블':marketGroup==='drink'?'능력 드링크':'헬멧'} <small>${shown.length}종</small></strong></div><div class="market-grid">${tiles}</div>`:
       `<div class="market-category-grid">${folders}</div>`;
-    return `<div class="market-root"><p class="market-eyebrow">HELL DROP · MARKET</p><div class="market-wallet"><span>보유 코인</span><strong>${coin(prof.coins)}</strong></div>
+    return `<div class="market-root"><p class="market-eyebrow">HELL DROP · MARKET</p><div class="market-wallet"><span>보유 코인${sys.TEST_MODE?' · TEST':''}</span><strong>${coin(prof.coins)}</strong></div>
       <nav class="market-main-tabs" aria-label="상점 대분류">${menu}</nav>
       <div class="market-count"><strong>${sectionDefs.find(x=>x.id===marketTab)?.label||'상점'}</strong><span>${marketGroup?'상품을 눌러 상세보기':'종류를 선택해 펼쳐보세요'}</span></div>
       ${browsing}<div class="market-footer">구매 후 캐릭터 보관함에서 장착할 수 있어요.</div>${detail}</div>`;
   }
   function switchWardrobeCharacter(delta,indexOverride=null){
-    const chars=sys.CHARACTER_CATALOG;
+    const chars=sys.skinsFor(sys.profile.activeActor);
     const pos=chars.findIndex(c=>c.id===sys.profile.selectedCharacter);
     const next=indexOverride!==null?indexOverride:(pos+delta+chars.length)%chars.length;
     const target=chars[next];if(!target)return;
     if(!sys.selectCharacter(target.id)){
-      openPanel('character',target.name+'은(는) 상점에서 구매한 뒤 선택할 수 있어요.');return;
+      marketTab='skins';marketGroup=null;marketSelected=null;marketCharacter=target.id;openPanel('shop',target.name+'은(는) 구매 후 장착할 수 있어요.');return;
     }
     wardrobePending=null;syncLobbyCharacter();openPanel('character');
   }
@@ -1202,14 +1203,17 @@
   }
   function mountWardrobeControls(){
     const body=$('drawerBody'),carousel=$('wardrobeCarousel');
+    body.querySelectorAll('[data-test-actor]').forEach(b=>b.addEventListener('click',()=>{
+      if(sys.selectActor(b.dataset.testActor)){wardrobePending=null;syncLobbyCharacter();updateUI();openPanel('character');}
+    }));
     body.querySelectorAll('[data-character-pick]').forEach(button=>button.addEventListener('click',()=>{
       const id=button.dataset.characterPick,actor=sys.CHARACTER_CATALOG.find(c=>c.id===id);
       if(!actor)return;
       if(sys.ownsCharacter(id)){
         wardrobePending=null;sys.selectCharacter(id);syncLobbyCharacter();openPanel('character');
       }else{
-        marketTab='characters';marketGroup=null;marketSelected=null;marketCharacter=id;
-        openPanel('shop',actor.name+' 캐릭터는 코인 구매 후 사용할 수 있어요.');
+        marketTab='skins';marketGroup=null;marketSelected=null;marketCharacter=id;
+        openPanel('shop',actor.name+' 스킨은 코인 구매 후 장착할 수 있어요.');
       }
     }));
     const worn=body.querySelector('[data-worn-portrait]');
@@ -1344,11 +1348,12 @@
       tile.addEventListener('pointercancel',()=>{drag?.ghost?.remove();drag=null;});
     });
   }
-  const titles={character:'캐릭터',shop:'상점',earn:'코인 획득소',records:'내 기록',settings:'설정'};
+  const titles={chooseActor:'캐릭터 선택',character:'캐릭터 · 스킨',shop:'상점',earn:'코인 획득소',records:'내 기록',settings:'설정'};
   function openPanel(type,notice=''){if(!titles[type])return;sys.audio.unlock();$('drawerTitle').textContent=titles[type];$('drawer').querySelector('.drawer-card').classList.toggle('is-market',type==='shop');
     const prof=sys.profile,prog=sys.levelProgress(prof.totalDepth),fmt=n=>Number(n).toLocaleString('ko-KR');
     let html='';
-    if(type==='character')html=characterPanelHTML(prof,prog,fmt);
+    if(type==='chooseActor')html=`<div class="actor-onboarding"><p>함께 지옥을 탐험할 캐릭터를 선택하세요.</p><div class="starter-pick-grid">${sys.ACTOR_CATALOG.map(a=>{const c=sys.SKIN_CATALOG.find(x=>x.id===a.base);return '<button class="actor-onboard-card" type="button" data-initial-actor="'+a.id+'"><img src="'+c.front+'" alt=""><strong>'+a.name+(a.id==='uiji'?' (남)':' (여)')+'</strong><small>무료 기본 복장</small></button>'}).join('')}</div><p class="muted">${sys.TEST_MODE?'테스트용: 이후 캐릭터 메뉴에서 남녀 전환 가능 · 코인 1,000개로 구매 시험':'최초 선택한 캐릭터로 계속 성장합니다.'}</p></div>`;
+    else if(type==='character')html=characterPanelHTML(prof,prog,fmt);
     else if(type==='shop')html=shopPanelHTML(prof,fmt);
     else if(type==='earn')html=`<div class="banner">🪙 현재 코인 <b>${fmt(prof.coins)}</b><br><small>게임 중 수집 · 누적 레벨업 · 선택형 광고 · 코인 구매</small></div><div class="info-card"><strong>무료로 얻기</strong>게임에서 코인 줍기 / 누적 낙하로 레벨업</div><div class="info-card"><strong>▶ 보상형 광고</strong><span class="muted">광고 서비스 연동 전이어서 현재 시청·코인 지급을 사용할 수 없어.</span></div><div class="info-card"><strong>코인 구매</strong><span class="muted">현금 결제는 추후 설계·심사 후 연결할 예정이야. 현재 결제 기능 없음.</span></div>`;
     else if(type==='records')html=`<div class="banner">🏆 최고 낙하 <b>${fmt(Math.floor(best))}m</b></div><div class="info-card"><strong>누적 낙하</strong>${fmt(prof.totalDepth)}m · Lv.${prof.level}<br><span class="muted">다음 레벨까지 ${fmt(prog.next-prog.within)}m</span></div><div class="info-card"><strong>플레이 횟수</strong>${fmt(prof.runs)}판 완료</div><div class="info-card"><strong>획득 코인 기록</strong>게임에서 수집 ${fmt(prof.worldCoins)}코인 · 현재 보유 ${fmt(prof.coins)}코인</div>`;
@@ -1374,6 +1379,11 @@
     }
     $('drawerBody').innerHTML=(notice?'<div class="shop-notice" role="status">'+esc(notice)+'</div>':'')+html;
     $('drawer').classList.remove('hidden');
+    $('drawerClose').disabled=type==='chooseActor'&&!prof.identityChosen;
+    if(type==='chooseActor')$('drawerBody').querySelectorAll('[data-initial-actor]').forEach(b=>b.addEventListener('click',()=>{
+      if(sys.selectActor(b.dataset.initialActor)){syncLobbyCharacter();updateUI();closePanel();}
+      else openPanel('chooseActor','저장 실패 · 다시 선택해 주세요.');
+    }));
     window.HellStarterSkin?.refreshPreviews($('drawerBody'));
     if(type==='character')mountWardrobeControls();
     if(type==='shop'){
@@ -1393,6 +1403,10 @@
       }));
       $('drawerBody').querySelectorAll('[data-market-character]').forEach(b=>b.addEventListener('click',()=>{
         marketCharacter=b.dataset.marketCharacter;marketSelected=null;redraw();
+      }));
+      $('drawerBody').querySelectorAll('[data-market-equip-skin]').forEach(b=>b.addEventListener('click',()=>{
+        if(sys.equipSkin(b.dataset.marketEquipSkin)){syncLobbyCharacter();updateUI();redraw('스킨 장착 완료 · 추가 코인 차감 없음');}
+        else redraw('장착할 수 없는 스킨입니다.');
       }));
       $('drawerBody').querySelectorAll('[data-market-go-character]').forEach(b=>b.addEventListener('click',()=>{
         marketCharacter=null;openPanel('character');
@@ -1449,6 +1463,8 @@
   }
   document.querySelectorAll('[data-panel]').forEach(button=>button.addEventListener('click',()=>{if(button.dataset.panel==='shop'){marketTab='items';marketGroup=null;marketSelected=null;marketCharacter=null;}openPanel(button.dataset.panel);}));
   function closePanel(){
+    if(!sys.profile.identityChosen){openPanel('chooseActor');return;}
+    $('drawerClose').disabled=false;
     $('drawer').classList.add('hidden');
     sys.audio.stopPreview();
   }
@@ -1469,6 +1485,7 @@
     embers.appendChild(frag);
   })();
   applyControlSide();fit();updateUI();requestAnimationFrame(frame);
+  if(!sys.profile.identityChosen)openPanel('chooseActor');
   // Expose read-only simple debug state for local test harnesses, never gameplay rewards.
   window.HellFallTest={snapshot:()=>({stage:s.stage,depth:s.depth,speed:s.speed,timeLeft:s.timeLeft,wall:s.wall,hopProgress:s.hopProgress,hopVisual:s.hopVisual,boost:s.boost,fold:s.fold,cadence:s.cadence,tapCount:s.tapCount,runCoins:s.runCoins,hazards:s.obstacles.length,gates:s.timeGates.length,checkpoints:s.checkpointGates.length,checkpointFlash:s.checkpointFlash,lastCheckpointBonus:s.lastCheckpointBonus,boostSide:sys.profile.settings.boostSide,bubbleLeft:s.bubbleLeft,helmetCharges:s.helmetCharges,helmetId:s.helmetId,shieldFlash:s.shieldFlash,quickSlots:s.quickSlots.slice(),poseFrames:window.HellStarterPoses?.getCachedCount()||0,drinks:{speed:{...s.drinks.speed},brake:{...s.drinks.brake}},stats:effectiveStats(),character:sys.profile.selectedCharacter,profile:{...sys.profile}}),start:()=>start(false)};
 })();

@@ -2,7 +2,10 @@
 /* HELL FALL v0.4 — stable local progress and detachable soundtrack slots.
    Catalog & paid/rewarded ad connections intentionally disabled until implemented. */
 (function(){
-  const KEY='hell_fall_profile_v1';
+  // Only the build-time flag enables the two-actor test wallet. Production has a separate storage namespace.
+  const TEST_MODE=true,LEGACY_KEY='hell_fall_profile_v1';
+  const KEY=TEST_MODE?'hell_fall_skin_test_v30':'hell_fall_skin_release_v1';
+  const ACTOR_CATALOG=[{id:'uiji',name:'우지',base:'starter_boy'},{id:'useoi',name:'우서',base:'starter_girl'}];
   const DEFAULT_MUSIC=.20; // 20% default; real output controlled by Web Audio GainNode.
   // Original arrangements from the user's Rhythm Game Lab / shared game-music library.
   // Local MP3s are loaded only when their zone is played; no external URL dependency.
@@ -19,11 +22,18 @@
   // Free starter portraits use approved complete-body game illustrations.
   // The premium Uiji/Useoi original artwork is immutable.
   const CHARACTER_CATALOG=[
-    {id:'starter_boy',name:'초보 탐험가 (남)',description:'무료 기본 캐릭터 · 최고속도 70% · 감속 70%',front:'assets/starter_boy_portrait_v29.webp',actor:'uiji',starter:true,price:0,speedBonus:0,brakeBonus:0,hasBack:false},
-    {id:'starter_girl',name:'초보 탐험가 (여)',description:'무료 기본 캐릭터 · 최고속도 70% · 감속 70%',front:'assets/starter_girl_portrait_v29.webp',actor:'useoi',starter:true,price:0,speedBonus:0,brakeBonus:0,hasBack:false},
-    {id:'useoi',name:'우서',description:'기존 원화 · 최고속도 +3%p · 감속 +2%p',front:'assets/hero_intro.webp',actor:'useoi',starter:false,price:240,speedBonus:3,brakeBonus:2,hasBack:true},
-    {id:'uiji',name:'우지',description:'기존 원화 · 최고속도 +3%p · 감속 +2%p',front:'assets/uiji_intro.webp',actor:'uiji',starter:false,price:240,speedBonus:3,brakeBonus:2,hasBack:false}
+    {id:'starter_boy',name:'우지 기본 복장',description:'무료 기본 스킨 · 최고속도 70% · 감속 70%',front:'assets/starter_boy_portrait_v29.webp',actor:'uiji',starter:true,price:0,speedBonus:0,brakeBonus:0,hasBack:false},
+    {id:'starter_girl',name:'우서 기본 복장',description:'무료 기본 스킨 · 최고속도 70% · 감속 70%',front:'assets/starter_girl_portrait_v29.webp',actor:'useoi',starter:true,price:0,speedBonus:0,brakeBonus:0,hasBack:false},
+    {id:'useoi',name:'우서 탐험가 스킨',description:'기존 원화 · 최고속도 +3%p · 감속 +2%p',front:'assets/hero_intro.webp',actor:'useoi',starter:false,price:100,speedBonus:3,brakeBonus:2,hasBack:true},
+    {id:'uiji',name:'우지 탐험가 스킨',description:'기존 원화 · 최고속도 +3%p · 감속 +2%p',front:'assets/uiji_intro.webp',actor:'uiji',starter:false,price:100,speedBonus:3,brakeBonus:2,hasBack:false}
   ];
+  // Rendering IDs are stable for existing art. Domain objects are two actors and four skins.
+  const SKIN_CATALOG=CHARACTER_CATALOG;
+  const actorOf=id=>SKIN_CATALOG.find(c=>c.id===id)?.actor;
+  const baseOf=actor=>ACTOR_CATALOG.find(a=>a.id===actor)?.base;
+  const validActor=id=>ACTOR_CATALOG.some(a=>a.id===id);
+  const actorName=id=>ACTOR_CATALOG.find(a=>a.id===id)?.name||'우지';
+  const skinsFor=actor=>SKIN_CATALOG.filter(c=>c.actor===actor);
   // Beta balance: the exact prices can be adjusted without changing saved purchases.
   const ITEM_CATALOG=[
     {id:'bubble_10',name:'노란 버블 보호막',kind:'bubble',price:20,seconds:10,color:'#ffe579',icon:'🟡',description:'플레이 중 사용하면 10초 보호'},
@@ -41,47 +51,59 @@
   ];
   const clamp=(v,a,b)=>Math.max(a,Math.min(b,Number.isFinite(+v)?+v:a));
   const int=(v)=>Math.max(0,Math.floor(Number(v)||0));
-  function newProfile(){return {coins:0,totalDepth:0,level:1,levelMigration:2,levelBaseDepth:0,levelBaseLevel:1,runs:0,worldCoins:0,inventory:[],selectedCharacter:'starter_boy',ownedCharacters:['starter_boy','starter_girl'],characterOwnershipRevision:1,equippedHelmet:null,armedBubble:null,wardrobes:{},consumables:{},settings:{music:DEFAULT_MUSIC,sfx:.32,boostSide:'left',musicDefaultRevision:2},claimed:[]};}
-  function load(){let obj={};try{obj=JSON.parse(localStorage.getItem(KEY)||'{}')||{}}catch(_){/* blocked */}
-    const p={...newProfile(),...obj};p.coins=int(p.coins);p.totalDepth=int(p.totalDepth);p.runs=int(p.runs);p.worldCoins=int(p.worldCoins);
+  function newProfile(){return {coins:TEST_MODE?1000:0,identityChosen:false,accountActor:null,activeActor:'uiji',equippedSkins:{uiji:'starter_boy',useoi:'starter_girl'},ownedSkins:['starter_boy','starter_girl'],skinRevision:1,totalDepth:0,level:1,levelMigration:2,levelBaseDepth:0,levelBaseLevel:1,runs:0,worldCoins:0,inventory:[],selectedCharacter:'starter_boy',ownedCharacters:['starter_boy','starter_girl'],characterOwnershipRevision:1,equippedHelmet:null,armedBubble:null,wardrobes:{},consumables:{},settings:{music:DEFAULT_MUSIC,sfx:.32,boostSide:'left',musicDefaultRevision:2},claimed:[]};}
+  function load(){let obj={},hasCurrent=false;
+    try{const raw=localStorage.getItem(KEY);hasCurrent=!!raw;
+      obj=JSON.parse(raw||(TEST_MODE?localStorage.getItem(LEGACY_KEY):null)||'{}')||{};
+    }catch(_){obj={};hasCurrent=false;}
+    const p={...newProfile(),...obj};
+    // First test migration gets an exact 1000-coin wallet and unpurchased test skins.
+    // The legacy key remains untouched, including prior balance and ownership.
+    p.coins=hasCurrent?int(p.coins):TEST_MODE?1000:0;p.totalDepth=int(p.totalDepth);p.runs=int(p.runs);p.worldCoins=int(p.worldCoins);
     p.inventory=Array.isArray(p.inventory)?p.inventory.filter(x=>typeof x==='string').slice(0,200):[];
     p.claimed=Array.isArray(p.claimed)?p.claimed.filter(x=>typeof x==='string').slice(0,200):[];
-    // Old installs had both heroes free. Grandfather them instead of
-    // silently locking a previously used character or removing saved gear.
     const granted=new Set(['starter_boy','starter_girl']);
-    if(Array.isArray(obj?.ownedCharacters))for(const id of obj.ownedCharacters)
-      if(CHARACTER_CATALOG.some(c=>c.id===id))granted.add(id);
-    if(Object.keys(obj).length>0&&!obj.characterOwnershipRevision){
-      granted.add('useoi');granted.add('uiji');
+    if(hasCurrent&&Array.isArray(obj.ownedSkins))for(const id of obj.ownedSkins)
+      if(SKIN_CATALOG.some(c=>c.id===id))granted.add(id);
+    p.ownedSkins=Array.from(granted);p.ownedCharacters=p.ownedSkins;
+    p.characterOwnershipRevision=1;p.skinRevision=1;
+    p.identityChosen=hasCurrent&&obj.identityChosen===true&&validActor(obj.accountActor);
+    p.accountActor=p.identityChosen?obj.accountActor:null;
+    p.activeActor=p.identityChosen?(TEST_MODE&&validActor(obj.activeActor)?obj.activeActor:p.accountActor):
+      (actorOf(obj.selectedCharacter)||'uiji');
+    p.equippedSkins={};
+    for(const a of ACTOR_CATALOG){
+      const prior=hasCurrent?obj.equippedSkins?.[a.id]:null;
+      p.equippedSkins[a.id]=granted.has(prior)&&actorOf(prior)===a.id?prior:a.base;
     }
-    p.ownedCharacters=Array.from(granted);
-    p.characterOwnershipRevision=1;
-    p.selectedCharacter=granted.has(obj?.selectedCharacter)?obj.selectedCharacter:'starter_boy';
+    p.selectedCharacter=p.equippedSkins[p.activeActor];
     p.equippedHelmet=ITEM_CATALOG.some(x=>x.id===obj?.equippedHelmet&&x.kind==='helmet'&&p.inventory.includes(x.id))?obj.equippedHelmet:null;
     p.consumables={};
     for(const item of ITEM_CATALOG.filter(x=>x.kind==='bubble'||x.kind==='drink')){
       const n=Number(obj?.consumables?.[item.id]);
       p.consumables[item.id]=Number.isFinite(n)?Math.max(0,Math.min(99,Math.floor(n))):0;
     }
-    // Wardrobes are stored per character. Ownership (quantities) remains global;
-    // equipping does NOT spend a consumable, only pressing its in-game button does.
-    // Move old armed bubble / worn helmet to the previously selected character once.
-    const legacyChar=p.selectedCharacter;
+    // Gear and quick slots belong to the actor, not the outfit.
+    // For old saves prefer the last active outfit, then the other outfit; the
+    // original per-outfit records still exist in the untouched legacy key.
+    const legacyChar=obj.selectedCharacter;
     p.wardrobes={};
-    for(const character of CHARACTER_CATALOG){
-      const old=obj?.wardrobes?.[character.id]||{};
+    for(const a of ACTOR_CATALOG){
+      const primary=actorOf(legacyChar)===a.id?legacyChar:a.base;
+      const old=hasCurrent?(obj.wardrobes?.[a.id]||{}):
+        (obj.wardrobes?.[primary]||obj.wardrobes?.[a.id]||obj.wardrobes?.[a.base]||{});
+      const secondary=hasCurrent?{}:(obj.wardrobes?.[primary===a.base?a.id:a.base]||{});
       const priorSlots=Array.isArray(old.quickSlots)?old.quickSlots:
-        (character.id===legacyChar&&Array.isArray(obj?.quickSlots)?obj.quickSlots:
-          (character.id===legacyChar?[obj?.armedBubble||null,null]:[null,null]));
+        (actorOf(legacyChar)===a.id&&Array.isArray(obj.quickSlots)?obj.quickSlots:[obj.armedBubble||null,null]);
       const quickSlots=[0,1].map(i=>{
-        const candidate=priorSlots[i];
+        const candidate=priorSlots[i]||secondary.quickSlots?.[i]||null;
         return ITEM_CATALOG.some(x=>x.id===candidate&&(x.kind==='bubble'||x.kind==='drink')&&p.consumables[x.id]>0)?candidate:null;
       });
-      const oldGear=old.gear||{};
-      const helmetCandidate=oldGear.helmet||(character.id===legacyChar?obj?.equippedHelmet:null);
+      if(quickSlots[0]&&quickSlots[0]===quickSlots[1]&&p.consumables[quickSlots[0]]<2)quickSlots[1]=null;
+      const helmetCandidate=old.gear?.helmet||secondary.gear?.helmet||(actorOf(legacyChar)===a.id?obj.equippedHelmet:null);
       const gear={helmet:null,cape:null,shoes:null,pants:null,top:null};
       if(ITEM_CATALOG.some(x=>x.id===helmetCandidate&&x.kind==='helmet'&&p.inventory.includes(x.id)))gear.helmet=helmetCandidate;
-      p.wardrobes[character.id]={quickSlots,gear};
+      p.wardrobes[a.id]={quickSlots,gear};
     }
     p.armedBubble=null;
     // Untouched old default 26%/7% -> new default 20%.
@@ -114,6 +136,7 @@
   }
   let profile=load();
   function save(){try{localStorage.setItem(KEY,JSON.stringify(profile));return true}catch(_){return false}}
+  save(); // Persist the one-time grant immediately, not on every reload.
   function legacyThreshold(level){const n=Math.max(0,level-1);return 2400+n*1700+n*n*190;}
   function legacyLevelFromDepth(distance){let lv=1,remain=int(distance);while(lv<1000&&remain>=legacyThreshold(lv)){remain-=legacyThreshold(lv);lv++;}return lv;}
   // New-player thresholds are intentionally substantially slower; retained
@@ -137,7 +160,7 @@
     profile.coins+=foundCoins+bonus;save();return {distance,foundCoins,bonus,levelUps:profile.level-old,level:profile.level,newBalance:profile.coins};
   }
   function wardrobeOf(characterId){
-    return profile.wardrobes[characterId]||null;
+    return profile.wardrobes[actorOf(characterId)||characterId]||null;
   }
   function purchase(id){
     const item=ITEM_CATALOG.find(x=>x.id===id);
@@ -145,6 +168,7 @@
     if(item.kind==='helmet'&&profile.inventory.includes(id))return {ok:false,reason:'이미 보유 중'};
     if((item.kind==='bubble'||item.kind==='drink')&&profile.consumables[id]>=99)return {ok:false,reason:'최대 99개까지 보관 가능'};
     if(profile.coins<item.price)return {ok:false,reason:'코인이 부족해요'};
+    const oldCoins=profile.coins,oldQty=profile.consumables[id]||0;
     profile.coins-=item.price;
     if(item.kind==='helmet'){
       profile.inventory.push(id);
@@ -152,25 +176,44 @@
       profile.consumables[id]=(profile.consumables[id]||0)+1;
     }
     // Purchasing only adds to the warehouse. It never auto-equips or activates.
-    save();return {ok:true,item,coins:profile.coins};
+    if(!save()){
+      profile.coins=oldCoins;
+      if(item.kind==='helmet')profile.inventory=profile.inventory.filter(x=>x!==id);
+      else profile.consumables[id]=oldQty;
+      return {ok:false,reason:'저장할 수 없어 구매를 취소했어요'};
+    }
+    return {ok:true,item,coins:profile.coins};
   }
-  function ownsCharacter(id){return profile.ownedCharacters.includes(id);}
-  function purchaseCharacter(id){
-    const hero=CHARACTER_CATALOG.find(c=>c.id===id);
-    if(!hero)return {ok:false,reason:'없는 캐릭터'};
-    if(ownsCharacter(id))return {ok:false,reason:'이미 보유 중'};
-    if(profile.coins<hero.price)return {ok:false,reason:'코인이 부족해요'};
-    profile.coins-=hero.price;profile.ownedCharacters.push(id);save();
-    return {ok:true,character:hero,coins:profile.coins};
+  function ownsSkin(id){return profile.ownedSkins.includes(id);}
+  function purchaseSkin(id){
+    const skin=SKIN_CATALOG.find(c=>c.id===id);
+    if(!profile.identityChosen||!skin||skin.actor!==profile.activeActor)return {ok:false,reason:'선택한 캐릭터의 스킨만 구매할 수 있어요'};
+    if(ownsSkin(id))return {ok:false,reason:'이미 보유 중'};
+    if(profile.coins<skin.price)return {ok:false,reason:'코인이 부족해요'};
+    const oldCoins=profile.coins;
+    profile.coins-=skin.price;profile.ownedSkins.push(id);
+    if(!save()){profile.coins=oldCoins;profile.ownedSkins.pop();return {ok:false,reason:'저장할 수 없어 구매를 취소했어요'};}
+    return {ok:true,skin,character:skin,coins:profile.coins};
   }
+  function selectActor(id){
+    if(!validActor(id)||(!TEST_MODE&&profile.identityChosen&&id!==profile.accountActor))return false;
+    const old={identityChosen:profile.identityChosen,accountActor:profile.accountActor,activeActor:profile.activeActor,selectedCharacter:profile.selectedCharacter};
+    if(!profile.identityChosen){profile.accountActor=id;profile.identityChosen=true;}
+    profile.activeActor=id;profile.selectedCharacter=profile.equippedSkins[id]||baseOf(id);
+    if(!save()){Object.assign(profile,old);return false;}return true;
+  }
+  function equipSkin(id){
+    if(!profile.identityChosen||!ownsSkin(id)||actorOf(id)!==profile.activeActor)return false;
+    const old=profile.selectedCharacter;
+    profile.selectedCharacter=id;profile.equippedSkins[profile.activeActor]=id;
+    if(!save()){profile.selectedCharacter=old;profile.equippedSkins[profile.activeActor]=old;return false;}return true;
+  }
+  const ownsCharacter=ownsSkin,purchaseCharacter=purchaseSkin;
   function characterStats(id){
     const hero=CHARACTER_CATALOG.find(c=>c.id===id)||CHARACTER_CATALOG[0];
     return {speed:70+(hero.speedBonus||0),brake:70+(hero.brakeBonus||0)};
   }
-  function selectCharacter(id){
-    if(!CHARACTER_CATALOG.some(c=>c.id===id)||!ownsCharacter(id))return false;
-    profile.selectedCharacter=id;save();return true;
-  }
+  const selectCharacter=equipSkin;
   function setCharacterSlot(characterId,index,itemId){
     const wardrobe=wardrobeOf(characterId);
     if(!wardrobe||!Number.isInteger(index)||index<0||index>1)return false;
@@ -324,5 +367,5 @@
   };
   // The actual reward provider must validate the completed impression before calling this.
   // No fake ad credits, real-money checkout, or automatic reward bypass exists in v0.4.
-  window.HellSystems={profile,save,setting,awardRun,levelProgress,levelFromDepth,threshold,CHARACTER_CATALOG,ITEM_CATALOG,MUSIC_SLOTS,audio,purchase,purchaseCharacter,ownsCharacter,characterStats,selectCharacter,wardrobeOf,setCharacterSlot,setCharacterGear,consumeCharacterSlot,equipHelmet,armBubble,startLoadout};
+  window.HellSystems={TEST_MODE,ACTOR_CATALOG,SKIN_CATALOG,actorName,skinsFor,selectActor,equipSkin,purchaseSkin,ownsSkin,profile,save,setting,awardRun,levelProgress,levelFromDepth,threshold,CHARACTER_CATALOG,ITEM_CATALOG,MUSIC_SLOTS,audio,purchase,purchaseCharacter,ownsCharacter,characterStats,selectCharacter,wardrobeOf,setCharacterSlot,setCharacterGear,consumeCharacterSlot,equipHelmet,armBubble,startLoadout};
 })();

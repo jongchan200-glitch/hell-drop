@@ -13,18 +13,19 @@ const fs=require('fs');
   }
   // Every check uses real mobile viewport, real game buttons and live physics.
   for(const [name,query,hero,index] of [
-    ['starter-boy','?v=nov27-face-motion29','starter_boy',0],
-    ['starter-girl','?v=nov27-face-motion29','starter_girl',1],
+    ['starter-boy','?v=nov27-skin30','starter_boy',0],
+    ['starter-girl','?v=nov27-skin30','starter_girl',1],
     ['premium-girl','?rig=1&keypose=1&starter=1&workrig=1&v=nov26-stats25','useoi',2]
   ]){
     await reset(query);
+    await page.locator('[data-initial-actor="'+(index===0?'uiji':'useoi')+'"]').click();
     const startStats=await page.evaluate(()=>({
       profile:window.HellSystems.profile,
       catalog:window.HellSystems.CHARACTER_CATALOG,
       items:window.HellSystems.ITEM_CATALOG
     }));
     if(startStats.items.filter(i=>i.kind==='drink').length!==6)throw Error('Missing six stat drinks');
-    if(startStats.catalog.length!==4)throw Error('Expected two starters and two original premium actors');
+    if(startStats.catalog.length!==4||startStats.profile.coins!==1000)throw Error('Expected four skins and exact test grant');
     if(index===0||index===1){
       await page.waitForFunction(()=>(document.getElementById('homeAvatar')?.src.includes('starter_')&&document.getElementById('homeAvatar')?.naturalWidth>100),{timeout:15000});
       const pre=await page.evaluate(()=>({
@@ -44,27 +45,24 @@ const fs=require('fs');
           transformed:document.querySelectorAll('.starter-pick-card img[src*="_portrait_v29.webp"]').length,
           starter:document.querySelector('[data-starter-face="starter_boy"]')?.src.includes('/assets/starter_boy_portrait_v29.webp')
         }));
-        if(chooser.count!==4||chooser.transformed!==2||!chooser.starter)throw Error('Character cards visually stale '+JSON.stringify(chooser));
+        if(chooser.count!==2||chooser.transformed!==1||!chooser.starter)throw Error('Character cards visually stale '+JSON.stringify(chooser));
         await page.screenshot({path:'qa-shot-starter-choice.jpg',type:'jpeg',quality:65});
         console.log('QAIMAGE_STARTER_CHOICE='+fs.readFileSync('qa-shot-starter-choice.jpg').toString('base64'));
         await page.locator('#drawerClose').click();
       }
     }
-    if(index!==0){
-      if(index===2)await page.evaluate(()=>{
-        const sys=window.HellSystems;sys.profile.coins=1000;
-        const purchased=sys.purchaseCharacter('useoi');
-        if(!purchased.ok)throw Error('Premium purchase failed: '+purchased.reason);
-      });
+    if(index===2){
       await page.locator('[data-panel="character"]').first().click();
-      await page.locator('[data-character-index="'+index+'"]').click();
+      await page.locator('[data-character-pick="useoi"]').click();
+      await page.locator('[data-market-buy-character="useoi"]').click();
+      await page.locator('[data-market-equip-skin="useoi"]').click();
       await page.locator('#drawerClose').click();
     }
     const selected=await page.evaluate(()=>window.HellFallTest.snapshot().character);
     if(selected!==hero)throw Error('Character selected '+selected+' expected '+hero);
     if(index===0){
       const stocked=await page.evaluate(()=>{
-        const sys=window.HellSystems;sys.profile.coins=1000;
+        const sys=window.HellSystems;
         const a=sys.purchase('vitality_5'),b=sys.purchase('calm_10');
         const x=sys.setCharacterSlot('starter_boy',0,'vitality_5');
         const y=sys.setCharacterSlot('starter_boy',1,'calm_10');
@@ -157,28 +155,53 @@ const fs=require('fs');
       console.log('QADOUBLE_KICK_'+name.toUpperCase().replace(/-/g,'_')+'='+JSON.stringify({first:firstHop.wall,returned:second.wall}));
     }
   }
-  await reset('?v=nov27-face-motion29');
-  const fresh=await page.evaluate(()=>window.HellSystems.selectCharacter('useoi'));
-  if(fresh!==false)throw Error('Premium hero accessible without purchase');
-  // Old versions shipped two free original heroes: do not remove them from
-  // existing accounts after migration.
-  await page.evaluate(()=>{
-    localStorage.setItem('hell_fall_profile_v1',JSON.stringify({
-      selectedCharacter:'useoi',coins:42,runs:4,totalDepth:5000,
-      inventory:['helmet_basic'],
-      wardrobes:{useoi:{quickSlots:[null,null],gear:{helmet:'helmet_basic'}}}
-    }));
-  });
+  // Actual UI purchase test, same shared test wallet across both actors.
+  await reset('?v=nov27-skin30');
+  await page.screenshot({path:'qa-shot-actor-onboarding.jpg',type:'jpeg',quality:65});
+  console.log('QAIMAGE_ACTOR_ONBOARDING='+fs.readFileSync('qa-shot-actor-onboarding.jpg').toString('base64'));
+  await page.locator('[data-initial-actor="uiji"]').click();
+  if(await page.evaluate(()=>window.HellSystems.equipSkin('uiji')))throw Error('Unowned skin equipped');
+  async function buyAndEquip(id){
+    await page.locator('[data-character-pick="'+id+'"]').click();
+    await page.locator('[data-market-buy-character="'+id+'"]').click();
+    await page.locator('[data-market-equip-skin="'+id+'"]').click();
+    await page.locator('#drawerClose').click();
+  }
+  await page.locator('[data-panel="character"]').first().click();
+  await buyAndEquip('uiji');
+  let p=await page.evaluate(()=>window.HellSystems.profile);
+  if(p.coins!==900||p.selectedCharacter!=='uiji'||p.accountActor!=='uiji')throw Error('Male purchase failed '+JSON.stringify(p));
+  await page.locator('[data-panel="character"]').first().click();
+  await page.locator('[data-test-actor="useoi"]').click();
+  await buyAndEquip('useoi');
+  p=await page.evaluate(()=>window.HellSystems.profile);
+  if(p.coins!==800||p.selectedCharacter!=='useoi'||p.accountActor!=='uiji')throw Error('Female purchase/shared wallet failed');
+  await page.locator('[data-panel="character"]').first().click();
+  await page.locator('[data-test-actor="uiji"]').click();
+  await page.locator('[data-character-pick="starter_boy"]').click();
+  await page.locator('[data-character-pick="uiji"]').click();
+  await page.locator('#drawerClose').click();
+  await page.locator('[data-panel="shop"]').first().click();
+  await page.locator('[data-market-group="bubble"]').click();
+  await page.locator('[data-market-item="bubble_10"]').click();
+  await page.locator('[data-market-buy="bubble_10"]').click();
+  await page.screenshot({path:'qa-shot-skin-wallet.jpg',type:'jpeg',quality:65});
+  console.log('QAIMAGE_SKIN_WALLET='+fs.readFileSync('qa-shot-skin-wallet.jpg').toString('base64'));
+  p=await page.evaluate(()=>window.HellSystems.profile);
+  if(p.coins!==780||p.consumables.bubble_10!==1)throw Error('Item deduction mismatch');
+  const duplicate=await page.evaluate(()=>window.HellSystems.purchaseSkin('uiji'));
+  if(duplicate.ok)throw Error('Duplicate skin purchase');
   await page.reload({waitUntil:'domcontentloaded'});
-  const migrated=await page.evaluate(()=>({
-    owned:window.HellSystems.profile.ownedCharacters,
-    selected:window.HellSystems.profile.selectedCharacter,
-    helmet:window.HellSystems.wardrobeOf('useoi').gear.helmet,
-    coins:window.HellSystems.profile.coins
-  }));
-  if(migrated.selected!=='useoi'||!migrated.owned.includes('useoi')||!migrated.owned.includes('uiji')||migrated.helmet!=='helmet_basic'||migrated.coins!==42)
-    throw Error('Old saved account migration failed '+JSON.stringify(migrated));
-  console.log('QAMIGRATION='+JSON.stringify(migrated));
+  await page.waitForFunction(()=>!!window.HellFallTest);
+  p=await page.evaluate(()=>window.HellSystems.profile);
+  if(p.coins!==780||p.selectedCharacter!=='uiji'||p.accountActor!=='uiji'||p.equippedSkins.useoi!=='useoi'||p.ownedSkins.length!==4||p.consumables.bubble_10!==1)throw Error('Persistent wallet/skins/actor failed '+JSON.stringify(p));
+  console.log('QAWALLET='+JSON.stringify({coins:p.coins,owned:p.ownedSkins,active:p.activeActor,equipped:p.equippedSkins,bubble:p.consumables.bubble_10}));
+  await page.evaluate(()=>{localStorage.clear();localStorage.setItem('hell_fall_profile_v1',JSON.stringify({selectedCharacter:'useoi',coins:42,runs:4,totalDepth:5000,inventory:['helmet_basic'],wardrobes:{useoi:{quickSlots:[null,null],gear:{helmet:'helmet_basic'}}}}));});
+  await page.reload({waitUntil:'domcontentloaded'});
+  await page.locator('[data-initial-actor="useoi"]').click();
+  const migrated=await page.evaluate(()=>({p:window.HellSystems.profile,old:JSON.parse(localStorage.getItem('hell_fall_profile_v1')),helmet:window.HellSystems.wardrobeOf('starter_girl').gear.helmet}));
+  if(migrated.p.coins!==1000||migrated.p.selectedCharacter!=='starter_girl'||migrated.p.ownedSkins.length!==2||migrated.p.runs!==4||migrated.p.totalDepth!==5000||migrated.helmet!=='helmet_basic'||migrated.old.coins!==42)throw Error('Legacy migration failed '+JSON.stringify(migrated));
+  console.log('QAMIGRATION_TEST='+JSON.stringify({coins:migrated.p.coins,legacyCoins:migrated.old.coins,runs:migrated.p.runs,helmet:migrated.helmet}));
   if(errors.length)throw Error('Browser JS errors: '+JSON.stringify(errors.slice(0,12)));
   await browser.close();console.log('QA_PASS_STAT_DRINK_STARTER');
 })().catch(e=>{console.error(e);process.exit(1)});

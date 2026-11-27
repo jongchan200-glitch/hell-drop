@@ -575,3 +575,6 @@ html,body{height:100%;overflow:hidden}
  .character-traits{bottom:60px;padding:5px 7px}
  .character-traits strong{font-size:9px}
 }
+
+/* WEB 3.0 actor identity and skin wardrobe */
+.market-main-tabs{grid-template-columns:repeat(3,minmax(0,1fr))}.actor-test-box{border:1px solid #d3b78965;border-radius:14px;padding:10px;background:#172333}.actor-choice-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}.actor-choice-row button,.actor-onboard-card{border:1px solid #b99a6b80;border-radius:12px;background:#252c3b;color:#ffe7bb;padding:12px;cursor:pointer;font-weight:800}.actor-choice-row button[aria-pressed=true]{border:2px solid #71e3c7;background:#24564f;color:#c7fff2}.actor-onboarding{display:grid;gap:14px;text-align:center;padding:8px 0}.actor-onboard-card{display:flex;flex-direction:column;align-items:center;gap:8px;min-width:0}.actor-onboard-card img{width:100%;height:190px;object-fit:contain}.actor-onboard-card small{font-size:11px;color:#cbd4cd}#drawerClose:disabled{opacity:.35;pointer-events:none}
