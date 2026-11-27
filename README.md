@@ -8,3 +8,7 @@
 - 이전 저장 키 및 기존 WEB 3.0 테스트 지갑 그대로 유지.
 
 - 윙슈트 남녀 200코인, 최고속 76%·감속 75% 임시. 동일 본체 전신 원화 3동작, 기존 저장 키 유지.
+
+
+## WEB 3.3
+See [BALANCE_RPG33.md](BALANCE_RPG33.md) for the latest runtime and validation settings.

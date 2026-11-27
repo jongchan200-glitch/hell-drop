@@ -1,251 +1,154 @@
 'use strict';
+const assert=require('node:assert/strict');
 const {chromium}=require('playwright');
 const fs=require('fs');
+const B=require('../../balance.js');
+const profiles=[
+ ['basic_lines',{clockRate:0}],['basic_half',{clockRate:.5}],['basic_all',{}],
+ ['explorer',{speed:73}],['wing_dragon',{speed:78}],
+ ['wing_dragon_vitality',{speed:88}],['no_pet',{speed:86,timeBonus:15}],
+ ['mid_time',{speed:88,timeBonus:10}],['max',{speed:88,timeBonus:15}]
+];
+const balance=Object.fromEntries(profiles.map(([k,p])=>[k,B.simulateIdeal(p)]));
+console.log('QABALANCE='+JSON.stringify(balance));
+assert(balance.basic_lines.depth>=21000&&balance.basic_lines.depth<28500);
+assert(balance.basic_all.depth<28500&&balance.basic_all.depth>balance.basic_half.depth);
+assert(balance.wing_dragon.depth>=28500&&balance.wing_dragon.depth<36500);
+assert(balance.wing_dragon_vitality.depth>=36500&&!balance.wing_dragon_vitality.won);
+assert(!balance.no_pet.won&&!balance.mid_time.won);
+assert(balance.max.won&&balance.max.seconds>=300&&balance.max.seconds<=420&&balance.max.remaining>0);
 (async()=>{
-  const browser=await chromium.launch({channel:'chrome',headless:true,args:['--no-sandbox']});
-  const page=await browser.newPage({viewport:{width:390,height:844},deviceScaleFactor:1,isMobile:true,hasTouch:true});
-  const errors=[];page.on('pageerror',e=>errors.push(e.message));
-  async function reset(url){
-    await page.goto('http://127.0.0.1:8765/'+url,{waitUntil:'domcontentloaded',timeout:30000});
-    await page.evaluate(()=>localStorage.clear());
-    await page.reload({waitUntil:'domcontentloaded'});
-    await page.waitForFunction(()=>!!window.HellFallTest,{timeout:15000});
-  }
-  // Every check uses real mobile viewport, real game buttons and live physics.
-  for(const [name,query,hero,index] of [
-    ['starter-boy','?v=nov27-wing32','starter_boy',0],
-    ['starter-girl','?v=nov27-wing32','starter_girl',1],
-    ['premium-girl','?rig=1&keypose=1&starter=1&workrig=1&v=nov27-wing32','useoi',2],
-    ['premium-boy','?v=nov27-wing32','uiji',3],
-    ['wing-boy','?v=nov27-wing32','wingsuit_boy',4],
-    ['wing-girl','?v=nov27-wing32','wingsuit_girl',5]
-  ]){
-    await reset(query);
-    await page.locator('[data-initial-actor="'+((index===0||index===3||index===4)?'uiji':'useoi')+'"]').click();
-    const startStats=await page.evaluate(()=>({
-      profile:window.HellSystems.profile,
-      catalog:window.HellSystems.CHARACTER_CATALOG,
-      items:window.HellSystems.ITEM_CATALOG
-    }));
-    if(startStats.items.filter(i=>i.kind==='drink').length!==6)throw Error('Missing six stat drinks');
-    if(startStats.catalog.length!==6||startStats.profile.coins!==1000)throw Error('Expected six skins and exact test grant');
-    if(index===0||index===1){
-      await page.waitForFunction(()=>{const i=document.getElementById('lobbyHero');return i?.src.includes('starter_')&&!i.hidden&&i.naturalWidth>100},{timeout:15000});
-      const pre=await page.evaluate(()=>({
-        home:/\/assets\/starter_(boy|girl)_portrait_v29\.webp/.test(document.getElementById('homeAvatar').src),
-        showcase:/\/assets\/starter_(boy|girl)_portrait_v29\.webp/.test(document.querySelector('.turnaround-pose.is-selected')?.src||''),
-        stats:document.querySelector('#lobbyTraits')?.textContent,
-        assetReady:document.querySelectorAll('#lobbyCharacter img').length===1&&document.querySelectorAll('#lobbyCharacter canvas').length===0
-      }));
-      if(!pre.home||!pre.showcase||!pre.assetReady)throw Error('Starter lobby illustration not replaced '+JSON.stringify(pre));
-      if(index===0){
-        await page.screenshot({path:'qa-shot-starter-home.jpg',type:'jpeg',quality:65});
-        console.log('QAIMAGE_STARTER_HOME='+fs.readFileSync('qa-shot-starter-home.jpg').toString('base64'));
-        await page.locator('[data-panel="character"]').first().click();
-        await page.waitForFunction(()=>[...document.querySelectorAll('.starter-pick-card [data-starter-face]')].every(i=>i.src.includes('_portrait_v29.webp')&&i.naturalWidth>100),{timeout:15000});
-        const chooser=await page.evaluate(()=>({
-          count:document.querySelectorAll('.starter-pick-card').length,
-          transformed:document.querySelectorAll('.starter-pick-card img[src*="_portrait_v29.webp"]').length,
-          starter:document.querySelector('[data-starter-face="starter_boy"]')?.src.includes('/assets/starter_boy_portrait_v29.webp')
-        }));
-        if(chooser.count!==3||chooser.transformed!==1||!chooser.starter)throw Error('Character cards visually stale '+JSON.stringify(chooser));
-        await page.screenshot({path:'qa-shot-starter-choice.jpg',type:'jpeg',quality:65});
-        console.log('QAIMAGE_STARTER_CHOICE='+fs.readFileSync('qa-shot-starter-choice.jpg').toString('base64'));
-        await page.locator('#drawerClose').click();
-      }
-    }
-    if(index>=2){
-      await page.locator('[data-panel="character"]').first().click();
-      await page.locator('[data-character-pick="'+hero+'"]').click();
-      await page.locator('[data-market-buy-character="'+hero+'"]').click();
-      await page.locator('[data-market-equip-skin="'+hero+'"]').click();
-      await page.locator('#drawerClose').click();
-    }
-    if(index===2){
-      await page.waitForFunction(()=>document.querySelector('#lobbyHero')?.src.endsWith('/hero_intro.webp')&&!document.querySelector('#lobbyHero').hidden);
-      await page.locator('#lobbyCharacter').focus();
-      await page.keyboard.press('ArrowRight');
-      await page.waitForFunction(()=>document.querySelector('#lobbyHero')?.src.endsWith('/hero_back_fixed.webp')&&!document.querySelector('#lobbyHero').hidden);
-      await page.keyboard.press('ArrowLeft');
-      await page.waitForFunction(()=>document.querySelector('#lobbyHero')?.src.endsWith('/hero_intro.webp')&&!document.querySelector('#lobbyHero').hidden);
-    }
-    const selected=await page.evaluate(()=>window.HellFallTest.snapshot().character);
-    if(selected!==hero)throw Error('Character selected '+selected+' expected '+hero);
-    if(index===0){
-      const stocked=await page.evaluate(()=>{
-        const sys=window.HellSystems;
-        const a=sys.purchase('vitality_5'),b=sys.purchase('calm_10');
-        const x=sys.setCharacterSlot('starter_boy',0,'vitality_5');
-        const y=sys.setCharacterSlot('starter_boy',1,'calm_10');
-        return {a:a.ok,b:b.ok,x,y,coins:sys.profile.coins};
-      });
-      if(!stocked.a||!stocked.b||!stocked.x||!stocked.y)throw Error('Drink purchase/equip failed '+JSON.stringify(stocked));
-    }
-    if(index<2||index>=4){
-      await page.waitForFunction(
-        actor=>window.HellStarterPoses?.ready?.(actor),
-        hero,{timeout:12000}
-      );
-      const art=await page.evaluate(()=>window.HellStarterPoses?.status());
-      if(!(await page.evaluate(()=>window.HellStarterPoses?.usesWholeBodyArt)))throw Error('Rejected vector body renderer still active');
-      if(!art?.ready?.[hero])throw Error('Missing complete-body approved art '+JSON.stringify(art));
-      console.log('QAART_'+name.toUpperCase().replace(/-/g,'_')+'='+JSON.stringify(art));
-    }
-    await page.locator('#start').click();await page.waitForTimeout(320);
-    const before=await page.evaluate(()=>window.HellFallTest.snapshot());
-    if(before.stage!=='PLAYING')throw Error('Game did not launch '+JSON.stringify(before.stage));
-    if(before.character!==hero)throw Error('Run hero mismatch');
-    if(index===0){
-      await page.evaluate(()=>window.HellPlatform.setNativePaused(true));
-      const paused=await page.evaluate(()=>window.HellFallTest.snapshot().depth);
-      await page.waitForTimeout(250);
-      const still=await page.evaluate(()=>window.HellFallTest.snapshot().depth);
-      if(paused!==still)throw Error('Native pause advanced physics');
-      await page.evaluate(()=>window.HellPlatform.setNativePaused(false));
-    }
-    const rig=await page.evaluate(()=>({
-      workRig:!!window.HellWorkRig,keypose:!!window.HellKeypose,
-      starterKit:!!window.HellStarterKit,rigV2:!!window.HellRigV2,
-      links:document.querySelectorAll('#keyposeGameEntry,#starterOutfitEntry,.work-rig-entry').length
-    }));
-    if(Object.values(rig).some(Boolean))throw Error('Deprecated Work renderer still present '+JSON.stringify(rig));
-    if(index===0){
-      await page.locator('#quickItem0').tap();await page.locator('#quickItem1').tap();
-      const active=await page.evaluate(()=>window.HellFallTest.snapshot());
-      if(active.stats.speed!==75||active.stats.brake!==80)throw Error('Drinks did not stack independently '+JSON.stringify(active.stats));
-      if(active.drinks.speed.left<=0||active.drinks.brake.left<=0)throw Error('Drink timers missing');
-      if(active.profile.consumables.vitality_5!==0||active.profile.consumables.calm_10!==0)throw Error('Drink consumption not persistent');
-      console.log('QADRINKS='+JSON.stringify({stats:active.stats,drink:active.drinks,consumed:true}));
-    }
-    if((index===2||index===3) && (before.stats.speed!==73||before.stats.brake!==72))throw Error('Premium stats wrong '+JSON.stringify(before.stats));
-    if(index>=4){
-      if(before.stats.speed!==76||before.stats.brake!==75||before.profile.coins!==800)throw Error('Wing stats/price wrong');
-      if(await page.locator('#boost strong').textContent()!=='급강하')throw Error('Wing boost label wrong');
-    }
-    if(index<2||index>=4){
-      await page.screenshot({path:'qa-shot-'+name+'-glide.jpg',type:'jpeg',quality:60});
-      console.log('QAIMAGE_GLIDE_'+name.toUpperCase().replace(/-/g,'_')+'='+fs.readFileSync('qa-shot-'+name+'-glide.jpg').toString('base64'));
-      // Real browser thumb events: five successive taps must accelerate,
-      // followed by two distinct wall hops. Previous QA only tested one hop.
-      const initial=await page.evaluate(()=>window.HellFallTest.snapshot());
-      for(let n=0;n<5;n++){
-        await page.locator('#boost').tap();
-        await page.waitForTimeout(160);
-      }
-      const boosted=await page.evaluate(()=>window.HellFallTest.snapshot());
-      if(boosted.tapCount-initial.tapCount<5)throw Error('Galaxy acceleration button dropped taps '+JSON.stringify({before:initial.tapCount,after:boosted.tapCount}));
-      if(boosted.boost<.08)throw Error('Rapid thumb tapping did not accelerate '+JSON.stringify({boost:boosted.boost,speed:boosted.speed}));
-      if(boosted.poseFrames<1)throw Error('Starter action atlas was not drawn');
-      const anim=await page.evaluate(()=>window.HellStarterPoses.status());
-      if(anim.lastPose!=='fast'||anim.lastHero!==hero)throw Error('After acceleration the complete-body fast pose did not appear '+JSON.stringify(anim));
-      console.log('QATOUCH_'+name.toUpperCase().replace(/-/g,'_')+'='+JSON.stringify({
-        taps:boosted.tapCount,boost:boosted.boost,speed:boosted.speed,frames:boosted.poseFrames
-      }));
-      await page.screenshot({path:'qa-shot-'+name+'-boost.jpg',quality:55,type:'jpeg'});
-      console.log('QAIMAGE_BOOST_'+name.toUpperCase().replace(/-/g,'_')+'='+fs.readFileSync('qa-shot-'+name+'-boost.jpg').toString('base64'));
-    }
-    const shot='qa-shot-'+name+'.jpg';
-    await page.screenshot({path:shot,type:'jpeg',quality:50});
-    console.log('QAINFO_'+name.toUpperCase().replace(/-/g,'_')+'='+JSON.stringify({
-      stage:before.stage,hero:before.character,stats:before.stats,starter:index<2,rig
-    }));
-    console.log('QAIMAGE_'+name.toUpperCase().replace(/-/g,'_')+'='+fs.readFileSync(shot).toString('base64'));
-    // Start a separate fresh run for jump testing, before the first obstacle.
-    // The accelerated screenshot sequence may already reach collision depth.
-    await page.evaluate(()=>window.HellFallTest.start());
-    await page.waitForTimeout(150);
-    const jumpStart=await page.evaluate(()=>window.HellFallTest.snapshot());
-    if(jumpStart.stage!=='PLAYING'||jumpStart.depth>100)throw Error('Wall jump test did not start in safe zone '+JSON.stringify(jumpStart));
-    const priorWall=jumpStart.wall;
-    await page.locator('#jump').tap();await page.waitForTimeout(120);
-    if(index<2||index>=4){
-      const anim=await page.evaluate(()=>window.HellStarterPoses.status());
-      if(anim.lastPose!=='kick'||anim.lastHero!==hero)throw Error('Complete-body wall-kick pose did not appear '+JSON.stringify({anim,snapshot:await page.evaluate(()=>window.HellFallTest.snapshot())}));
-    }
-    const firstHop=await page.evaluate(()=>window.HellFallTest.snapshot());
-    if(!(firstHop.hopVisual<1)||firstHop.wall===priorWall)
-      throw Error('Wall jump did not respond to mobile touch '+JSON.stringify(firstHop));
-    await page.screenshot({path:'qa-shot-'+name+'-kick.jpg',type:'jpeg',quality:55});
-    console.log('QAIMAGE_KICK_'+name.toUpperCase().replace(/-/g,'_')+'='+fs.readFileSync('qa-shot-'+name+'-kick.jpg').toString('base64'));
-    await page.waitForTimeout(360);
-    // Second distinct touch returns to the original wall; tap fallback must
-    // never synthesize a double jump on the first press.
-    if((await page.evaluate(()=>window.HellFallTest.snapshot().stage))==='PLAYING'){
-      await page.locator('#jump').tap();await page.waitForTimeout(100);
-      const second=await page.evaluate(()=>window.HellFallTest.snapshot());
-      if(second.wall!==priorWall||second.hopVisual>=1)
-        throw Error('Second wall hop failed '+JSON.stringify(second));
-      console.log('QADOUBLE_KICK_'+name.toUpperCase().replace(/-/g,'_')+'='+JSON.stringify({first:firstHop.wall,returned:second.wall}));
-    }
-  }
-  // Actual UI purchase test, same shared test wallet across both actors.
-  await reset('?v=nov27-wing32');
-  await page.screenshot({path:'qa-shot-actor-onboarding.jpg',type:'jpeg',quality:65});
-  console.log('QAIMAGE_ACTOR_ONBOARDING='+fs.readFileSync('qa-shot-actor-onboarding.jpg').toString('base64'));
-  await page.locator('[data-initial-actor="uiji"]').click();
-  if(await page.evaluate(()=>window.HellSystems.equipSkin('uiji')))throw Error('Unowned skin equipped');
-  async function buyAndEquip(id){
-    await page.locator('[data-character-pick="'+id+'"]').click();
-    await page.locator('[data-market-buy-character="'+id+'"]').click();
-    await page.locator('[data-market-equip-skin="'+id+'"]').click();
-    await page.locator('#drawerClose').click();
-  }
-  await page.locator('[data-panel="character"]').first().click();
-  await buyAndEquip('uiji');
-  let p=await page.evaluate(()=>window.HellSystems.profile);
-  if(p.coins!==900||p.selectedCharacter!=='uiji'||p.accountActor!=='uiji')throw Error('Male purchase failed '+JSON.stringify(p));
-  await page.locator('[data-panel="character"]').first().click();
-  await page.locator('[data-test-actor="useoi"]').click();
-  await buyAndEquip('useoi');
-  p=await page.evaluate(()=>window.HellSystems.profile);
-  if(p.coins!==800||p.selectedCharacter!=='useoi'||p.accountActor!=='uiji')throw Error('Female purchase/shared wallet failed');
-  await page.locator('[data-panel="character"]').first().click();
-  await page.locator('[data-test-actor="uiji"]').click();
-  await page.locator('[data-character-pick="starter_boy"]').click();
-  await page.locator('[data-character-pick="uiji"]').click();
-  await page.locator('#drawerClose').click();
-  await page.locator('[data-panel="shop"]').first().click();
-  await page.locator('[data-market-group="bubble"]').click();
-  await page.locator('[data-market-item="bubble_10"]').click();
-  await page.locator('[data-market-buy="bubble_10"]').click();
-  await page.screenshot({path:'qa-shot-skin-wallet.jpg',type:'jpeg',quality:65});
-  console.log('QAIMAGE_SKIN_WALLET='+fs.readFileSync('qa-shot-skin-wallet.jpg').toString('base64'));
-  p=await page.evaluate(()=>window.HellSystems.profile);
-  if(p.coins!==780||p.consumables.bubble_10!==1)throw Error('Item deduction mismatch');
-  const duplicate=await page.evaluate(()=>window.HellSystems.purchaseSkin('uiji'));
-  if(duplicate.ok)throw Error('Duplicate skin purchase');
-  await page.reload({waitUntil:'domcontentloaded'});
-  await page.waitForFunction(()=>!!window.HellFallTest);
-  p=await page.evaluate(()=>window.HellSystems.profile);
-  if(p.coins!==780||p.selectedCharacter!=='uiji'||p.accountActor!=='uiji'||p.equippedSkins.useoi!=='useoi'||p.ownedSkins.length!==4||p.consumables.bubble_10!==1)throw Error('Persistent wallet/skins/actor failed '+JSON.stringify(p));
-  console.log('QAWALLET='+JSON.stringify({coins:p.coins,owned:p.ownedSkins,active:p.activeActor,equipped:p.equippedSkins,bubble:p.consumables.bubble_10}));
-  await page.locator('[data-panel="character"]').first().click();
-  await buyAndEquip('wingsuit_boy');
-  await page.locator('[data-panel="character"]').first().click();
-  await page.locator('[data-test-actor="useoi"]').click();
-  await buyAndEquip('wingsuit_girl');
-  await page.reload({waitUntil:'domcontentloaded'});
-  await page.waitForFunction(()=>!!window.HellFallTest);
-  p=await page.evaluate(()=>window.HellSystems.profile);
-  if(p.coins!==380||p.ownedSkins.length!==6||p.equippedSkins.uiji!=='wingsuit_boy'||p.equippedSkins.useoi!=='wingsuit_girl')throw Error('Wing wallet persistence failed '+JSON.stringify(p));
-  console.log('QAWINGS='+JSON.stringify({coins:p.coins,equipped:p.equippedSkins,owned:p.ownedSkins}));
-  await page.evaluate(()=>{localStorage.clear();localStorage.setItem('hell_fall_profile_v1',JSON.stringify({selectedCharacter:'useoi',coins:42,runs:4,totalDepth:5000,inventory:['helmet_basic'],wardrobes:{useoi:{quickSlots:[null,null],gear:{helmet:'helmet_basic'}}}}));});
-  await page.reload({waitUntil:'domcontentloaded'});
-  await page.locator('[data-initial-actor="useoi"]').click();
-  const migrated=await page.evaluate(()=>({p:window.HellSystems.profile,old:JSON.parse(localStorage.getItem('hell_fall_profile_v1')),helmet:window.HellSystems.wardrobeOf('starter_girl').gear.helmet}));
-  if(migrated.p.coins!==1000||migrated.p.selectedCharacter!=='starter_girl'||migrated.p.ownedSkins.length!==2||migrated.p.runs!==4||migrated.p.totalDepth!==5000||migrated.helmet!=='helmet_basic'||migrated.old.coins!==42)throw Error('Legacy migration failed '+JSON.stringify(migrated));
-  console.log('QAMIGRATION_TEST='+JSON.stringify({coins:migrated.p.coins,legacyCoins:migrated.old.coins,runs:migrated.p.runs,helmet:migrated.helmet}));
-  // Throttled portrait requests plus rapid actor switches: the last selected actor wins.
-  await page.route('**/assets/starter_*_portrait_v29.webp',async route=>{await new Promise(r=>setTimeout(r,route.request().url().includes('boy')?450:80));await route.continue();});
-  await page.locator('[data-panel="character"]').first().click();
-  await page.locator('[data-test-actor="uiji"]').click();
-  await page.locator('[data-test-actor="useoi"]').click();
-  await page.locator('#drawerClose').click();
-  await page.waitForFunction(()=>{const i=document.querySelector('#lobbyHero');return i.src.endsWith('starter_girl_portrait_v29.webp')&&!i.hidden&&i.naturalWidth>0;});
-  await page.waitForTimeout(600);
-  const portrait=await page.evaluate(()=>({src:document.querySelector('#lobbyHero').src,count:document.querySelectorAll('#lobbyCharacter img').length,canvases:document.querySelectorAll('#lobbyCharacter canvas').length}));
-  if(portrait.count!==1||portrait.canvases!==0||!portrait.src.endsWith('starter_girl_portrait_v29.webp'))throw Error('Portrait overlap or stale image '+JSON.stringify(portrait));
-  console.log('QAPORTRAIT='+JSON.stringify(portrait));
-  if(errors.length)throw Error('Browser JS errors: '+JSON.stringify(errors.slice(0,12)));
-  await browser.close();console.log('QA_PASS_STAT_DRINK_STARTER');
+ const browser=await chromium.launch({channel:'chrome',headless:true,args:['--no-sandbox']});
+ const page=await browser.newPage({viewport:{width:390,height:844},deviceScaleFactor:1,isMobile:true,hasTouch:true});
+ const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ const snap=()=>page.evaluate(()=>window.HellFallTest.snapshot());
+ const prof=()=>page.evaluate(()=>window.HellSystems.profile);
+ const click=async s=>{await page.locator(s).first().click()};
+ const shot=async n=>{await page.screenshot({path:'qa-shot-'+n+'.jpg',type:'jpeg',quality:65});console.log('QAIMAGE_'+n.toUpperCase().replace(/-/g,'_')+'='+fs.readFileSync('qa-shot-'+n+'.jpg').toString('base64'))};
+ async function reset(actor='uiji'){
+   await page.goto('http://127.0.0.1:8765/?v=nov27-rpg33',{waitUntil:'domcontentloaded'});
+   await page.evaluate(()=>localStorage.clear());await page.reload({waitUntil:'domcontentloaded'});
+   await page.waitForFunction(()=>!!window.HellFallTest,{timeout:15000});
+   await click('[data-initial-actor="'+actor+'"]');
+   await page.waitForFunction(()=>!document.querySelector('#lobbyHero').hidden&&document.querySelector('#lobbyHero').naturalWidth>0);
+ }
+ async function shop(tab){await click('[data-panel="shop"]');await click('[data-market-tab="'+tab+'"]')}
+ async function buySkin(id){
+   await shop('skins');
+   assert.equal(await page.locator('[data-market-character]').count(),2);
+   assert.equal(await page.locator('[data-market-character] img').count(),0);
+   await click('[data-market-character="'+id+'"]');
+   assert.equal(await page.locator('.market-large-art img').count(),0);
+   await click('[data-market-buy-character="'+id+'"]');
+   await click('#drawerClose');
+   await click('[data-panel="character"]');await click('[data-wardrobe-tab="skins"]');
+   assert.equal(await page.locator('[data-character-pick]').count(),2);
+   await click('[data-character-pick="'+id+'"]');await click('#drawerClose');
+ }
+ async function tapBoost(times=5){
+   for(let i=0;i<times;i++){await page.locator('#boost').tap();await page.waitForTimeout(115)}
+ }
+ for(const [actor,id,stat] of [['uiji','starter_boy',70],['useoi','starter_girl',70],['uiji','uiji',73],['useoi','useoi',73],['uiji','wingsuit_boy',76],['useoi','wingsuit_girl',76]]){
+   await reset(actor);
+   const p0=await prof();assert.equal(p0.coins,1000);assert.equal(p0.slotCount,2);assert.equal(p0.ownedSkins.length,2);
+   if(id.startsWith('starter')){
+     await click('[data-panel="character"]');
+     assert.equal(await page.locator('[data-character-pick]').count(),1);
+     assert.equal(await page.locator('[data-character-pick] img').count(),0);
+     if(actor==='uiji')await shot('owned-starter');
+     await click('#drawerClose');
+   }else{
+     await buySkin(id);
+     assert.equal((await prof()).selectedCharacter,id);
+   }
+   if(id==='useoi'){
+     await page.waitForFunction(()=>document.querySelector('#lobbyHero').src.endsWith('hero_intro.webp')&&!document.querySelector('#lobbyHero').hidden);
+     await page.locator('#lobbyCharacter').focus();await page.keyboard.press('ArrowRight');
+     await page.waitForFunction(()=>document.querySelector('#lobbyHero').src.endsWith('hero_back_fixed.webp')&&!document.querySelector('#lobbyHero').hidden);
+     await page.keyboard.press('ArrowLeft');
+   }
+   if(id==='wingsuit_boy'){
+     await click('[data-panel="character"]');await click('[data-preview-motion]');
+     await page.waitForFunction(()=>!!document.querySelector('[data-preview-canvas]'));
+     await shot('motion-preview');await click('#drawerClose');
+   }
+   await click('#start');await page.waitForTimeout(250);
+   const before=await snap();assert.equal(before.stage,'PLAYING');assert.equal(before.character,id);assert.equal(before.stats.speed,stat);
+   assert.equal(await page.locator('#controls button').count(),2);
+   assert.equal(await page.locator('#controls .item-quickbar').count(),0);
+   assert.equal(before.displayDepth,Math.floor(before.depth/10));
+   const hud=await page.locator('#depthLabel').textContent();
+   assert(hud.endsWith('m'));
+   await tapBoost(5);
+   const boosted=await snap();
+   assert(boosted.tapCount>=5&&boosted.speed>before.speed&&boosted.stage==='PLAYING','boost '+id+' '+JSON.stringify(boosted));
+   if(id.startsWith('starter')||id.startsWith('wingsuit'))assert.equal(await page.evaluate(()=>window.HellStarterPoses.status().lastHero),id);
+   await page.locator('#jump').tap();await page.waitForTimeout(230);
+   const jumped=await snap();assert.equal(jumped.wall,'R');
+   await page.locator('#jump').tap();await page.waitForTimeout(230);
+   const returned=await snap();assert.equal(returned.wall,'L');
+   console.log('QASKIN_'+id+'='+JSON.stringify({speed:boosted.stats.speed,taps:boosted.tapCount,wall:returned.wall,displayDepth:returned.displayDepth}));
+   if(id.startsWith('wingsuit'))await shot('play-'+id);
+ }
+ // Real UI shopping, preparation, consumption, dragon and save.
+ await reset('uiji');
+ await shop('skins');await shot('skin-shop');await click('[data-market-character="wingsuit_boy"]');await shot('skin-detail');
+ await click('[data-market-close]');await click('#drawerClose');
+ await shop('pets');await click('[data-market-item="baby_dragon"]');await shot('pet-shop');await click('[data-market-buy-pet="baby_dragon"]');await click('#drawerClose');
+ await click('[data-panel="character"]');await click('[data-wardrobe-tab="pets"]');await click('[data-equip-pet="baby_dragon"]');
+ assert.equal((await prof()).equippedPets.uiji,'baby_dragon');await shot('pet-equipped');await click('#drawerClose');
+ await page.waitForFunction(()=>!document.querySelector('#homePet').classList.contains('hidden'));
+ // Start with two of each: a single selected unit is consumed, not the remaining stock.
+ await shop('items');await click('[data-market-group="drink"]');await click('[data-market-item="time_15"]');await click('[data-market-buy="time_15"]');
+ await click('[data-market-item="time_15"]');await click('[data-market-buy="time_15"]');
+ await click('[data-market-item="vitality_5"]');await click('[data-market-buy="vitality_5"]');
+ await click('[data-market-item="vitality_5"]');await click('[data-market-buy="vitality_5"]');await click('#drawerClose');
+ assert.equal((await prof()).consumables.time_15,2);
+ await click('#homePrepSlots [data-prep-slot="0"]');await shot('slot-picker');
+ await click('[data-loadout-item="time_15"]');assert.equal((await prof()).consumables.time_15,2);
+ await click('#homePrepSlots [data-prep-slot="0"]');assert.equal((await prof()).wardrobes.uiji.quickSlots[0],null);assert.equal((await prof()).consumables.time_15,2);
+ await click('#homePrepSlots [data-prep-slot="0"]');await click('[data-loadout-item="time_15"]');
+ await click('#homePrepSlots [data-prep-slot="1"]');await click('[data-loadout-item="vitality_5"]');
+ assert.equal((await prof()).consumables.vitality_5,2);
+ await shot('home-prepared');
+ await click('#start');await page.waitForTimeout(250);let run=await snap();
+ assert.equal(run.pet,'baby_dragon');assert.equal(run.stats.speed,77);assert.equal(run.stats.timeBonus,15);
+ assert.equal(run.profile.consumables.time_15,1);assert.equal(run.profile.consumables.vitality_5,1);
+ assert(run.profile.wardrobes.uiji.quickSlots.every(x=>x===null));assert.equal(run.runItems.length,2);assert(Number.isFinite(run.petX));
+ await tapBoost();const a=await snap();await page.locator('#jump').tap();await page.waitForTimeout(260);const b=await snap();assert.notEqual(a.petX,b.petX);
+ assert.equal(b.stats.timeBonus,15);assert.equal(b.stats.speed,77);await shot('dragon-play');
+ // Lifecycle pause must stop simulation. This also verifies retained web/native glue.
+ await page.evaluate(()=>window.HellPlatform.setNativePaused(true));const pa=await snap();await page.waitForTimeout(300);const pb=await snap();assert.equal(pa.depth,pb.depth);await page.evaluate(()=>window.HellPlatform.setNativePaused(false));
+ await page.reload({waitUntil:'domcontentloaded'});await page.waitForFunction(()=>!!window.HellFallTest);let p=await prof();
+ assert.equal(p.consumables.time_15,1);assert.equal(p.consumables.vitality_5,1);assert(p.wardrobes.uiji.quickSlots.every(x=>x===null));assert.equal(p.equippedPets.uiji,'baby_dragon');
+ await click('#start');run=await snap();assert.equal(run.stats.speed,72);assert.equal(run.stats.timeBonus,0);assert.equal(run.runItems.length,0);assert.equal(run.profile.consumables.time_15,1);
+ console.log('QACONSUME='+JSON.stringify({first:{speed:b.stats.speed,timeBonus:b.stats.timeBonus,pet:b.pet,stock:b.profile.consumables.time_15},next:{stats:run.stats,stock:run.profile.consumables.time_15}}));
+ // Permanent slot purchases and one-per-category selections.
+ await reset('useoi');
+ await click('#homePrepSlots [data-prep-slot="2"]');await click('[data-buy-slot="2"]');
+ assert.equal((await prof()).slotCount,3);assert.equal((await prof()).coins,850);
+ await click('#homePrepSlots [data-prep-slot="3"]');await click('[data-buy-slot="3"]');
+ p=await prof();assert.equal(p.slotCount,4);assert.equal(p.coins,550);
+ const stock=await page.evaluate(()=>{const s=window.HellSystems;return ['bubble_10','vitality_3','calm_3','time_5'].map(id=>s.purchase(id).ok)});
+ assert(stock.every(Boolean));
+ for(const [i,id] of ['bubble_10','vitality_3','calm_3','time_5'].entries()){
+   await click('#homePrepSlots [data-prep-slot="'+i+'"]');await click('[data-loadout-item="'+id+'"]');
+ }
+ await click('#start');run=await snap();assert.equal(run.bubbleCharges,1);assert.equal(run.stats.speed,73);assert.equal(run.stats.brake,73);assert.equal(run.stats.timeBonus,5);assert.equal(run.runItems.length,4);
+ assert(run.profile.wardrobes.useoi.quickSlots.every(x=>x===null));assert.equal(run.profile.slotCount,4);
+ await page.reload({waitUntil:'domcontentloaded'});await page.waitForFunction(()=>!!window.HellFallTest);assert.equal((await prof()).slotCount,4);
+ // Migrate a former WEB 3.2 account with actual purchased gear and legacy raw-distance units.
+ await page.evaluate(()=>{
+  localStorage.clear();
+  localStorage.setItem('hell_fall_skin_test_v30',JSON.stringify({coins:42,identityChosen:true,accountActor:'uiji',activeActor:'uiji',equippedSkins:{uiji:'uiji',useoi:'starter_girl'},ownedSkins:['starter_boy','starter_girl','uiji'],totalDepth:123450,level:7,levelMigration:2,levelBaseDepth:123450,levelBaseLevel:7,runs:5,inventory:['helmet_basic','helmet_frog'],consumables:{bubble_10:2},wardrobes:{uiji:{quickSlots:['bubble_10',null],gear:{helmet:'helmet_basic'}},useoi:{quickSlots:[null,null],gear:{}}}}));
+  localStorage.setItem('hell_fall_web_v42_best','25000');
+ });
+ await page.reload({waitUntil:'domcontentloaded'});await page.waitForFunction(()=>!!window.HellFallTest);
+ p=await prof();assert.equal(p.coins,522);assert.equal(p.level,7);assert.equal(p.totalDepth,123450);assert.equal(p.runs,5);assert.equal(p.selectedCharacter,'uiji');assert.equal(p.consumables.bubble_10,2);assert.equal(p.retiredGearRefund,480);
+ assert.equal(await page.locator('#homeBest').textContent(),'2,500');assert.equal(await page.locator('#homeTotal').textContent(),'12,345');
+ assert(await page.evaluate(()=>!!localStorage.getItem('hell_fall_skin_test_v30_pre_rpg33')));
+ await page.reload({waitUntil:'domcontentloaded'});await page.waitForFunction(()=>!!window.HellFallTest);assert.equal((await prof()).coins,522);
+ console.log('QAMIGRATION='+JSON.stringify({coins:p.coins,total:p.totalDepth,level:p.level,refund:p.retiredGearRefund}));
+ assert.equal(errors.length,0,JSON.stringify(errors));
+ await browser.close();console.log('QA_PASS_RPG33');
 })().catch(e=>{console.error(e);process.exit(1)});

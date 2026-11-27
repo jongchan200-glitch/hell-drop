@@ -34,7 +34,7 @@
   const statOf=(id)=>sys.characterStats(id);
   const currentActor=()=>sys.CHARACTER_CATALOG.find(c=>c.id===s.runCharacter)?.actor||'useoi';
   const runSkin=()=>sys.SKIN_CATALOG.find(c=>c.id===s.runCharacter);
-  const skinLabel=c=>c.starter?'기본 복장':c.kind==='wingsuit'?'윙슈트':'탐험가 스킨';
+  const skinLabel=c=>c.starter?'기본 복장':c.id.startsWith('wingsuit_')?'윙슈트':'탐험가 스킨';
   function effectiveStats(){
     const c=statOf(s.runCharacter),pet=s.pet;
     return {speed:Math.min(100,c.speed+(pet?.speedBonus||0)+s.drinks.speed.bonus),
@@ -103,7 +103,7 @@
     const wing=runSkin()?.kind==='wingsuit';
     boostBtn.querySelector('strong').textContent=wing?'급강하':'망토 접기';
     boostBtn.setAttribute('aria-label',wing?'윙슈트 급강하 연타 가속':'망토 접기 연타 가속');
-    closePanel();
+    closePanel();$('homePrepNotice').textContent='한 판용 · 시작 시 차감';
     lastReward={distance:0,foundCoins:0,bonus:0,levelUps:0,level:sys.profile.level,newBalance:sys.profile.coins};
     heldKeys.clear();sys.audio.unlock();sys.audio.startGamePlaylist();
     sys.audio.effect('start');updateUI();
@@ -655,12 +655,12 @@
   // A single independent pet sprite follows the hero; no attachment to body pixels.
   function drawPet(x,y,u){
     if(!s.pet||!assetAtlas.naturalWidth)return;
-    const dest=x+(x<W*.5?64:-64)*u;
+    const dest=x+(x<W*.5?103:-103)*u;
     s.petX=s.petX===null?dest:s.petX+(dest-s.petX)*.18;
     const xx=Math.max(34*u,Math.min(W-34*u,s.petX));
     const fast=s.boost>.52,frame=fast?8:(Math.sin(s.elapsed*17)>0?6:7);
     const size=(fast?58:67)*u;
-    ctx.save();ctx.translate(xx,y+(fast?-45:-55)*u+Math.sin(s.elapsed*9)*5*u);
+    ctx.save();ctx.translate(xx,y+(fast?-77:-70)*u+Math.sin(s.elapsed*9)*5*u);
     if(xx>x)ctx.scale(-1,1);
     ctx.rotate(fast?.25:Math.sin(s.elapsed*8)*.06);
     ctx.drawImage(assetAtlas,(frame%3)*256,Math.floor(frame/3)*256,256,256,-size/2,-size/2,size,size);ctx.restore();
@@ -1084,5 +1084,5 @@
   applyControlSide();fit();updateUI();requestAnimationFrame(frame);
   if(!sys.profile.identityChosen)openPanel('chooseActor');
   // Expose read-only simple debug state for local test harnesses, never gameplay rewards.
-  if(sys.TEST_MODE)window.HellFallTest={snapshot:()=>({stage:s.stage,depth:s.depth,speed:s.speed,timeLeft:s.timeLeft,wall:s.wall,hopProgress:s.hopProgress,hopVisual:s.hopVisual,boost:s.boost,fold:s.fold,cadence:s.cadence,tapCount:s.tapCount,runCoins:s.runCoins,hazards:s.obstacles.length,gates:s.timeGates.length,checkpoints:s.checkpointGates.length,checkpointFlash:s.checkpointFlash,lastCheckpointBonus:s.lastCheckpointBonus,boostSide:sys.profile.settings.boostSide,bubbleCharges:s.bubbleCharges,pet:s.pet?.id||null,shieldFlash:s.shieldFlash,runItems:s.runItems.slice(),won:s.won,poseFrames:window.HellStarterPoses?.getCachedCount()||0,drinks:{speed:{...s.drinks.speed},brake:{...s.drinks.brake},time:{...s.drinks.time}},displayDepth:dm(s.depth),stats:effectiveStats(),character:sys.profile.selectedCharacter,profile:{...sys.profile}}),start:()=>start(false)};
+  if(sys.TEST_MODE)window.HellFallTest={snapshot:()=>({stage:s.stage,depth:s.depth,speed:s.speed,timeLeft:s.timeLeft,wall:s.wall,hopProgress:s.hopProgress,hopVisual:s.hopVisual,boost:s.boost,fold:s.fold,cadence:s.cadence,tapCount:s.tapCount,runCoins:s.runCoins,hazards:s.obstacles.length,gates:s.timeGates.length,checkpoints:s.checkpointGates.length,checkpointFlash:s.checkpointFlash,lastCheckpointBonus:s.lastCheckpointBonus,boostSide:sys.profile.settings.boostSide,bubbleCharges:s.bubbleCharges,pet:s.pet?.id||null,petX:s.petX,shieldFlash:s.shieldFlash,runItems:s.runItems.slice(),won:s.won,poseFrames:window.HellStarterPoses?.getCachedCount()||0,drinks:{speed:{...s.drinks.speed},brake:{...s.drinks.brake},time:{...s.drinks.time}},displayDepth:dm(s.depth),stats:effectiveStats(),character:sys.profile.selectedCharacter,profile:{...sys.profile}}),start:()=>start(false)};
 })();
