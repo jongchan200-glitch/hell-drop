@@ -1,22 +1,16 @@
 name: Hell Drop visual QA
 on:
   push:
-    branches: [main, 'feature/starter-art-atlas-20261126']
+    branches: [main, 'feature/**']
     paths:
       - '.github/workflows/visual-qa.yml'
-      - 'starter-kit.js'
-      - 'keypose-live.js'
-      - 'index.html'
-      - 'game.js'
-      - 'starter-poses.js'
-      - 'assets/starter_boy_actions.webp'
-      - 'assets/starter_girl_actions.webp'
-      - 'assets/starter_boy_portrait.webp'
-      - 'assets/starter_girl_portrait.webp'
-      - 'hero_turnaround.js'
-      - 'starter-skin.js'
-      - 'systems.js'
-      - '.github/qa/visual-qa.cjs'
+      - '.github/qa/**'
+      - '*.js'
+      - '*.html'
+      - '*.css'
+      - 'assets/**'
+      - 'audio/**'
+      - 'android/**'
   workflow_dispatch:
 permissions:
   contents: read
@@ -31,9 +25,21 @@ jobs:
           node-version: '22'
       - name: Install headless browser driver
         run: npm install --no-save playwright@1.56.1
-      - name: Serve local game
+      - name: Stage only Android runtime assets
         run: |
-          python3 -m http.server 8765 >/tmp/hell-drop-qa-server.log 2>&1 &
+          python3 - <<'PY'
+          from pathlib import Path
+          import shutil
+          root=Path('.')
+          target=Path('/tmp/hell-drop-runtime')
+          for rel in Path('android/web-assets.txt').read_text().splitlines():
+              if not rel.strip(): continue
+              p=Path(rel)
+              assert not p.is_absolute() and '..' not in p.parts and (root/p).is_file(), rel
+              (target/p).parent.mkdir(parents=True,exist_ok=True)
+              shutil.copy2(root/p,target/p)
+          PY
+          python3 -m http.server 8765 --directory /tmp/hell-drop-runtime >/tmp/hell-drop-qa-server.log 2>&1 &
           sleep 1
       - name: Render game screenshots and check equipment
         run: node .github/qa/visual-qa.cjs
@@ -44,3 +50,33 @@ jobs:
           name: hell-drop-visual-qa
           path: qa-shot-*.jpg
           if-no-files-found: ignore
+  android-debug:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Build local debug APK
+        run: gradle -p android :app:assembleDebug --no-daemon
+      - name: Verify bundled game files
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import zipfile
+          apk=next(Path('android/app/build/outputs/apk/debug').glob('*.apk'))
+          expected={'assets/www/'+p for p in Path('android/web-assets.txt').read_text().splitlines() if p.strip()}
+          with zipfile.ZipFile(apk) as z:
+              actual={p for p in z.namelist() if p.startswith('assets/www/') and not p.endswith('/')}
+              assert actual==expected, (expected-actual,actual-expected)
+          print('APK_ASSET_PASS', len(expected), apk.stat().st_size)
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hell-drop-android-debug
+          path: android/app/build/outputs/apk/debug/*.apk
