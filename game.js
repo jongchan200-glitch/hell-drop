@@ -1405,7 +1405,7 @@
         marketCharacter=b.dataset.marketCharacter;marketSelected=null;redraw();
       }));
       $('drawerBody').querySelectorAll('[data-market-equip-skin]').forEach(b=>b.addEventListener('click',()=>{
-        if(sys.equipSkin(b.dataset.marketEquipSkin)){syncLobbyCharacter();updateUI();redraw('스킨 장착 완료 · 추가 코인 차감 없음');}
+        if(sys.equipSkin(b.dataset.marketEquipSkin)){marketCharacter=null;syncLobbyCharacter();updateUI();redraw('스킨 장착 완료 · 추가 코인 차감 없음');}
         else redraw('장착할 수 없는 스킨입니다.');
       }));
       $('drawerBody').querySelectorAll('[data-market-go-character]').forEach(b=>b.addEventListener('click',()=>{
