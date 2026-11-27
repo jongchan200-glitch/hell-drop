@@ -33,3 +33,4 @@ assets/wingsuit_girl_portrait.webp
 assets/wingsuit_girl_actions.webp
 balance.js
 assets/rpg_items_dragon_v33.webp
+assets/coco_pet_v34.webp

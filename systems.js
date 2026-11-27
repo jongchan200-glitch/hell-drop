@@ -37,7 +37,7 @@
   const actorName=id=>ACTOR_CATALOG.find(a=>a.id===id)?.name||'우지';
   const skinsFor=actor=>SKIN_CATALOG.filter(c=>c.actor===actor);
   // Beta balance: the exact prices can be adjusted without changing saved purchases.
-  const PET_CATALOG=[{id:'baby_dragon',name:'아기 용',price:200,speedBonus:2,brakeBonus:0,timeBonus:0,iconIndex:6,description:'작은 날개로 함께 낙하하는 영구 펫 · 최고속 +2%p'}];
+  const PET_CATALOG=[{id:'baby_dragon',name:'아기 용',price:200,speedBonus:2,brakeBonus:0,timeBonus:0,iconIndex:6,icon:'🐉',description:'작은 날개로 함께 낙하하는 영구 펫 · 최고속 +2%p'},{id:'coco',name:'코코',price:350,speedBonus:3,brakeBonus:2,timeBonus:5,icon:'🦜',description:'모란앵무 코코 · 최고속 +3%p · 감속 +2%p · 타임라인·시계 획득 시간 +5%'}];
   const SLOT_PRICES={2:150,3:300};
   const ITEM_CATALOG=[
     {id:'bubble_10',name:'노란 버블 보호막',kind:'bubble',price:20,hits:1,color:'#ffe579',icon:'🟡',description:'한 판 동안 충돌 1회 방어'},

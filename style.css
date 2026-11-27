@@ -606,3 +606,6 @@ button.rpg-card{cursor:pointer;touch-action:manipulation}
 
 /* Keep the full standing portrait inside the preview box, not its intrinsic grid row. */
 .rpg-preview-hero{display:flex;align-items:center;justify-content:center}.rpg-preview-hero>img{flex:0 1 auto;width:auto;height:100%;max-height:100%;min-height:0;max-width:100%;object-fit:contain;transform-origin:center center}
+
+/* WEB 3.4 Coco: own 2x2 atlas; default portrait cell. */
+.rpg-atlas.coco-art,.home-dragon.coco-art{background-image:url("assets/coco_pet_v34.webp");background-size:200% 200%;background-position:0 0}

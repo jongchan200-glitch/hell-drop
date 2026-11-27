@@ -26,7 +26,7 @@ assert(balance.max.won&&balance.max.seconds>=300&&balance.max.seconds<=420&&bala
  const click=async s=>{await page.locator(s).first().click()};
  const shot=async n=>{await page.screenshot({path:'qa-shot-'+n+'.jpg',type:'jpeg',quality:65});console.log('QAIMAGE_'+n.toUpperCase().replace(/-/g,'_')+'='+fs.readFileSync('qa-shot-'+n+'.jpg').toString('base64'))};
  async function reset(actor='uiji'){
-   await page.goto('http://127.0.0.1:8765/?v=nov27-rpg33',{waitUntil:'domcontentloaded'});
+   await page.goto('http://127.0.0.1:8765/?v=nov27-coco34',{waitUntil:'domcontentloaded'});
    await page.evaluate(()=>localStorage.clear());await page.reload({waitUntil:'domcontentloaded'});
    await page.waitForFunction(()=>!!window.HellFallTest,{timeout:15000});
    await click('[data-initial-actor="'+actor+'"]');
@@ -140,6 +140,25 @@ assert(balance.max.won&&balance.max.seconds>=300&&balance.max.seconds<=420&&bala
  await click('#start');run=await snap();assert.equal(run.bubbleCharges,1);assert.equal(run.stats.speed,73);assert.equal(run.stats.brake,73);assert.equal(run.stats.timeBonus,5);assert.equal(run.runItems.length,4);
  assert(run.profile.wardrobes.useoi.quickSlots.every(x=>x===null));assert.equal(run.profile.slotCount,4);
  await page.reload({waitUntil:'domcontentloaded'});await page.waitForFunction(()=>!!window.HellFallTest);assert.equal((await prof()).slotCount,4);
+
+ // Coco has its own portrait, motion atlas, three bonuses and persistent ownership.
+ await reset('uiji');
+ await shop('pets');assert.equal(await page.locator('[data-market-item]').count(),2);
+ await click('[data-market-item="coco"]');assert.equal(await page.locator('.market-large-art .coco-art').count(),1);
+ await shot('coco-shop');await click('[data-market-buy-pet="coco"]');await click('#drawerClose');
+ let cp=await prof();assert.equal(cp.coins,650);assert(cp.ownedPets.includes('coco'));assert.equal(cp.equippedPets.uiji,null);
+ await click('[data-panel="character"]');await click('[data-wardrobe-tab="pets"]');await click('[data-equip-pet="coco"]');
+ assert.equal(await page.locator('.preview-dragon .coco-art').count(),1);await shot('coco-equipped');await click('#drawerClose');
+ assert.equal(await page.locator('#homePet.coco-art:not(.hidden)').count(),1);
+ await page.reload({waitUntil:'domcontentloaded'});await page.waitForFunction(()=>!!window.HellFallTest);
+ assert.equal((await prof()).equippedPets.uiji,'coco');
+ await click('#start');await page.waitForFunction(()=>['flap-up','flap-down'].includes(window.HellFallTest.snapshot().petPose));
+ let cr=await snap();assert.equal(cr.pet,'coco');assert.equal(cr.stats.speed,73);assert.equal(cr.stats.brake,72);assert.equal(cr.stats.timeBonus,5);
+ await shot('coco-flap');
+ await tapBoost(10);await page.waitForFunction(()=>window.HellFallTest.snapshot().petPose==='dive',{timeout:5000});
+ cr=await snap();assert.equal(cr.stage,'PLAYING');await shot('coco-dive');
+ console.log('QACOCO='+JSON.stringify({pet:cr.pet,pose:cr.petPose,stats:cr.stats,coins:cr.profile.coins}));
+
  // Migrate a former WEB 3.2 account with actual purchased gear and legacy raw-distance units.
  await page.evaluate(()=>{
   localStorage.clear();
