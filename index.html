@@ -11,8 +11,8 @@
   <link rel="preload" href="assets/starter_girl_portrait_v29.webp" as="image">
   <link rel="preload" href="assets/starter_boy_actions_v29.webp" as="image">
   <link rel="preload" href="assets/starter_girl_actions_v29.webp" as="image">
-  <link rel="stylesheet" href="style.css?v=nov27-skin30">
-  <link rel="stylesheet" href="hero_turnaround.css?v=11-frontback">
+  <link rel="stylesheet" href="style.css?v=nov27-clean31">
+  <link rel="stylesheet" href="hero_turnaround.css?v=nov27-clean31">
 </head>
 <body>
   <svg class="svg-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
@@ -97,12 +97,7 @@
             <div class="lobby-backlight" aria-hidden="true"></div>
             <div class="lobby-shadow" aria-hidden="true"></div>
             <div id="lobbyCharacter" class="lobby-character" tabindex="0" role="button" aria-label="기본 탐험가 캐릭터 보기">
-              <canvas id="lobby3dCanvas" class="lobby-3d-canvas" aria-hidden="true"></canvas>
-              <div id="lobbyTurn" class="lobby-turn">
-                <div class="lobby-idle">
-                  <img id="lobbyHero" draggable="false" src="assets/starter_boy_portrait_v29.webp" alt="">
-                </div>
-              </div>
+              <div class="turnaround-stage"><img id="lobbyHero" class="turnaround-pose is-selected" draggable="false" alt=""></div>
             </div>
             <div class="showcase-ground" aria-hidden="true"></div>
             <div class="character-traits" id="lobbyTraits" aria-label="현재 캐릭터 능력치">
@@ -147,15 +142,15 @@
       <section id="drawer" class="drawer hidden" aria-label="게임 부가 메뉴" role="dialog" aria-modal="true">
         <div class="drawer-card"><div class="drawer-head"><h2 id="drawerTitle">메뉴</h2><button id="drawerClose" type="button" aria-label="닫기">✕</button></div><div id="drawerBody" class="drawer-body"></div></div>
       </section>
-      <div class="version">WEB 3.0 TEST · ACTOR & SKIN</div>
+      <div class="version">WEB 3.1 TEST · CLEAN RUNTIME</div>
     </section>
     <aside class="outside-note">연타로 토네이도 성장 · 누적 레벨과 코인은 이 브라우저에 저장돼요.</aside>
   </main>
-  <script src="systems.js?v=nov27-skin30" defer></script>
-  <script src="starter-skin.js?v=nov27-skin30" defer></script>
-  <script src="hero_turnaround.js?v=nov27-skin30" defer></script>
+  <script src="platform.js?v=nov27-clean31" defer></script>
+  <script src="systems.js?v=nov27-clean31" defer></script>
+  <script src="hero_turnaround.js?v=nov27-clean31" defer></script>
   <script src="helmet-composer.js?v=23-catalog" defer></script>
-  <script src="starter-poses.js?v=nov27-skin30" defer></script>
-  <script src="game.js?v=nov27-skin30" defer></script>
+  <script src="starter-poses.js?v=nov27-clean31" defer></script>
+  <script src="game.js?v=nov27-clean31" defer></script>
 </body>
 </html>

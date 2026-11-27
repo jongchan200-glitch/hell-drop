@@ -1,0 +1,28 @@
+plugins { id 'com.android.application' }
+android {
+    namespace 'com.hellfall.game'
+    compileSdk 35
+    defaultConfig {
+        applicationId 'com.hellfall.game.test'
+        minSdk 26
+        targetSdk 35
+        versionCode 31
+        versionName '3.1-test'
+    }
+    compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+    sourceSets { main { assets.srcDir layout.buildDirectory.dir('generated/gameAssets') } }
+}
+// This is a development APK only. Disable release variants until test wallet,
+// account migration, advertising, signing and store requirements are finalized.
+androidComponents {
+    beforeVariants(selector().withBuildType('release')) { variant -> variant.enable = false }
+}
+dependencies { implementation 'androidx.webkit:webkit:1.12.1' }
+def webRoot = rootProject.projectDir.parentFile
+def assetList = rootProject.file('web-assets.txt').readLines().findAll { !it.trim().isEmpty() }
+tasks.register('syncGameAssets', Sync) {
+    from(webRoot) { include assetList }
+    into layout.buildDirectory.dir('generated/gameAssets/www')
+    doFirst { assetList.each { p -> if (!new File(webRoot,p).isFile()) throw new GradleException('Missing runtime asset: '+p) } }
+}
+tasks.named('preBuild').configure { dependsOn tasks.named('syncGameAssets') }

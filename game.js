@@ -37,7 +37,6 @@
   let W=400,H=800,clock=0,lastFrame=0,s=makeGame(),best=readRecord(),heldKeys=new Set();
   const images={};
   const capeRig={core:null,left:null,right:null,ready:false};
-  const starterCapeRig={core:null,left:null,right:null,ready:false};
   const statOf=(id)=>sys.characterStats(id);
   const currentActor=()=>sys.CHARACTER_CATALOG.find(c=>c.id===s.runCharacter)?.actor||'useoi';
   const isStarter=()=>!!sys.CHARACTER_CATALOG.find(c=>c.id===s.runCharacter)?.starter;
@@ -47,7 +46,7 @@
       brake:Math.min(100,c.brake+(s.drinks.brake.left>0?s.drinks.brake.bonus:0))};
   }
   // Only the original V4.2 reference family; no generated replacement faces.
-  const IMAGE_FILES={falling:'hero_fall',braking:'hero_cape',jumpLeft:'hero_jump_left',jumpRight:'hero_jump_right',intro:'hero_intro',dizzy:'hero_hit',uiji:'uiji_intro',uijiMotion:'uiji_motion_atlas'};
+  const IMAGE_FILES={braking:'hero_cape',jumpLeft:'hero_jump_left',jumpRight:'hero_jump_right',dizzy:'hero_hit',uiji:'uiji_intro',uijiMotion:'uiji_motion_atlas'};
   Object.entries(IMAGE_FILES).forEach(([key,file])=>{
     const img=new Image(); img.onload=()=>{
       images[key]=img;
@@ -82,8 +81,8 @@
     }
     cc.globalCompositeOperation='source-over';target.core=core;target.ready=true;
   }
-  function readRecord(){try{return Number(localStorage.getItem('hell_fall_web_v42_best')||0)||0;}catch(_){return 0;}}
-  function saveRecord(value){try{localStorage.setItem('hell_fall_web_v42_best',String(value));}catch(_){/*local file private mode*/}}
+  function readRecord(){return Number(window.HellPlatform.storage.read('hell_fall_web_v42_best')||0)||0;}
+  function saveRecord(value){window.HellPlatform.storage.write('hell_fall_web_v42_best',String(value));}
   function zoneOf(depth){return Math.min(6,Math.floor(depth/5000));}
   function tierOf(depth){return Math.min(17,Math.floor(depth/2000));}
   function wallX(w){return w==='L'?.29:.71;}
@@ -91,7 +90,7 @@
   function smooth(t){t=Math.max(0,Math.min(1,t));return t*t*(3-2*t);}
   function posX(g,p=g.hopProgress){return wallX(g.hopFrom)*(1-smooth(p))+wallX(g.wall)*smooth(p);}
   function rngSeed(seed){let x=(seed>>>0)||1;return()=>{x=(x+0x6D2B79F5)>>>0;let t=x;t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return ((t^(t>>>14))>>>0)/4294967296;};}
-  function makeGame(stage='READY'){return{seed:(Math.random()*1000000000)|0,stage,depth:0,speed:T.START,timeLeft:T.LIMIT,elapsed:0,introElapsed:0,boost:0,fold:0,lastTapAt:-1,tapPulse:0,tapCount:0,tapIntervals:[],cadence:0,wall:'L',hopFrom:'L',hopProgress:1,hopVisual:1,obstacles:[],timeGates:[],checkpointGates:[],coinGates:[],runCoins:0,nextObstacle:370,nextTimeGate:900,nextCheckpoint:1450,nextCoin:210,coinNumber:0,obstacleNumber:0,gateNumber:0,checkpointNumber:0,gateFlash:0,checkpointFlash:0,zoneFlash:0,lastBonus:0,lastCheckpointBonus:0,failure:'',bubbleLeft:0,bubbleColor:null,bubbleName:'',helmetId:null,helmetCharges:0,invuln:0,shieldFlash:0,runCharacter:'starter_boy',drinks:{speed:{bonus:0,left:0},brake:{bonus:0,left:0}},quickSlots:[null,null]};}
+  function makeGame(stage='READY'){return{seed:(Math.random()*1000000000)|0,stage,depth:0,speed:T.START,timeLeft:T.LIMIT,elapsed:0,boost:0,fold:0,lastTapAt:-1,tapPulse:0,tapCount:0,tapIntervals:[],cadence:0,wall:'L',hopFrom:'L',hopProgress:1,hopVisual:1,obstacles:[],timeGates:[],checkpointGates:[],coinGates:[],runCoins:0,nextObstacle:370,nextTimeGate:900,nextCheckpoint:1450,nextCoin:210,coinNumber:0,obstacleNumber:0,gateNumber:0,checkpointNumber:0,gateFlash:0,checkpointFlash:0,zoneFlash:0,lastBonus:0,lastCheckpointBonus:0,failure:'',bubbleLeft:0,bubbleColor:null,bubbleName:'',helmetId:null,helmetCharges:0,invuln:0,shieldFlash:0,runCharacter:'starter_boy',drinks:{speed:{bonus:0,left:0},brake:{bonus:0,left:0}},quickSlots:[null,null]};}
   function start(){
     if(!sys.profile.identityChosen){openPanel('chooseActor');return;}
     applyControlSide();s=makeGame('PLAYING');
@@ -419,18 +418,8 @@
     for(const coin of s.coinGates){if(coin.collected)continue;const y=charY+(coin.depth-s.depth)*ppm;if(y>-80*u&&y<H+90*u)drawCoin(coin,y,u);}
     const arc=Math.sin(Math.min(1,s.hopProgress)*Math.PI)*15*u;
     drawSpeedWind(posX(s)*W,charY-arc,u);
-    // Only visual character position uses the longer ~0.40-second wall-kick sequence.
-    // Original obstacle collisions, gravity, speed and scoring remain unchanged.
-    const newRig=window.HellRigV2;
-    const progress=clamp01((s.hopVisual-.17)/.58);
-    const rigX=(newRig?.isEnabled()||window.HellWorkRig?.enabled||window.HellKeypose?.enabled)&&s.hopVisual<1?
-      W*(wallX(s.hopFrom)*(1-smooth(progress))+wallX(s.wall)*smooth(progress)):posX(s)*W;
-    const workRig=window.HellWorkRig;
-    if(workRig?.enabled&&workRig.ready&&!window.HellKeypose?.enabled){
-      workRig.update({active:true,x:rigX,y:charY-arc,u,fold:s.fold,elapsed:s.elapsed,speed:s.speed,
-        hopping:s.hopVisual<1,hopVisual:s.hopVisual,hopFrom:s.hopFrom,character:sys.profile.selectedCharacter});
-    }else drawHero(rigX,charY-arc,u,s.fold,s.elapsed,s.speed,s.stage==='OVER',s.hopVisual<1,s.hopFrom);
-    // Helmet is baked into each active character frame, not painted above the actor.
+    // One approved renderer; physics position stays unchanged.
+    drawHero(posX(s)*W,charY-arc,u,s.fold,s.elapsed,s.speed,s.stage==='OVER',s.hopVisual<1,s.hopFrom);
     drawBubble(posX(s)*W,charY-arc,u);
     if(s.speed>670){ctx.fillStyle='#ff4f6115';ctx.fillRect(0,0,W,H);}
     if(s.gateFlash>.72||s.checkpointFlash>.7){ctx.fillStyle='#6be1cd20';ctx.fillRect(0,0,W,H);}
@@ -528,18 +517,6 @@
       line([[X(42),Y(16)],[X(66),Y(6)],[X(77),Y(13)]],glow,1.6*u);
     }
   }
-  function drawFallbackHero(x,y,u,braking,elapsed,dead,hopping,hopFrom){
-    ctx.save();ctx.translate(x,y+Math.sin(elapsed*13)*2*u);const flip=hopping?(hopFrom==='L'?1:-1):1;ctx.scale(flip,1);
-    if(braking){polygon([[-65*u,-20*u],[-38*u,-45*u],[0,-56*u],[38*u,-45*u],[65*u,-20*u],[40*u,13*u],[0,1*u],[-40*u,13*u]],'#33c4c3','#e5fff3',3*u);}
-    else{polygon([[-32*u,-24*u],[-40*u,39*u],[0,25*u],[40*u,39*u],[32*u,-24*u]],'#da6a4a','#ffb86f',3*u);}
-    ctx.fillStyle='#35273f';ctx.beginPath();ctx.ellipse(0,-28*u,28*u,29*u,0,0,Math.PI*2);ctx.fill();
-    disk(0,-29*u,23*u,'#f4c2a1');disk(-18*u,-40*u,8*u,'#322333');disk(12*u,-53*u,14*u,'#322333');
-    if(dead){txt('×   ×',0,-24*u,13*u,'#38252d');}else{disk(-8*u,-28*u,2.1*u,'#28223a');disk(8*u,-28*u,2.1*u,'#28223a');line([[-4*u,-18*u],[0,-16*u],[4*u,-18*u]],'#a65e63',1.8*u);}
-    polygon([[-20*u,0],[20*u,0],[18*u,35*u],[-18*u,35*u]],'#8c6baa','#d7b3ea',2*u);
-    line([[-18*u,10*u],[-33*u,24*u]],'#f4c2a1',9*u);line([[18*u,10*u],[31*u,24*u]],'#f4c2a1',9*u);
-    line([[-11*u,35*u],[-19*u,54*u]],'#493447',10*u);line([[12*u,35*u],[23*u,53*u]],'#493447',10*u);
-    ctx.restore();
-  }
   function drawSpeedWind(x,y,u){
     const strength=s.boost;
     if(strength<.13)return;
@@ -572,7 +549,7 @@
   // has a separate shoulder pivot and moves continuously on every animation frame.
   // Unlike swapping generated poses, no interpolated frame can change the face.
   function drawLockedCapeSprite(img,x,y,u,fold,tilt,elapsed=0,opacity=1){
-    const rig=isStarter()&&currentActor()==='useoi'?starterCapeRig:capeRig;
+    const rig=capeRig;
     const {core,left,right}=rig;
     if(!rig.ready){
       return paintSprite(img,x,y,165*u,165*u,opacity);
@@ -599,8 +576,6 @@
     ctx.restore();return true;
   }
   function drawKickSprite(img,x,y,u,rot,scale,opacity){
-    if(isStarter()&&currentActor()==='useoi')
-      img=window.HellStarterSkin?.getSprite(img,'useoi')||img;
     if(!(img?.naturalWidth||img?.width)||opacity<=0)return false;
     const size=151*u*scale;
     ctx.save();ctx.translate(x,y);ctx.rotate(rot);ctx.globalAlpha*=opacity;
@@ -647,7 +622,6 @@
   function drawUijiAtlasPose(atlas,mode,phase,alpha,u,elapsed){
     if(alpha<=.003)return;
     const position=((phase%UIJI_FRAMES)+UIJI_FRAMES)%UIJI_FRAMES;
-    const first=Math.floor(position),frac=smooth(position-first);
     // The cape-open silhouette is wider. Folding contracts the cape instead
     // of simply hiding it; the folded face is deliberately more determined.
     const w=(mode===0?175:mode===1?155:162)*u;
@@ -667,16 +641,13 @@
     cell(Math.floor(position+.5)%UIJI_FRAMES,alpha);
   }
   function drawUiji(x,y,u,fold,elapsed,speed,dead,hopping,hopFrom){
-    const originalAtlas=images.uijiMotion;
-    const atlas=isStarter()?window.HellStarterSkin?.getSprite(originalAtlas,'uiji')||originalAtlas:originalAtlas;
+    const atlas=images.uijiMotion;
     const characterHelmet=s.helmetId;
     const fittedAtlas=characterHelmet&&atlas?.naturalWidth?
       (window.HellHelmetComposer?.getAtlas(atlas,characterHelmet)||atlas):atlas;
     if(!atlas?.naturalWidth){
       // No regression when image has not yet downloaded.
-      const standby=isStarter()?window.HellStarterSkin?.getSprite(images.uiji,'uiji')||images.uiji:images.uiji;
-      if(!paintSprite(standby,x,y,116*u,170*u,1))
-        drawFallbackHero(x,y,u,false,elapsed,dead,hopping,hopFrom);
+      paintSprite(images.uiji,x,y,116*u,170*u,1);
       return;
     }
     const p=hopping?clamp01(s.hopVisual):1;
@@ -788,33 +759,20 @@
     y+=Math.sin(elapsed*(10+fold*10))*(1.2+fold*1.5)*u;
     // Free actors: three complete full-body source illustrations per character.
     // No procedural vector body, no face collage, no alteration of paid art.
-    if(isStarter()&&window.HellStarterPoses?.draw({
-      ctx,x,y,u,who:currentActor(),fold,elapsed,speed,dead,hopping,
-      hopFrom,hopVisual:s.hopVisual,boost:s.boost,images
-    })){
+    if(isStarter()){
+      window.HellStarterPoses.draw({
+        ctx,x,y,u,who:currentActor(),fold,elapsed,speed,dead,hopping,
+        hopFrom,hopVisual:s.hopVisual,boost:s.boost
+      });
       if(s.helmetId)drawHelmet(x,y,u);
-      return;
-    }
-    // WEB 2.4 optional true in-map skeletal costume player. Separate renderer;
-    // switching it off restores BOTH original characters exactly as before.
-    // Latest Work eight-pose key artwork: safe opt-in, original renderer fallback.
-    const keypose=window.HellKeypose;
-    if(keypose?.enabled&&keypose.ready&&keypose.draw({
-      ctx,x,y,u,fold,elapsed,speed,dead,hopping,hopFrom,
-      hopVisual:s.hopVisual,character:sys.profile.selectedCharacter
-    }))return;
-    const rig=window.HellRigV2;
-    if(rig?.isEnabled()){
-      rig.draw({ctx,x,y,u,fold,elapsed,speed,dead,hopping,hopFrom,
-        hopVisual:s.hopVisual,wallEdge:(hopFrom==='L'?.197:.803)*W});
       return;
     }
     if(currentActor()==='uiji'){
       drawUiji(x,y,u,fold,elapsed,speed,dead,hopping,hopFrom);return;
     }
     if(dead){
-      const dizzy=isStarter()?window.HellStarterSkin?.getSprite(images.dizzy,'useoi')||images.dizzy:images.dizzy;
-      if(!paintSprite(dizzy,x,y,139*u,139*u,1))drawFallbackHero(x,y,u,false,elapsed,true,false,hopFrom);
+      if(!paintSprite(images.dizzy,x,y,139*u,139*u,1))
+        paintSprite(images.braking,x,y,139*u,139*u,1);
     }else if(hopping){
       const p=Math.min(1,Math.max(0,s.hopVisual));
       const side=hopFrom==='L'?1:-1;
@@ -828,15 +786,11 @@
       const tilt=side*((-.20+travel*.46)*(1-landing));
       const squash=1+impact*.09-Math.sin(Math.PI*p)*.045;
       drawWallKickImpact(u,side,p,y);
-      if(p>.11&&p<.69){
-        // Lightweight motion echo; frames are continuous (not discrete images).
-        const echo=.13*Math.sin(Math.PI*Math.min(1,(p-.11)/.58));
-        drawKickSprite(kick,x-side*(15+speed*.014)*u,y+4*u,u,tilt-.09*side,squash*.94,echo);
-      }
-      const faceOut=1-landing;
-      if(!drawKickSprite(kick,x,y,u,tilt,squash,faceOut))
-        drawLockedCapeSprite(images.braking,x,y,u,fold,tilt,elapsed,faceOut);
-      if(landing>0)drawLockedCapeSprite(images.braking,x,y,u,fold,side*.08*(1-landing),elapsed,landing);
+      // A single opaque full-body frame at a time: no ghost / double character.
+      if(landing<.5){
+        if(!drawKickSprite(kick,x,y,u,tilt,squash,1))
+          drawLockedCapeSprite(images.braking,x,y,u,fold,tilt,elapsed,1);
+      }else drawLockedCapeSprite(images.braking,x,y,u,fold,side*.08*(1-landing),elapsed,1);
       if(p>.65){
         const t=(p-.65)/.35;
         // Brief wall contact glow on arrival (not a new gameplay obstacle).
@@ -845,9 +799,7 @@
         ctx.beginPath();ctx.arc(x,y+12*u,(24+19*t)*u,0,2*Math.PI);ctx.stroke();ctx.restore();
       }
     }else{
-      if(!drawLockedCapeSprite(images.braking,x,y,u,fold,Math.sin(elapsed*5)*fold*.02,elapsed)){
-        drawFallbackHero(x,y,u,fold<.55,elapsed,false,false,hopFrom);
-      }
+      drawLockedCapeSprite(images.braking,x,y,u,fold,Math.sin(elapsed*5)*fold*.02,elapsed);
       if(s.tapPulse>.04){
         ctx.save();ctx.globalAlpha=s.tapPulse*.26;
         ctx.beginPath();ctx.arc(x,y-25*u,(85+20*(1-s.tapPulse))*u,Math.PI*.23,Math.PI*.82);
@@ -905,7 +857,6 @@
   // and pressing PLAY enters the existing falling gameplay immediately.
   function draw(){
     if(s.stage==='READY'){
-      if(window.HellWorkRig?.enabled)window.HellWorkRig.update({active:false});
       ctx.fillStyle='#0f0d19';ctx.fillRect(0,0,W,H);
     }
     else cave();
@@ -913,9 +864,9 @@
   function frame(now){
     let dt=lastFrame?Math.min(.05,Math.max(0,(now-lastFrame)/1000)):0;
     lastFrame=now;clock+=dt;
-    if(s.stage==='PLAYING')advance(dt);
+    if(s.stage==='PLAYING'&&!window.HellPlatform.isPaused())advance(dt);
     sys.audio.fade(dt);
-    draw();window.HellWorkRig?.paint?.();drawVortex();updateUI();requestAnimationFrame(frame);
+    draw();drawVortex();updateUI();requestAnimationFrame(frame);
   }
   function applyControlSide(){
     controls.classList.toggle('boost-right',sys.profile.settings.boostSide==='right');
@@ -948,7 +899,7 @@
     if(e.code==='Space')tapAccelerate();else if(e.code==='ArrowRight')jump();else if(e.code==='Enter'&&(s.stage==='READY'||s.stage==='OVER')&&document.activeElement?.tagName!=='BUTTON')start();}});
   document.addEventListener('keyup',e=>heldKeys.delete(e.code));
   window.addEventListener('blur',()=>{heldKeys.clear();});
-  document.addEventListener('visibilitychange',()=>{sys.audio.visibility(document.hidden);if(document.hidden){heldKeys.clear();lastFrame=0;}});
+  window.HellPlatform.onPauseChange(paused=>{sys.audio.visibility(paused);heldKeys.clear();lastFrame=0;});
   window.addEventListener('resize',fit);if(window.ResizeObserver)new ResizeObserver(fit).observe(gameRoot);
   function esc(t){return String(t).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));}
 
@@ -958,10 +909,6 @@
     const character=sys.CHARACTER_CATALOG.find(c=>c.id===sys.profile.selectedCharacter)||sys.CHARACTER_CATALOG[0];
     $('homeCharacterName').textContent=sys.actorName(character.actor);
     $('homeAvatar').src=character.front;
-    $('lobbyHero').src=character.front; // preserve correct selected image while sprite preloads
-    if(character.starter)window.HellStarterSkin?.preview(character.front,character.actor,url=>{
-      if(sys.profile.selectedCharacter===character.id){$('homeAvatar').src=url;$('lobbyHero').src=url;}
-    });
     $('characterIdentityName').textContent=sys.actorName(character.actor);
     $('characterIdentitySubtitle').textContent=character.starter?'기본 복장 · 무료':'탐험가 스킨';
     $('lobbyClassTag').textContent=character.starter?'무료 기본 복장':'탐험가 스킨';
@@ -976,14 +923,6 @@
   let wardrobePending=null;
   const wardrobeExpanded=new Set();
   const GEAR_SLOTS=[['helmet','🪖','헬멧']];
-  function helmetPreviewMarkup(helmetId,characterId){
-    if(!helmetId)return '';
-    const frog=helmetId==='helmet_frog';
-    const art=frog?
-      '<path d="M9 34Q8 11 30 9Q50 3 70 9Q91 13 90 34L86 41H13Z" fill="#68b850" stroke="#2d6239" stroke-width="4"/><circle cx="25" cy="13" r="12" fill="#83d96d" stroke="#2d6239" stroke-width="3"/><circle cx="74" cy="13" r="12" fill="#83d96d" stroke="#2d6239" stroke-width="3"/><circle cx="25" cy="13" r="6" fill="#f9ffeb"/><circle cx="74" cy="13" r="6" fill="#f9ffeb"/><circle cx="27" cy="13" r="3" fill="#263b31"/><circle cx="76" cy="13" r="3" fill="#263b31"/><path d="M13 35Q50 43 87 35" fill="none" stroke="#b6eaa2" stroke-width="3"/>':
-      '<path d="M9 34Q8 13 31 7Q50 0 69 7Q91 14 90 34L86 40H14Z" fill="#667d86" stroke="#283b44" stroke-width="4"/><path d="M19 24Q45 0 73 21" fill="none" stroke="#bbd0cf" stroke-width="5"/><path d="M4 38H96L87 46H14Z" fill="#c5a473" stroke="#4e4843" stroke-width="3"/><circle cx="50" cy="18" r="6" fill="#f5d58a"/>';
-    return '<svg class="wardrobe-helmet-art '+characterId+'" viewBox="0 0 100 54" role="img" aria-label="장착 중인 헬멧" xmlns="http://www.w3.org/2000/svg">'+art+'</svg>';
-  }
   function characterPanelHTML(prof,prog,fmt){
     const characters=sys.skinsFor(prof.activeActor);
     const selectedIndex=Math.max(0,characters.findIndex(c=>c.id===prof.selectedCharacter));
@@ -1221,11 +1160,7 @@
       const who=sys.CHARACTER_CATALOG.find(x=>x.id===sys.profile.selectedCharacter);
       const wornHelmet=sys.wardrobeOf(sys.profile.selectedCharacter).gear.helmet;
       if(who&&wornHelmet){
-        if(who.starter&&window.HellStarterSkin)
-          window.HellStarterSkin.preview(who.front,who.actor,url=>{
-            if(worn.isConnected)window.HellHelmetComposer?.drawPortrait(worn,url,wornHelmet);
-          });
-        else window.HellHelmetComposer?.drawPortrait(worn,who.front,wornHelmet);
+        window.HellHelmetComposer?.drawPortrait(worn,who.front,wornHelmet);
       }
     }
     body.querySelectorAll('[data-char-direction]').forEach(button=>button.addEventListener('click',()=>{
@@ -1358,25 +1293,6 @@
     else if(type==='earn')html=`<div class="banner">🪙 현재 코인 <b>${fmt(prof.coins)}</b><br><small>게임 중 수집 · 누적 레벨업 · 선택형 광고 · 코인 구매</small></div><div class="info-card"><strong>무료로 얻기</strong>게임에서 코인 줍기 / 누적 낙하로 레벨업</div><div class="info-card"><strong>▶ 보상형 광고</strong><span class="muted">광고 서비스 연동 전이어서 현재 시청·코인 지급을 사용할 수 없어.</span></div><div class="info-card"><strong>코인 구매</strong><span class="muted">현금 결제는 추후 설계·심사 후 연결할 예정이야. 현재 결제 기능 없음.</span></div>`;
     else if(type==='records')html=`<div class="banner">🏆 최고 낙하 <b>${fmt(Math.floor(best))}m</b></div><div class="info-card"><strong>누적 낙하</strong>${fmt(prof.totalDepth)}m · Lv.${prof.level}<br><span class="muted">다음 레벨까지 ${fmt(prog.next-prog.within)}m</span></div><div class="info-card"><strong>플레이 횟수</strong>${fmt(prof.runs)}판 완료</div><div class="info-card"><strong>획득 코인 기록</strong>게임에서 수집 ${fmt(prof.worldCoins)}코인 · 현재 보유 ${fmt(prof.coins)}코인</div>`;
     else if(type==='settings')html=`<div class="info-card"><strong>🎮 가속·벽점프 버튼 위치</strong><span class="muted">휴대폰을 잡고 연타하기 편한 손으로 가속 버튼을 옮길 수 있어. 선택은 자동 저장돼.</span><div class="control-layout-choices" role="group" aria-label="가속 버튼 방향"><button type="button" class="control-layout-choice" data-boost-side="left" aria-pressed="${prof.settings.boostSide!=='right'}">🌪️ 가속 왼쪽<br><small>점프 오른쪽</small></button><button type="button" class="control-layout-choice" data-boost-side="right" aria-pressed="${prof.settings.boostSide==='right'}">🌪️ 가속 오른쪽<br><small>점프 왼쪽</small></button></div></div><div class="info-card"><strong>🔊 음량 설정</strong><span class="muted">BGM은 배경음악이야. 홈은 무음이니까 아래 음악의 ▶ 미리듣기를 켜고 슬라이더를 움직이면 바로 확인할 수 있어.</span><label for="musicRange">BGM (배경음악) <span id="musicValue">${Math.round(prof.settings.music*100)}%</span><input id="musicRange" type="range" min="0" max="100" value="${Math.round(prof.settings.music*100)}"></label><label for="sfxRange">효과음 <span id="sfxValue">${Math.round(prof.settings.sfx*100)}%</span><input id="sfxRange" type="range" min="0" max="100" value="${Math.round(prof.settings.sfx*100)}"></label></div><div class="info-card"><strong>🎵 게임 음악 미리듣기</strong><span class="muted">게임에서 7곡이 순서대로 이어져. 홈은 무음이며 ▶는 선택한 곡의 미리듣기야.</span><ul class="slot-list music-preview-list">${sys.MUSIC_SLOTS.slice(1).map((v,i)=>`<li><span>${(i+1)+'번 곡'} · ${esc(v.title||v.name)}</span><button type="button" data-music-preview="${i+1}" aria-label="${esc(v.title||v.name)} 미리듣기">▶</button></li>`).join('')}</ul></div>`;
-    if(type==='settings'&&window.HellRigV2){
-      const rig=window.HellRigV2,look=rig.getLook();
-      const parts=[
-        ['mask','탈',[['cat','고양이'],['dog','강아지'],['frog','개구리']]],
-        ['outfit','옷',[['explorer','탐험복'],['pilot','비행복'],['star','별빛 의상']]],
-        ['shoes','신발',[['boots','탐험 부츠'],['sneakers','운동화'],['jet','스피드화']]],
-        ['cape','망토',[['teal','청록 망토'],['red','붉은 망토'],['none','없음']]]
-      ];
-      const combos=parts.map(([key,label,opts])=>
-        '<label class="rig-setting-line">'+label+' <select data-rig-part="'+key+'">'+
-        opts.map(([id,name])=>'<option value="'+id+'" '+(look[key]===id?'selected':'')+'>'+name+'</option>').join('')+
-        '</select></label>').join('');
-      html+='<div class="info-card rig-settings"><strong>탈인형 관절 모션 V2 · 테스트</strong>'+
-       '<span class="muted">게임 내 캐릭터만 시험 교체합니다. 코인·장비 구매·기록은 그대로 유지되고 상품 소유권과 별개예요.</span>'+
-       '<button type="button" class="rig-enable" data-rig-enable aria-pressed="'+rig.isEnabled()+'">'+
-       (rig.isEnabled()?'새 관절 모션 ON':'기존 원본 모션 ON')+'</button>'+
-       '<div class="rig-settings-grid">'+combos+'</div>'+
-       '<a class="rig-lab-link" href="rig-v2-lab.html?v=24-joint">관절·벽점프 자세 실험실 열기</a></div>';
-    }
     $('drawerBody').innerHTML=(notice?'<div class="shop-notice" role="status">'+esc(notice)+'</div>':'')+html;
     $('drawer').classList.remove('hidden');
     $('drawerClose').disabled=type==='chooseActor'&&!prof.identityChosen;
@@ -1384,7 +1300,6 @@
       if(sys.selectActor(b.dataset.initialActor)){syncLobbyCharacter();updateUI();closePanel();}
       else openPanel('chooseActor','저장 실패 · 다시 선택해 주세요.');
     }));
-    window.HellStarterSkin?.refreshPreviews($('drawerBody'));
     if(type==='character')mountWardrobeControls();
     if(type==='shop'){
       const redraw=(noticeText='')=>{
@@ -1408,9 +1323,6 @@
         if(sys.equipSkin(b.dataset.marketEquipSkin)){marketCharacter=null;syncLobbyCharacter();updateUI();redraw('스킨 장착 완료 · 추가 코인 차감 없음');}
         else redraw('장착할 수 없는 스킨입니다.');
       }));
-      $('drawerBody').querySelectorAll('[data-market-go-character]').forEach(b=>b.addEventListener('click',()=>{
-        marketCharacter=null;openPanel('character');
-      }));
       $('drawerBody').querySelectorAll('[data-market-item]').forEach(b=>b.addEventListener('click',()=>{
         marketSelected=b.dataset.marketItem;marketCharacter=null;redraw();
       }));
@@ -1428,16 +1340,6 @@
       }));
     }
     if(type==='settings'){
-      const rig=window.HellRigV2;
-      $('drawerBody').querySelector('[data-rig-enable]')?.addEventListener('click',e=>{
-        if(!rig)return;
-        const enabled=rig.setEnabled(!rig.isEnabled());
-        e.currentTarget.setAttribute('aria-pressed',String(enabled));
-        e.currentTarget.textContent=enabled?'새 관절 모션 ON':'기존 원본 모션 ON';
-      });
-      $('drawerBody').querySelectorAll('[data-rig-part]').forEach(box=>box.addEventListener('change',()=>{
-        rig?.setLook(box.dataset.rigPart,box.value);
-      }));
       for(const [key,id] of [['music','musicRange'],['sfx','sfxRange']]){
         $(id).addEventListener('input',e=>{sys.setting(key,Number(e.target.value)/100);$(key+'Value').textContent=e.target.value+'%';});
       }
@@ -1474,7 +1376,7 @@
   // WEB 0.9: Home-only WebGL sculpt; BGM / audio, gameplay and records unchanged.
   (function setupLobbyCharacter(){
     const actor=$('lobbyCharacter'), embers=$('lobbyEmbers');
-    if(window.HellFallLobby3D)lobbyCtrl=window.HellFallLobby3D.mount(actor,{isHome:()=>s.stage==='READY',initial:sys.profile.selectedCharacter});
+    lobbyCtrl=window.HellLobbyPortrait.mount(actor,{isHome:()=>s.stage==='READY',initial:sys.profile.selectedCharacter});
     syncLobbyCharacter();
     const frag=document.createDocumentFragment();
     for(let i=0;i<22;i++){
@@ -1487,5 +1389,5 @@
   applyControlSide();fit();updateUI();requestAnimationFrame(frame);
   if(!sys.profile.identityChosen)openPanel('chooseActor');
   // Expose read-only simple debug state for local test harnesses, never gameplay rewards.
-  window.HellFallTest={snapshot:()=>({stage:s.stage,depth:s.depth,speed:s.speed,timeLeft:s.timeLeft,wall:s.wall,hopProgress:s.hopProgress,hopVisual:s.hopVisual,boost:s.boost,fold:s.fold,cadence:s.cadence,tapCount:s.tapCount,runCoins:s.runCoins,hazards:s.obstacles.length,gates:s.timeGates.length,checkpoints:s.checkpointGates.length,checkpointFlash:s.checkpointFlash,lastCheckpointBonus:s.lastCheckpointBonus,boostSide:sys.profile.settings.boostSide,bubbleLeft:s.bubbleLeft,helmetCharges:s.helmetCharges,helmetId:s.helmetId,shieldFlash:s.shieldFlash,quickSlots:s.quickSlots.slice(),poseFrames:window.HellStarterPoses?.getCachedCount()||0,drinks:{speed:{...s.drinks.speed},brake:{...s.drinks.brake}},stats:effectiveStats(),character:sys.profile.selectedCharacter,profile:{...sys.profile}}),start:()=>start(false)};
+  if(sys.TEST_MODE)window.HellFallTest={snapshot:()=>({stage:s.stage,depth:s.depth,speed:s.speed,timeLeft:s.timeLeft,wall:s.wall,hopProgress:s.hopProgress,hopVisual:s.hopVisual,boost:s.boost,fold:s.fold,cadence:s.cadence,tapCount:s.tapCount,runCoins:s.runCoins,hazards:s.obstacles.length,gates:s.timeGates.length,checkpoints:s.checkpointGates.length,checkpointFlash:s.checkpointFlash,lastCheckpointBonus:s.lastCheckpointBonus,boostSide:sys.profile.settings.boostSide,bubbleLeft:s.bubbleLeft,helmetCharges:s.helmetCharges,helmetId:s.helmetId,shieldFlash:s.shieldFlash,quickSlots:s.quickSlots.slice(),poseFrames:window.HellStarterPoses?.getCachedCount()||0,drinks:{speed:{...s.drinks.speed},brake:{...s.drinks.brake}},stats:effectiveStats(),character:sys.profile.selectedCharacter,profile:{...sys.profile}}),start:()=>start(false)};
 })();

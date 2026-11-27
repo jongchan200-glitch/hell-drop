@@ -53,8 +53,8 @@
   const int=(v)=>Math.max(0,Math.floor(Number(v)||0));
   function newProfile(){return {coins:TEST_MODE?1000:0,identityChosen:false,accountActor:null,activeActor:'uiji',equippedSkins:{uiji:'starter_boy',useoi:'starter_girl'},ownedSkins:['starter_boy','starter_girl'],skinRevision:1,totalDepth:0,level:1,levelMigration:2,levelBaseDepth:0,levelBaseLevel:1,runs:0,worldCoins:0,inventory:[],selectedCharacter:'starter_boy',ownedCharacters:['starter_boy','starter_girl'],characterOwnershipRevision:1,equippedHelmet:null,armedBubble:null,wardrobes:{},consumables:{},settings:{music:DEFAULT_MUSIC,sfx:.32,boostSide:'left',musicDefaultRevision:2},claimed:[]};}
   function load(){let obj={},hasCurrent=false;
-    try{const raw=localStorage.getItem(KEY);hasCurrent=!!raw;
-      obj=JSON.parse(raw||(TEST_MODE?localStorage.getItem(LEGACY_KEY):null)||'{}')||{};
+    try{const raw=window.HellPlatform.storage.read(KEY);hasCurrent=!!raw;
+      obj=JSON.parse(raw||(TEST_MODE?window.HellPlatform.storage.read(LEGACY_KEY):null)||'{}')||{};
     }catch(_){obj={};hasCurrent=false;}
     const p={...newProfile(),...obj};
     // First test migration gets an exact 1000-coin wallet and unpurchased test skins.
@@ -135,7 +135,7 @@
     return p;
   }
   let profile=load();
-  function save(){try{localStorage.setItem(KEY,JSON.stringify(profile));return true}catch(_){return false}}
+  function save(){return window.HellPlatform.storage.write(KEY,JSON.stringify(profile));}
   save(); // Persist the one-time grant immediately, not on every reload.
   function legacyThreshold(level){const n=Math.max(0,level-1);return 2400+n*1700+n*n*190;}
   function legacyLevelFromDepth(distance){let lv=1,remain=int(distance);while(lv<1000&&remain>=legacyThreshold(lv)){remain-=legacyThreshold(lv);lv++;}return lv;}

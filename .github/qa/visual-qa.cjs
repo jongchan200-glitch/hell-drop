@@ -13,12 +13,13 @@ const fs=require('fs');
   }
   // Every check uses real mobile viewport, real game buttons and live physics.
   for(const [name,query,hero,index] of [
-    ['starter-boy','?v=nov27-skin30','starter_boy',0],
-    ['starter-girl','?v=nov27-skin30','starter_girl',1],
-    ['premium-girl','?rig=1&keypose=1&starter=1&workrig=1&v=nov26-stats25','useoi',2]
+    ['starter-boy','?v=nov27-clean31','starter_boy',0],
+    ['starter-girl','?v=nov27-clean31','starter_girl',1],
+    ['premium-girl','?rig=1&keypose=1&starter=1&workrig=1&v=nov27-clean31','useoi',2],
+    ['premium-boy','?v=nov27-clean31','uiji',3]
   ]){
     await reset(query);
-    await page.locator('[data-initial-actor="'+(index===0?'uiji':'useoi')+'"]').click();
+    await page.locator('[data-initial-actor="'+((index===0||index===3)?'uiji':'useoi')+'"]').click();
     const startStats=await page.evaluate(()=>({
       profile:window.HellSystems.profile,
       catalog:window.HellSystems.CHARACTER_CATALOG,
@@ -27,12 +28,12 @@ const fs=require('fs');
     if(startStats.items.filter(i=>i.kind==='drink').length!==6)throw Error('Missing six stat drinks');
     if(startStats.catalog.length!==4||startStats.profile.coins!==1000)throw Error('Expected four skins and exact test grant');
     if(index===0||index===1){
-      await page.waitForFunction(()=>(document.getElementById('homeAvatar')?.src.includes('starter_')&&document.getElementById('homeAvatar')?.naturalWidth>100),{timeout:15000});
+      await page.waitForFunction(()=>{const i=document.getElementById('lobbyHero');return i?.src.includes('starter_')&&!i.hidden&&i.naturalWidth>100},{timeout:15000});
       const pre=await page.evaluate(()=>({
         home:/\/assets\/starter_(boy|girl)_portrait_v29\.webp/.test(document.getElementById('homeAvatar').src),
         showcase:/\/assets\/starter_(boy|girl)_portrait_v29\.webp/.test(document.querySelector('.turnaround-pose.is-selected')?.src||''),
         stats:document.querySelector('#lobbyTraits')?.textContent,
-        assetReady:!!window.HellStarterSkin?.portraitSprite
+        assetReady:document.querySelectorAll('#lobbyCharacter img').length===1&&document.querySelectorAll('#lobbyCharacter canvas').length===0
       }));
       if(!pre.home||!pre.showcase||!pre.assetReady)throw Error('Starter lobby illustration not replaced '+JSON.stringify(pre));
       if(index===0){
@@ -51,12 +52,20 @@ const fs=require('fs');
         await page.locator('#drawerClose').click();
       }
     }
-    if(index===2){
+    if(index>=2){
       await page.locator('[data-panel="character"]').first().click();
-      await page.locator('[data-character-pick="useoi"]').click();
-      await page.locator('[data-market-buy-character="useoi"]').click();
-      await page.locator('[data-market-equip-skin="useoi"]').click();
+      await page.locator('[data-character-pick="'+hero+'"]').click();
+      await page.locator('[data-market-buy-character="'+hero+'"]').click();
+      await page.locator('[data-market-equip-skin="'+hero+'"]').click();
       await page.locator('#drawerClose').click();
+    }
+    if(index===2){
+      await page.waitForFunction(()=>document.querySelector('#lobbyHero')?.src.endsWith('/hero_intro.webp')&&!document.querySelector('#lobbyHero').hidden);
+      await page.locator('#lobbyCharacter').focus();
+      await page.keyboard.press('ArrowRight');
+      await page.waitForFunction(()=>document.querySelector('#lobbyHero')?.src.endsWith('/hero_back_fixed.webp')&&!document.querySelector('#lobbyHero').hidden);
+      await page.keyboard.press('ArrowLeft');
+      await page.waitForFunction(()=>document.querySelector('#lobbyHero')?.src.endsWith('/hero_intro.webp')&&!document.querySelector('#lobbyHero').hidden);
     }
     const selected=await page.evaluate(()=>window.HellFallTest.snapshot().character);
     if(selected!==hero)throw Error('Character selected '+selected+' expected '+hero);
@@ -84,6 +93,14 @@ const fs=require('fs');
     const before=await page.evaluate(()=>window.HellFallTest.snapshot());
     if(before.stage!=='PLAYING')throw Error('Game did not launch '+JSON.stringify(before.stage));
     if(before.character!==hero)throw Error('Run hero mismatch');
+    if(index===0){
+      await page.evaluate(()=>window.HellPlatform.setNativePaused(true));
+      const paused=await page.evaluate(()=>window.HellFallTest.snapshot().depth);
+      await page.waitForTimeout(250);
+      const still=await page.evaluate(()=>window.HellFallTest.snapshot().depth);
+      if(paused!==still)throw Error('Native pause advanced physics');
+      await page.evaluate(()=>window.HellPlatform.setNativePaused(false));
+    }
     const rig=await page.evaluate(()=>({
       workRig:!!window.HellWorkRig,keypose:!!window.HellKeypose,
       starterKit:!!window.HellStarterKit,rigV2:!!window.HellRigV2,
@@ -98,7 +115,7 @@ const fs=require('fs');
       if(active.profile.consumables.vitality_5!==0||active.profile.consumables.calm_10!==0)throw Error('Drink consumption not persistent');
       console.log('QADRINKS='+JSON.stringify({stats:active.stats,drink:active.drinks,consumed:true}));
     }
-    if(index===2 && (before.stats.speed!==73||before.stats.brake!==72))throw Error('Premium stats wrong '+JSON.stringify(before.stats));
+    if(index>=2 && (before.stats.speed!==73||before.stats.brake!==72))throw Error('Premium stats wrong '+JSON.stringify(before.stats));
     if(index<2){
       await page.screenshot({path:'qa-shot-'+name+'-glide.jpg',type:'jpeg',quality:60});
       console.log('QAIMAGE_GLIDE_'+name.toUpperCase().replace(/-/g,'_')+'='+fs.readFileSync('qa-shot-'+name+'-glide.jpg').toString('base64'));
@@ -156,7 +173,7 @@ const fs=require('fs');
     }
   }
   // Actual UI purchase test, same shared test wallet across both actors.
-  await reset('?v=nov27-skin30');
+  await reset('?v=nov27-clean31');
   await page.screenshot({path:'qa-shot-actor-onboarding.jpg',type:'jpeg',quality:65});
   console.log('QAIMAGE_ACTOR_ONBOARDING='+fs.readFileSync('qa-shot-actor-onboarding.jpg').toString('base64'));
   await page.locator('[data-initial-actor="uiji"]').click();
@@ -202,6 +219,17 @@ const fs=require('fs');
   const migrated=await page.evaluate(()=>({p:window.HellSystems.profile,old:JSON.parse(localStorage.getItem('hell_fall_profile_v1')),helmet:window.HellSystems.wardrobeOf('starter_girl').gear.helmet}));
   if(migrated.p.coins!==1000||migrated.p.selectedCharacter!=='starter_girl'||migrated.p.ownedSkins.length!==2||migrated.p.runs!==4||migrated.p.totalDepth!==5000||migrated.helmet!=='helmet_basic'||migrated.old.coins!==42)throw Error('Legacy migration failed '+JSON.stringify(migrated));
   console.log('QAMIGRATION_TEST='+JSON.stringify({coins:migrated.p.coins,legacyCoins:migrated.old.coins,runs:migrated.p.runs,helmet:migrated.helmet}));
+  // Throttled portrait requests plus rapid actor switches: the last selected actor wins.
+  await page.route('**/assets/starter_*_portrait_v29.webp',async route=>{await new Promise(r=>setTimeout(r,route.request().url().includes('boy')?450:80));await route.continue();});
+  await page.locator('[data-panel="character"]').first().click();
+  await page.locator('[data-test-actor="uiji"]').click();
+  await page.locator('[data-test-actor="useoi"]').click();
+  await page.locator('#drawerClose').click();
+  await page.waitForFunction(()=>{const i=document.querySelector('#lobbyHero');return i.src.endsWith('starter_girl_portrait_v29.webp')&&!i.hidden&&i.naturalWidth>0;});
+  await page.waitForTimeout(600);
+  const portrait=await page.evaluate(()=>({src:document.querySelector('#lobbyHero').src,count:document.querySelectorAll('#lobbyCharacter img').length,canvases:document.querySelectorAll('#lobbyCharacter canvas').length}));
+  if(portrait.count!==1||portrait.canvases!==0||!portrait.src.endsWith('starter_girl_portrait_v29.webp'))throw Error('Portrait overlap or stale image '+JSON.stringify(portrait));
+  console.log('QAPORTRAIT='+JSON.stringify(portrait));
   if(errors.length)throw Error('Browser JS errors: '+JSON.stringify(errors.slice(0,12)));
   await browser.close();console.log('QA_PASS_STAT_DRINK_STARTER');
 })().catch(e=>{console.error(e);process.exit(1)});

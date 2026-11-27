@@ -103,10 +103,6 @@
 .lobby-character{position:absolute;z-index:2;left:6%;right:6%;top:0;bottom:7%;display:flex;align-items:end;justify-content:center;touch-action:pan-y;cursor:grab;outline:none;-webkit-user-select:none;user-select:none;perspective:1000px;filter:drop-shadow(0 12px 7px #05030c9e) drop-shadow(0 1px 12px #ffc57a18)}
 .lobby-character:active{cursor:grabbing;touch-action:none}
 .lobby-character:focus-visible{outline:2px solid #f7bf7f;outline-offset:-5px;border-radius:20px}
-.lobby-turn{height:100%;width:100%;display:flex;align-items:flex-end;justify-content:center;transform-style:preserve-3d;will-change:transform;transform:rotateY(var(--hero-yaw,0deg)) translateX(var(--hero-shift,0px)) rotateZ(var(--hero-tilt,0deg));transition:transform .16s cubic-bezier(.2,.7,.25,1)}
-.lobby-character.is-dragging .lobby-turn{transition:none}
-.lobby-idle{height:100%;max-height:100%;width:100%;display:flex;justify-content:center;align-items:flex-end;transform-origin:50% 90%;animation:heroAlive 4.8s ease-in-out infinite;will-change:transform}
-.lobby-idle img{display:block;width:auto;height:100%;max-width:100%;max-height:100%;object-fit:contain;pointer-events:none;user-select:none;-webkit-user-drag:none}
 .character-identity{position:absolute;z-index:3;left:50%;transform:translateX(-50%);bottom:28px;display:flex;align-items:center;gap:8px;white-space:nowrap;padding:5px 14px;border-radius:100px;background:linear-gradient(90deg,#140f1dca,#2e1b2bbf,#140f1dca);border:1px solid #f0bc795c;box-shadow:0 3px 14px #05040a8a;backdrop-filter:blur(8px)}
 .character-identity b{font-size:13px;color:#fff0da;letter-spacing:.01em}
 .character-identity span:last-child{font-size:10px;color:#e3bd97}
@@ -165,10 +161,9 @@
 }
 @media(max-height:610px){.lobby-title h1{font-size:34px}.lobby-title p{display:none}.lobby-summary{height:34px}.lobby-play{min-height:52px}.play-copy strong{font-size:17px}.character-identity{bottom:19px}.lobby-nav{margin-top:5px}}
 @media(min-width:650px){.lobby-title h1{font-size:61px}.lobby-layout{padding-left:23px;padding-right:23px}.lobby-bottom{margin-left:-23px;margin-right:-23px;padding-left:23px;padding-right:23px}}
-@media(prefers-reduced-motion:reduce){.lobby-world,.lobby-ambient,.lobby-backlight,.lobby-embers i,.lobby-idle,.lobby-play:before{animation:none!important}.lobby-turn{transition:none}}
+@media(prefers-reduced-motion:reduce){.lobby-world,.lobby-ambient,.lobby-backlight,.lobby-embers i,.lobby-play:before{animation:none!important}}
 @keyframes lobbyBreathe{from{transform:scale(1.045) translateY(0)}to{transform:scale(1.09) translateY(-7px)}}
 @keyframes lobbyGlow{from{opacity:.72}to{opacity:1}}
-@keyframes heroAlive{0%,100%{transform:translateY(0) rotate(0deg) scaleY(1)}20%{transform:translateY(-2px) rotate(-.7deg) scaleY(1.004)}51%{transform:translateY(1.5px) rotate(.5deg) scaleY(.997)}78%{transform:translateY(-3px) rotate(-.35deg) scaleY(1.005)}}
 @keyframes emberAscend{0%{transform:translate3d(0,0,0) scale(.5);opacity:0}12%{opacity:.8}75%{opacity:.5}100%{transform:translate3d(var(--drift),-130px,0) scale(0);opacity:0}}
 @keyframes playShine{0%,70%,100%{left:-70%}88%{left:155%}}
 .character-owned{display:flex;align-items:center;gap:16px;padding:11px;border-radius:17px;background:linear-gradient(120deg,#55324991,#5730234d);border:1px solid #eab68755;margin:4px 0 12px}
@@ -188,10 +183,6 @@ html,body{height:100%;overflow:hidden}
 .music-preview-list button[aria-pressed="true"]{background:#b66b3f;color:#fff;border-color:#f9d79c}
 /* WEB 0.9 - genuine volumetric character. V0.8 music settings preserved above. */
 .lobby-character{touch-action:none;perspective:none;filter:none;isolation:isolate}
-.lobby-3d-canvas{display:block;position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:2;opacity:0;transition:opacity .38s ease-out;filter:drop-shadow(0 10px 10px #0a0611bb)}
-.lobby-character.is-3d-ready .lobby-3d-canvas{opacity:1}
-.lobby-character.is-3d-ready .lobby-turn{opacity:0;visibility:hidden;pointer-events:none}
-.lobby-character:not(.is-3d-ready) .lobby-turn{transform:none!important}
 .lobby-character.is-dragging{cursor:grabbing}
 
 /* WEB 1.4: compact transparent controls and storm at the character's height. */
@@ -525,13 +516,6 @@ html,body{height:100%;overflow:hidden}
 @media(max-width:350px){.market-category-grid{gap:5px}.market-folder{min-height:101px}.market-main-tab{font-size:10px}.market-main-tab b{font-size:19px}.wardrobe-inventory{gap:4px;padding:5px}.wardrobe-inventory-item{min-height:88px}}
 
 /* WEB 2.4 optional modular avatar test controls. */
-.rig-settings{border-color:#68d5ca80!important}
-.rig-enable{display:block;width:100%;min-height:43px;margin:12px 0;border:1.5px solid #73e6d3;border-radius:11px;background:linear-gradient(125deg,#154e58,#123245);color:#d2fff8;font-size:13px;font-weight:900;cursor:pointer}
-.rig-enable[aria-pressed="false"]{border-color:#a4a0a1;background:#30313b;color:#d7d1d3}
-.rig-settings-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:8px 0}
-.rig-setting-line{display:flex!important;flex-direction:column;gap:5px;margin:0!important;padding:9px;background:#101721;border:1px solid #ffffff28;border-radius:10px;font-size:11px!important}
-.rig-setting-line select{width:100%;min-height:36px;border:1px solid #91c8c099;border-radius:8px;padding:5px;background:#233342;color:#fff1da;font-size:12px}
-.rig-lab-link{display:block;margin-top:12px;text-align:center;color:#aaf0db;font-size:11px;font-weight:850;padding:11px;border:1px dashed #93c6b26e;border-radius:10px;text-decoration:none}
 
 
 /* WEB 2.6: starter and collectible heroes are visibly different everywhere. */
