@@ -39,7 +39,13 @@
   const actorName=id=>ACTOR_CATALOG.find(a=>a.id===id)?.name||'우지';
   const skinsFor=actor=>SKIN_CATALOG.filter(c=>c.actor===actor);
   // Beta balance: the exact prices can be adjusted without changing saved purchases.
-  const PET_CATALOG=[{id:'baby_dragon',name:'아기 용',price:200,speedBonus:2,brakeBonus:0,timeBonus:0,iconIndex:6,icon:'🐉',description:'작은 날개로 함께 낙하하는 영구 펫 · 최고속 +2%p'},{id:'coco',name:'코코',price:350,speedBonus:3,brakeBonus:2,timeBonus:5,icon:'🦜',description:'모란앵무 코코 · 최고속 +3%p · 감속 +2%p · 타임라인·시계 획득 시간 +5%'}];
+  // Each pet owns its atlas/frame layout and movement family; economy is editable here.
+  // All frames are 256px square. Pets without wings use authored falling/tucked poses.
+  const PET_CATALOG=[
+    {id:'baby_dragon',name:'아기 용',price:200,speedBonus:2,brakeBonus:0,timeBonus:0,iconIndex:6,icon:'🐉',description:'작은 날개로 함께 낙하하는 영구 펫 · 최고속 +2%p',guide:'캐릭터 옆을 날아다니는 영구 펫.',visual:{atlas:'assets/rpg_items_dragon_v33.webp',cols:3,representative:6,glide:6,alternate:7,dive:8,mode:'winged',css:'pet-icon'}},
+    {id:'coco',name:'코코',price:350,speedBonus:3,brakeBonus:2,timeBonus:5,icon:'🦜',description:'모란앵무 코코 · 최고속 +3%p · 감속 +2%p · 타임라인·시계 획득 시간 +5%',guide:'모란앵무 코코가 날갯짓하며 함께 낙하하고 급강하합니다.',visual:{atlas:'assets/coco_pet_v34.webp',cols:2,representative:1,glide:1,alternate:2,dive:3,mode:'winged',css:'coco-art'}},
+    {id:'winter',name:'겨울',price:250,speedBonus:2,brakeBonus:4,timeBonus:3,icon:'🐱',description:'포근한 장모 고양이 펫 · 최고속 +2%p · 감속 +4%p · 타임라인·시계 획득 시간 +3%',guide:'푸른 눈의 겨울이가 사지를 펼쳐 낙하하고, 급강하할 때 발톱을 뻗으며, 벽점프와 감속 때 몸을 웅크립니다.',visual:{atlas:'assets/winter_pet_v36.webp',cols:2,representative:0,glide:1,dive:2,tuck:3,mode:'cat',css:'winter-art'}}
+  ];
   const SLOT_PRICES={2:150,3:300};
   const ITEM_CATALOG=[
     {id:'bubble_10',name:'노란 버블 보호막',kind:'bubble',price:20,hits:1,color:'#ffe579',icon:'🟡',description:'한 판 동안 충돌 1회 방어'},

@@ -31,7 +31,7 @@ console.log('QA_NEW_BALANCE='+JSON.stringify(revised));
  const click=async s=>{await page.locator(s).first().click()};
  const shot=async n=>{await page.screenshot({path:'qa-shot-'+n+'.jpg',type:'jpeg',quality:65});console.log('QAIMAGE_'+n.toUpperCase().replace(/-/g,'_')+'='+fs.readFileSync('qa-shot-'+n+'.jpg').toString('base64'))};
  async function reset(actor='uiji'){
-   await page.goto('http://127.0.0.1:8765/?v=nov28-pajama35',{waitUntil:'domcontentloaded'});
+   await page.goto('http://127.0.0.1:8765/?v=nov28-winter36',{waitUntil:'domcontentloaded'});
    await page.evaluate(()=>localStorage.clear());await page.reload({waitUntil:'domcontentloaded'});
    await page.waitForFunction(()=>!!window.HellFallTest,{timeout:15000});
    await click('[data-initial-actor="'+actor+'"]');
@@ -169,7 +169,7 @@ console.log('QA_NEW_BALANCE='+JSON.stringify(revised));
 
  // Coco has its own portrait, motion atlas, three bonuses and persistent ownership.
  await reset('uiji');
- await shop('pets');assert.equal(await page.locator('[data-market-item]').count(),2);
+ await shop('pets');assert.equal(await page.locator('[data-market-item]').count(),3);
  await click('[data-market-item="coco"]');assert.equal(await page.locator('.market-large-art .coco-art').count(),1);
  await shot('coco-shop');await click('[data-market-buy-pet="coco"]');await click('#drawerClose');
  let cp=await prof();assert.equal(cp.coins,650);assert(cp.ownedPets.includes('coco'));assert.equal(cp.equippedPets.uiji,null);
@@ -187,6 +187,44 @@ console.log('QA_NEW_BALANCE='+JSON.stringify(revised));
  cr=await snap();assert.equal(cr.stage,'PLAYING');await shot('coco-dive');
  console.log('QACOCO='+JSON.stringify({pet:cr.pet,pose:cr.petPose,stats:cr.stats,coins:cr.profile.coins}));
 
+ // Winter uses resting shop/home art and authored fall, dive and tucked cat poses.
+ await reset('uiji');
+ await shop('pets');assert.equal(await page.locator('[data-market-item]').count(),3);
+ await click('[data-market-item="winter"]');
+ const winterDetail=page.locator('.market-large-art .winter-art');
+ assert.equal(await winterDetail.count(),1);
+ assert.equal(await winterDetail.evaluate(el=>getComputedStyle(el).backgroundPosition),'0% 0%');
+ assert((await winterDetail.evaluate(el=>getComputedStyle(el).backgroundImage)).includes('winter_pet_v36.webp'));
+ await shot('winter-shop');await click('[data-market-buy-pet="winter"]');await click('#drawerClose');
+ let wp=await prof();assert.equal(wp.coins,750);assert(wp.ownedPets.includes('winter'));assert.equal(wp.equippedPets.uiji,null);
+ await click('[data-panel="character"]');await click('[data-wardrobe-tab="pets"]');await click('[data-equip-pet="winter"]');
+ assert.equal((await prof()).equippedPets.uiji,'winter');
+ assert.equal(await page.locator('.preview-ground .winter-art').count(),1);
+ await shot('winter-equipped');
+ await click('[data-equip-pet="winter"]');assert.equal((await prof()).equippedPets.uiji,null);
+ await click('[data-equip-pet="winter"]');await click('#drawerClose');
+ assert.equal(await page.locator('#homePet.winter-art:not(.hidden)').count(),1);
+ assert.equal(await page.locator('#homePet').evaluate(el=>getComputedStyle(el).backgroundPosition),'0% 0%');
+ assert.equal(await page.locator('#homePet').evaluate(el=>getComputedStyle(el).animationName),'none');
+ assert.equal(await page.locator('#lobbySpeedStat').textContent(),'62%');
+ assert.equal(await page.locator('#lobbyBrakeStat').textContent(),'74%');
+ await shot('winter-home');
+ await page.reload({waitUntil:'domcontentloaded'});await page.waitForFunction(()=>!!window.HellFallTest);
+ wp=await prof();assert.equal(wp.coins,750);assert(wp.ownedPets.includes('winter'));assert.equal(wp.equippedPets.uiji,'winter');
+ await page.evaluate(()=>{Math.random=()=>2.1/1e9;});
+ await click('#start');await page.waitForFunction(()=>window.HellFallTest.snapshot().petPose==='glide');
+ let wr=await snap();assert.equal(wr.pet,'winter');assert.equal(wr.stats.speed,62);assert.equal(wr.stats.brake,74);assert.equal(wr.stats.timeBonus,3);
+ await shot('winter-glide');
+ const winterX=wr.petX;
+ await page.locator('#jump').tap();await page.waitForFunction(()=>window.HellFallTest.snapshot().petPose==='tuck');
+ assert.equal((await snap()).wall,'R');await shot('winter-tuck');
+ await page.waitForFunction(()=>window.HellFallTest.snapshot().petPose==='glide');
+ assert.notEqual((await snap()).petX,winterX);
+ await page.locator('#jump').tap();await page.waitForFunction(()=>window.HellFallTest.snapshot().wall==='L');
+ await page.waitForTimeout(220);
+ await tapBoost(10);await page.waitForFunction(()=>window.HellFallTest.snapshot().petPose==='dive',{timeout:5000});
+ wr=await snap();assert.equal(wr.stage,'PLAYING');await shot('winter-dive');
+ console.log('QAWINTER='+JSON.stringify({pet:wr.pet,pose:wr.petPose,stats:wr.stats,coins:wr.profile.coins}));
  // Migrate a former WEB 3.2 account with actual purchased gear and legacy raw-distance units.
  await page.evaluate(()=>{
   localStorage.clear();
@@ -201,5 +239,5 @@ console.log('QA_NEW_BALANCE='+JSON.stringify(revised));
  await page.reload({waitUntil:'domcontentloaded'});await page.waitForFunction(()=>!!window.HellFallTest);assert.equal((await prof()).coins,522);
  console.log('QAMIGRATION='+JSON.stringify({coins:p.coins,total:p.totalDepth,level:p.level,refund:p.retiredGearRefund}));
  assert.equal(errors.length,0,JSON.stringify(errors));
- await browser.close();console.log('QA_PASS_WEB35');
+ await browser.close();console.log('QA_PASS_WEB36');
 })().catch(e=>{console.error(e);process.exit(1)});

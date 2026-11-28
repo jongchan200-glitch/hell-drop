@@ -608,5 +608,8 @@ button.rpg-card{cursor:pointer;touch-action:manipulation}
 .rpg-preview-hero{display:flex;align-items:center;justify-content:center}.rpg-preview-hero>img{flex:0 1 auto;width:auto;height:100%;max-height:100%;min-height:0;max-width:100%;object-fit:contain;transform-origin:center center}
 
 /* WEB 3.4 Coco: own 2x2 atlas; default portrait cell. */
-.rpg-atlas.coco-art,.home-dragon.coco-art{background-image:url("assets/coco_pet_v34.webp");background-size:200% 200%;background-position:100% 0%}
+.rpg-atlas.pet-art,.home-dragon.pet-art{background-image:var(--pet-atlas);background-size:var(--pet-size);background-position:var(--pet-pos)}
+/* Grounded cats rest near the character's feet, rather than bobbing like birds. */
+.home-dragon.winter-art{right:2%;top:auto;bottom:5%;width:clamp(68px,23vw,96px);animation:none;z-index:2}
+.preview-dragon.preview-ground{right:4%;top:auto;bottom:0;width:clamp(64px,21vw,88px);animation:none}
 .rpg-atlas.skin-icon{background-size:contain;background-position:center;background-repeat:no-repeat}

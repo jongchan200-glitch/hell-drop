@@ -39,8 +39,10 @@
     return sys.loadoutStats(s.runCharacter,s.pet,{speed:s.drinks.speed.bonus,brake:s.drinks.brake.bonus,time:s.drinks.time.bonus},s.runLevel);
   }
   const rewardTime=n=>B.reward(n,effectiveStats().timeBonus);
-  const assetAtlas=new Image();assetAtlas.src='assets/rpg_items_dragon_v33.webp';
-  const cocoAtlas=new Image();cocoAtlas.src='assets/coco_pet_v34.webp';
+  const petAtlases=new Map();
+  for(const {visual:v} of sys.PET_CATALOG){
+    if(!petAtlases.has(v.atlas)){const image=new Image();image.src=v.atlas;petAtlases.set(v.atlas,image);}
+  }
   // Only the original V4.2 reference family; no generated replacement faces.
   const IMAGE_FILES={braking:'hero_cape',jumpLeft:'hero_jump_left',jumpRight:'hero_jump_right',dizzy:'hero_hit',uiji:'uiji_intro',uijiMotion:'uiji_motion_atlas'};
   Object.entries(IMAGE_FILES).forEach(([key,file])=>{
@@ -654,18 +656,22 @@
   // A single independent pet sprite follows the hero; no attachment to body pixels.
   function drawPet(x,y,u){
     if(!s.pet)return;
-    const coco=s.pet.id==='coco',atlas=coco?cocoAtlas:assetAtlas,cols=coco?2:3;
-    if(!atlas.naturalWidth)return;
+    const v=s.pet.visual,atlas=petAtlases.get(v.atlas),cols=v.cols;
+    if(!atlas?.naturalWidth)return;
+    const cat=v.mode==='cat';
     const dest=x+(x<W*.5?103:-103)*u;
     s.petX=s.petX===null?dest:s.petX+(dest-s.petX)*.18;
-    const xx=Math.max(34*u,Math.min(W-34*u,s.petX));
+    const pad=(cat?42:34)*u,xx=Math.max(pad,Math.min(W-pad,s.petX));
     const fast=s.boost>.52,flap=Math.sin(s.elapsed*17)>0;
-    const frame=coco?(fast?3:flap?1:2):(fast?8:flap?6:7);
-    s.petPose=fast?'dive':flap?'flap-up':'flap-down';
-    const size=(fast?58:67)*u;
-    ctx.save();ctx.translate(xx,y+(fast?-77:-70)*u+Math.sin(s.elapsed*9)*5*u);
+    // Cat tucks during a wall transfer or the short deceleration transition, never flaps.
+    const tuck=cat&&(s.hopVisual<.75||(!fast&&s.fold>.10&&s.lastTapAt>=0&&s.elapsed-s.lastTapAt>.22));
+    const frame=cat?(tuck?v.tuck:fast?v.dive:v.glide):(fast?v.dive:flap?v.glide:v.alternate);
+    s.petPose=cat?(tuck?'tuck':fast?'dive':'glide'):(fast?'dive':flap?'flap-up':'flap-down');
+    const size=(cat?(tuck?70:fast?76:82):(fast?58:67))*u;
+    ctx.save();ctx.translate(xx,y+(cat?-64:fast?-77:-70)*u+Math.sin(s.elapsed*(cat?5:9))*(cat?2:5)*u);
     if(xx>x)ctx.scale(-1,1);
-    ctx.rotate(fast?.25:Math.sin(s.elapsed*8)*.06);
+    // The cat's authored head points down-left; tilt the extended pose toward the fall.
+    ctx.rotate(cat?(tuck?Math.sin(s.elapsed*7)*.08:fast?-.48:-.20+Math.sin(s.elapsed*5)*.06):(fast?.25:Math.sin(s.elapsed*8)*.06));
     ctx.drawImage(atlas,(frame%cols)*256,Math.floor(frame/cols)*256,256,256,-size/2,-size/2,size,size);ctx.restore();
   }
   function drawBubble(x,y,u){
@@ -841,8 +847,12 @@
     $('lobbyClassTag').textContent=character.starter?'무료 기본 복장':skinLabel(character);
     const pet=sys.petOf(character.id);
     syncPreparedStats();
-    $('homePet').classList.toggle('hidden',!pet);
-    $('homePet').classList.toggle('coco-art',pet?.id==='coco');
+    const homePet=$('homePet');
+    homePet.classList.toggle('hidden',!pet);
+    homePet.classList.toggle('pet-art',!!pet);
+    for(const {visual:v} of sys.PET_CATALOG)homePet.classList.toggle(v.css,pet?.visual===v);
+    if(pet){const [atlas,size,pos]=petArtValues(pet);homePet.style.setProperty('--pet-atlas',atlas);homePet.style.setProperty('--pet-size',size);homePet.style.setProperty('--pet-pos',pos);}
+    else for(const key of ['--pet-atlas','--pet-size','--pet-pos'])homePet.style.removeProperty(key);
     $('lobbyTraits').classList.toggle('is-premium',!character.starter);
     $('lobbyCharacter').setAttribute('aria-label',character.name+' 캐릭터');
     lobbyCtrl?.setCharacter(character.id);
@@ -852,7 +862,8 @@
   const SKIN_ART={starter_boy:0,uiji:1,wingsuit_boy:2,starter_girl:3,useoi:4,wingsuit_girl:5};
   function atlasArt(i,extra=''){return '<span class="rpg-atlas '+extra+'" style="--atlas-x:'+((i%3)*50)+'%;--atlas-y:'+(Math.floor(i/3)*50)+'%" aria-hidden="true"></span>';}
   function skinArt(c){return c.iconArt?'<span class="rpg-atlas skin-icon" style="background-image:url(\''+esc(c.iconArt)+'\')" aria-hidden="true"></span>':atlasArt(SKIN_ART[c.id]??0);}
-  function petArt(p){return p?.id==='coco'?'<span class="rpg-atlas coco-art" aria-hidden="true"></span>':atlasArt(6,'pet-icon');}
+  function petArtValues(p){const v=p.visual,step=100/(v.cols-1);return ["url('"+v.atlas+"')",(v.cols*100)+'% '+(v.cols*100)+'%',(v.representative%v.cols)*step+'% '+Math.floor(v.representative/v.cols)*step+'%'];}
+  function petArt(p){const [atlas,size,pos]=petArtValues(p);return '<span class="rpg-atlas pet-art '+p.visual.css+'" style="--pet-atlas:'+esc(atlas)+';--pet-size:'+size+';--pet-pos:'+pos+'" aria-hidden="true"></span>';}
   const petStats=p=>[p.speedBonus?'최고속 +'+p.speedBonus+'%p':'',p.brakeBonus?'감속 +'+p.brakeBonus+'%p':'',p.timeBonus?'시간 획득 +'+p.timeBonus+'%':''].filter(Boolean).join(' · ');
   function prepSlotsHTML(prof,origin){
     const slots=sys.wardrobeOf(prof.selectedCharacter)?.quickSlots||[];
@@ -907,7 +918,7 @@
     const tabs=[['skins','스킨'],['pets','펫'],['items','아이템']].map(([id,label])=>'<button type="button" data-wardrobe-tab="'+id+'" aria-pressed="'+(id===wardrobeTab)+'">'+label+'</button>').join('');
     const contents=wardrobeTab==='skins'?'<div class="rpg-grid">'+skinTiles+'</div>':wardrobeTab==='pets'?'<div class="rpg-grid">'+(petTiles||'<p class="market-guide">보유한 펫이 없어요.</p>')+'</div>':'<div class="prep-grid">'+prepSlotsHTML(prof,'character')+'</div><p class="market-guide">빈 슬롯을 터치해 장착, 다시 터치해 해제 · 한 판용</p><div class="rpg-grid">'+(inventory||'<p class="market-guide">보유한 소모품이 없어요.</p>')+'</div>';
     return '<div class="wardrobe-root"><div class="actor-test-box"><div class="starter-pick-heading"><b>내 캐릭터 · '+sys.actorName(prof.activeActor)+'</b><span>'+(sys.TEST_MODE?'TEST':'')+'</span></div>'+actorButtons+'</div>'+
-      '<div class="rpg-preview"><div class="rpg-preview-hero">'+(previewMode?'<canvas data-preview-canvas width="256" height="280" aria-label="스킨 동작 미리보기"></canvas>':'<img src="'+active.front+'" alt="'+esc(active.name)+'">')+(pet?'<span class="preview-dragon">'+petArt(pet)+'</span>':'')+'</div><strong>'+esc(active.name)+'</strong><div class="starter-active-stats"><span>⚡ '+stats.speed+'%</span><span>❄ '+stats.brake+'%</span>'+(stats.timeBonus?'<span>⏳ +'+stats.timeBonus+'%</span>':'')+'</div><button class="rpg-secondary rpg-motion" type="button" data-preview-motion>'+['동작 보기','낙하 · 다음','급강하 · 다음','벽점프 · 정면'][previewMode]+'</button></div>'+
+      '<div class="rpg-preview"><div class="rpg-preview-hero">'+(previewMode?'<canvas data-preview-canvas width="256" height="280" aria-label="스킨 동작 미리보기"></canvas>':'<img src="'+active.front+'" alt="'+esc(active.name)+'">')+(pet?'<span class="preview-dragon '+(pet.visual.mode==='cat'?'preview-ground':'')+'">'+petArt(pet)+'</span>':'')+'</div><strong>'+esc(active.name)+'</strong><div class="starter-active-stats"><span>⚡ '+stats.speed+'%</span><span>❄ '+stats.brake+'%</span>'+(stats.timeBonus?'<span>⏳ +'+stats.timeBonus+'%</span>':'')+'</div><button class="rpg-secondary rpg-motion" type="button" data-preview-motion>'+['동작 보기','낙하 · 다음','급강하 · 다음','벽점프 · 정면'][previewMode]+'</button></div>'+
       '<nav class="rpg-tabs" aria-label="내 보관함">'+tabs+'</nav>'+contents+'</div>';
   }
   function mountPreview(){
@@ -967,7 +978,7 @@
     if(chosen){
       const permanent=owned(chosen),attr=chosen.kind==='skin'?'data-market-buy-character':chosen.kind==='pet'?'data-market-buy-pet':chosen.kind==='slot'?'data-market-buy-slot':'data-market-buy';
       const value=chosen.kind==='slot'?prof.slotCount:chosen.id;
-      const guide=chosen.kind==='skin'?(chosen.id.startsWith('wingsuit')?'날개를 펼쳐 낙하하고 급강하하는 윙슈트. ':chosen.id.startsWith('pajama_')?'귀여운 기하학 무늬 잠옷과 편안한 슬리퍼. ':'탐험가 전용 복장. ')+'구매 후 내 캐릭터에서 장착하세요.':chosen.kind==='pet'?(chosen.id==='coco'?'모란앵무 코코가 날갯짓하며 함께 낙하하고 급강하합니다. ':'캐릭터 옆을 날아다니는 영구 펫. ')+'내 캐릭터에서 장착하세요.':chosen.kind==='slot'?'한 번 구매하면 모든 캐릭터에서 영구적으로 사용할 수 있어요.':'출전 전에 장착하면 시작 시 1개 소모되며, 한 판 동안 적용됩니다.';
+      const guide=chosen.kind==='skin'?(chosen.id.startsWith('wingsuit')?'날개를 펼쳐 낙하하고 급강하하는 윙슈트. ':chosen.id.startsWith('pajama_')?'귀여운 기하학 무늬 잠옷과 편안한 슬리퍼. ':'탐험가 전용 복장. ')+'구매 후 내 캐릭터에서 장착하세요.':chosen.kind==='pet'?(chosen.guide||'캐릭터와 함께 낙하하는 영구 펫.')+' 내 캐릭터에서 장착하세요.':chosen.kind==='slot'?'한 번 구매하면 모든 캐릭터에서 영구적으로 사용할 수 있어요.':'출전 전에 장착하면 시작 시 1개 소모되며, 한 판 동안 적용됩니다.';
       detail='<div class="market-overlay"><button type="button" class="market-shade" data-market-close aria-label="닫기"></button><section class="market-detail" role="dialog" aria-modal="true"><span class="market-handle"></span><button type="button" class="market-close" data-market-close aria-label="닫기">✕</button><div class="market-detail-head"><span class="market-large-art">'+art(chosen)+'</span><div class="market-detail-title"><small>'+({skin:'스킨',pet:'영구 펫',slot:'영구 확장',bubble:'한 판용 보호막',drink:'한 판용 드링크'}[chosen.kind])+'</small><strong>'+esc(chosen.name)+'</strong><b>'+esc(stats(chosen))+'</b></div></div><p class="market-guide">'+esc(guide)+'</p><div class="market-detail-bottom"><div><small>판매가</small><strong>'+coin(chosen.price)+'</strong></div><button type="button" '+attr+'="'+value+'" '+(permanent?'disabled':'')+'>'+(permanent?'보유 중':'구매하기')+'</button></div><button type="button" class="rpg-secondary" data-market-close>취소 / 닫기</button></section></div>';
     }
     const browsing=marketTab==='items'&&!marketGroup?'<div class="market-category-grid">'+folders+'</div>':(marketTab==='items'?'<button type="button" class="market-back" data-market-back>‹ 아이템 목록</button>':'')+'<div class="rpg-grid">'+(tiles||'<p class="market-guide">모든 슬롯을 열었어요.</p>')+'</div>';
