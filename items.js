@@ -7,7 +7,7 @@
   {id:'revive_feather',name:'부활의 깃털',kind:'special',stat:'revive',bonus:1,price:120,color:'#f7dfac',icon:'🪶',description:'충돌로 사망할 때 한 번 자동 부활 · 짧은 무적'},
   {id:'hourglass',name:'모래시계',kind:'special',stat:'hourglass',bonus:5,price:90,color:'#c5a3f4',icon:'⌛',description:'시간 소진 시 한 번 5초 추가'},
   {id:'clock_magnet',name:'시계 자석',kind:'special',stat:'magnet',bonus:1,price:160,color:'#63dccb',icon:'🧲',description:'한 판 동안 양쪽 벽의 시계 자동 획득 · 코인은 제외'},
-  {id:'gold_charm',name:'황금 부적',kind:'special',stat:'coin',bonus:30,price:30,color:'#f4c76a',icon:'✦',description:'한 판 동안 사냥 중 주운 코인 보상 +30%'},
+  {id:'gold_charm',name:'황금 부적',kind:'special',stat:'coin',bonus:30,price:30,color:'#f4c76a',icon:'✦',description:'이번 판에서 주운 코인 보상 +30%'},
   {id:'growth_gem',name:'성장의 보석',kind:'special',stat:'growth',bonus:30,price:40,color:'#75d49b',icon:'◆',description:'한 판의 레벨 성장 거리 +30% · 실제 낙하 기록은 그대로'},
   {id:'lucky_bag',name:'행운의 주머니',kind:'special',stat:'luck',bonus:1,price:15,color:'#e6b98b',icon:'🎁',description:'판 종료 시 추가 랜덤 코인 5~20개'}
  ];
