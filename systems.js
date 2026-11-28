@@ -27,9 +27,11 @@
     {id:'useoi',name:'우서 탐험가 스킨',description:'기존 원화 · 최고속도 +3%p · 감속 +2%p',front:'assets/hero_intro.webp',actor:'useoi',starter:false,price:100,speedBonus:3,brakeBonus:2,hasBack:true},
     {id:'uiji',name:'우지 탐험가 스킨',description:'기존 원화 · 최고속도 +3%p · 감속 +2%p',front:'assets/uiji_intro.webp',actor:'uiji',starter:false,price:100,speedBonus:3,brakeBonus:2,hasBack:false},
     {id:'wingsuit_boy',name:'우지 윙슈트',description:'윙슈트 · 최고속도 +6%p · 감속 +5%p',front:'assets/wingsuit_boy_portrait.webp',actions:'assets/wingsuit_boy_actions.webp',actor:'uiji',starter:false,kind:'wingsuit',price:200,speedBonus:6,brakeBonus:5,hasBack:false},
-    {id:'wingsuit_girl',name:'우서 윙슈트',description:'윙슈트 · 최고속도 +6%p · 감속 +5%p',front:'assets/wingsuit_girl_portrait.webp',actions:'assets/wingsuit_girl_actions.webp',actor:'useoi',starter:false,kind:'wingsuit',price:200,speedBonus:6,brakeBonus:5,hasBack:false}
+    {id:'wingsuit_girl',name:'우서 윙슈트',description:'윙슈트 · 최고속도 +6%p · 감속 +5%p',front:'assets/wingsuit_girl_portrait.webp',actions:'assets/wingsuit_girl_actions.webp',actor:'useoi',starter:false,kind:'wingsuit',price:200,speedBonus:6,brakeBonus:5,hasBack:false},
+    {id:'pajama_boy',name:'우지 잠옷 스킨',description:'기하학 무늬 파자마 · 최고속도 +4%p · 감속 +3%p',front:'assets/pajama_boy_portrait_v35.webp',actions:'assets/pajama_boy_actions_v35.webp',iconArt:'assets/pajama_boy_icon_v35.webp',actor:'uiji',starter:false,kind:'pajama',price:150,speedBonus:4,brakeBonus:3,hasBack:false},
+    {id:'pajama_girl',name:'우서 잠옷 스킨',description:'기하학 무늬 파자마 · 최고속도 +4%p · 감속 +3%p',front:'assets/pajama_girl_portrait_v35.webp',actions:'assets/pajama_girl_actions_v35.webp',iconArt:'assets/pajama_girl_icon_v35.webp',actor:'useoi',starter:false,kind:'pajama',price:150,speedBonus:4,brakeBonus:3,hasBack:false}
   ];
-  // Rendering IDs are stable for existing art. Domain objects are two actors and six skins.
+  // Rendering IDs are stable for existing art. Domain objects are two actors with independent catalog skins.
   const SKIN_CATALOG=CHARACTER_CATALOG;
   const actorOf=id=>SKIN_CATALOG.find(c=>c.id===id)?.actor;
   const baseOf=actor=>ACTOR_CATALOG.find(a=>a.id===actor)?.base;

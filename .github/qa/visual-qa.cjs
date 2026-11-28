@@ -31,7 +31,7 @@ console.log('QA_NEW_BALANCE='+JSON.stringify(revised));
  const click=async s=>{await page.locator(s).first().click()};
  const shot=async n=>{await page.screenshot({path:'qa-shot-'+n+'.jpg',type:'jpeg',quality:65});console.log('QAIMAGE_'+n.toUpperCase().replace(/-/g,'_')+'='+fs.readFileSync('qa-shot-'+n+'.jpg').toString('base64'))};
  async function reset(actor='uiji'){
-   await page.goto('http://127.0.0.1:8765/?v=nov28-speed35',{waitUntil:'domcontentloaded'});
+   await page.goto('http://127.0.0.1:8765/?v=nov28-pajama35',{waitUntil:'domcontentloaded'});
    await page.evaluate(()=>localStorage.clear());await page.reload({waitUntil:'domcontentloaded'});
    await page.waitForFunction(()=>!!window.HellFallTest,{timeout:15000});
    await click('[data-initial-actor="'+actor+'"]');
@@ -42,20 +42,30 @@ console.log('QA_NEW_BALANCE='+JSON.stringify(revised));
  async function shop(tab){await click('[data-panel="shop"]');await click('[data-market-tab="'+tab+'"]')}
  async function buySkin(id){
    await shop('skins');
-   assert.equal(await page.locator('[data-market-character]').count(),2);
+   assert.equal(await page.locator('[data-market-character]').count(),3);assert.equal(await page.locator('[data-market-tab="gear"]').count(),0);
    assert.equal(await page.locator('[data-market-character] img').count(),0);
    await click('[data-market-character="'+id+'"]');
+   if(id.startsWith('pajama')){
+     const icon=await page.locator('.market-large-art .skin-icon').evaluate(el=>getComputedStyle(el).backgroundImage);
+     assert(icon.includes(id+'_icon_v35.webp'));await shot('shop-'+id);
+   }
    assert.equal(await page.locator('.market-large-art img').count(),0);
    await click('[data-market-buy-character="'+id+'"]');
    await click('#drawerClose');
    await click('[data-panel="character"]');await click('[data-wardrobe-tab="skins"]');
    assert.equal(await page.locator('[data-character-pick]').count(),2);
-   await click('[data-character-pick="'+id+'"]');await click('#drawerClose');
+   await click('[data-character-pick="'+id+'"]');
+   if(id.startsWith('pajama')){
+     assert.equal(await page.locator('[data-character-pick="'+id+'"] .skin-icon').count(),1);
+     await page.waitForFunction(s=>{const img=document.querySelector('.rpg-preview-hero>img');return img?.naturalWidth===384&&img.src.includes(s+'_portrait_v35.webp')},id);
+     await shot('wardrobe-'+id);
+   }
+   await click('#drawerClose');
  }
  async function tapBoost(times=5){
    for(let i=0;i<times;i++){await page.locator('#boost').tap();await page.waitForTimeout(115)}
  }
- for(const [actor,id,stat] of [['uiji','starter_boy',60],['useoi','starter_girl',60],['uiji','uiji',63],['useoi','useoi',63],['uiji','wingsuit_boy',66],['useoi','wingsuit_girl',66]]){
+ for(const [actor,id,stat] of [['uiji','starter_boy',60],['useoi','starter_girl',60],['uiji','uiji',63],['useoi','useoi',63],['uiji','wingsuit_boy',66],['useoi','wingsuit_girl',66],['uiji','pajama_boy',64],['useoi','pajama_girl',64]]){
    await reset(actor);
    const caps=await page.evaluate(()=>{const s=window.HellSystems;return [s.levelSpeedBonus(1),s.levelSpeedBonus(5),s.levelSpeedBonus(6),s.levelSpeedBonus(51),s.levelSpeedBonus(1000),s.loadoutStats('starter_boy',{speedBonus:99},{speed:99},1000).speed,s.loadoutStats('starter_boy',null,{},1).brake]});
     assert.deepEqual(caps,[0,0,1,10,10,90,70]);
@@ -75,6 +85,15 @@ console.log('QA_NEW_BALANCE='+JSON.stringify(revised));
      await page.locator('#lobbyCharacter').focus();await page.keyboard.press('ArrowRight');
      await page.waitForFunction(()=>document.querySelector('#lobbyHero').src.endsWith('hero_back_fixed.webp')&&!document.querySelector('#lobbyHero').hidden);
      await page.keyboard.press('ArrowLeft');
+   }
+   if(id.startsWith('pajama')){
+     await page.waitForFunction(s=>{const img=document.querySelector('#lobbyHero');return !img.hidden&&img.naturalWidth===384&&img.src.includes(s+'_portrait_v35.webp')&&window.HellStarterPoses.ready(s)},id);
+     assert.equal((await prof()).coins,850);await shot('home-'+id);
+     await page.reload({waitUntil:'domcontentloaded'});
+     await page.waitForFunction(s=>!!window.HellFallTest&&window.HellSystems.profile.selectedCharacter===s&&window.HellStarterPoses.ready(s),id);
+     assert((await prof()).ownedSkins.includes(id));assert.equal((await prof()).coins,850);
+     await page.evaluate(()=>{Math.random=()=>2.1/1e9;});
+     assert.equal(await page.locator('#lobbySpeedStat').textContent(),'64%');
    }
    if(id==='wingsuit_boy'){
      await click('[data-panel="character"]');await click('[data-preview-motion]');
@@ -96,9 +115,9 @@ console.log('QA_NEW_BALANCE='+JSON.stringify(revised));
    await tapBoost(5);
    const boosted=await snap();
    assert(boosted.tapCount>=5&&boosted.speed>before.speed&&boosted.stage==='PLAYING','boost '+id+' '+JSON.stringify(boosted));
-   if(id.startsWith('starter')||id.startsWith('wingsuit'))assert.equal(await page.evaluate(()=>window.HellStarterPoses.status().lastHero),id);
+   if(id.startsWith('starter')||id.startsWith('wingsuit')||id.startsWith('pajama'))assert.equal(await page.evaluate(()=>window.HellStarterPoses.status().lastHero),id);
    console.log('QASKIN_'+id+'='+JSON.stringify({speed:boosted.stats.speed,taps:boosted.tapCount,wall:returned.wall,displayDepth:boosted.displayDepth}));
-   if(id.startsWith('wingsuit'))await shot('play-'+id);
+   if(id.startsWith('wingsuit')||id.startsWith('pajama'))await shot('play-'+id);
  }
  // Real UI shopping, preparation, consumption, dragon and save.
  await reset('uiji');
@@ -176,10 +195,11 @@ console.log('QA_NEW_BALANCE='+JSON.stringify(revised));
  });
  await page.reload({waitUntil:'domcontentloaded'});await page.waitForFunction(()=>!!window.HellFallTest);
  p=await prof();assert.equal(p.coins,522);assert.equal(p.level,7);assert.equal(p.totalDepth,123450);assert.equal(p.runs,5);assert.equal(p.selectedCharacter,'uiji');assert.equal(p.consumables.bubble_10,2);assert.equal(p.retiredGearRefund,480);
+ assert.equal(await page.locator('#lobbySpeedStat').textContent(),'64%');
  assert.equal(await page.locator('#homeBest').textContent(),'2,500');assert.equal(await page.locator('#homeTotal').textContent(),'12,345');
  assert(await page.evaluate(()=>!!localStorage.getItem('hell_fall_skin_test_v30_pre_rpg33')));
  await page.reload({waitUntil:'domcontentloaded'});await page.waitForFunction(()=>!!window.HellFallTest);assert.equal((await prof()).coins,522);
  console.log('QAMIGRATION='+JSON.stringify({coins:p.coins,total:p.totalDepth,level:p.level,refund:p.retiredGearRefund}));
  assert.equal(errors.length,0,JSON.stringify(errors));
- await browser.close();console.log('QA_PASS_RPG33');
+ await browser.close();console.log('QA_PASS_WEB35');
 })().catch(e=>{console.error(e);process.exit(1)});

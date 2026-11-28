@@ -609,3 +609,4 @@ button.rpg-card{cursor:pointer;touch-action:manipulation}
 
 /* WEB 3.4 Coco: own 2x2 atlas; default portrait cell. */
 .rpg-atlas.coco-art,.home-dragon.coco-art{background-image:url("assets/coco_pet_v34.webp");background-size:200% 200%;background-position:100% 0%}
+.rpg-atlas.skin-icon{background-size:contain;background-position:center;background-repeat:no-repeat}

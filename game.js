@@ -34,7 +34,7 @@
   const statOf=(id)=>sys.characterStats(id);
   const currentActor=()=>sys.CHARACTER_CATALOG.find(c=>c.id===s.runCharacter)?.actor||'useoi';
   const runSkin=()=>sys.SKIN_CATALOG.find(c=>c.id===s.runCharacter);
-  const skinLabel=c=>c.starter?'기본 복장':c.id.startsWith('wingsuit_')?'윙슈트':'탐험가 스킨';
+  const skinLabel=c=>c.starter?'기본 복장':c.id.startsWith('wingsuit_')?'윙슈트':c.id.startsWith('pajama_')?'잠옷 스킨':'탐험가 스킨';
   function effectiveStats(){
     return sys.loadoutStats(s.runCharacter,s.pet,{speed:s.drinks.speed.bonus,brake:s.drinks.brake.bonus,time:s.drinks.time.bonus},s.runLevel);
   }
@@ -851,7 +851,7 @@
   let wardrobeTab='skins',previewMode=0,previewSerial=0,pendingSlot=null,slotOrigin='home',lastPrep='';
   const SKIN_ART={starter_boy:0,uiji:1,wingsuit_boy:2,starter_girl:3,useoi:4,wingsuit_girl:5};
   function atlasArt(i,extra=''){return '<span class="rpg-atlas '+extra+'" style="--atlas-x:'+((i%3)*50)+'%;--atlas-y:'+(Math.floor(i/3)*50)+'%" aria-hidden="true"></span>';}
-  function skinArt(c){return atlasArt(SKIN_ART[c.id]??0);}
+  function skinArt(c){return c.iconArt?'<span class="rpg-atlas skin-icon" style="background-image:url(\''+esc(c.iconArt)+'\')" aria-hidden="true"></span>':atlasArt(SKIN_ART[c.id]??0);}
   function petArt(p){return p?.id==='coco'?'<span class="rpg-atlas coco-art" aria-hidden="true"></span>':atlasArt(6,'pet-icon');}
   const petStats=p=>[p.speedBonus?'최고속 +'+p.speedBonus+'%p':'',p.brakeBonus?'감속 +'+p.brakeBonus+'%p':'',p.timeBonus?'시간 획득 +'+p.timeBonus+'%':''].filter(Boolean).join(' · ');
   function prepSlotsHTML(prof,origin){
@@ -967,7 +967,7 @@
     if(chosen){
       const permanent=owned(chosen),attr=chosen.kind==='skin'?'data-market-buy-character':chosen.kind==='pet'?'data-market-buy-pet':chosen.kind==='slot'?'data-market-buy-slot':'data-market-buy';
       const value=chosen.kind==='slot'?prof.slotCount:chosen.id;
-      const guide=chosen.kind==='skin'?(chosen.id.startsWith('wingsuit')?'날개를 펼쳐 낙하하고 급강하하는 윙슈트. ':'탐험가 전용 복장. ')+'구매 후 내 캐릭터에서 장착하세요.':chosen.kind==='pet'?(chosen.id==='coco'?'모란앵무 코코가 날갯짓하며 함께 낙하하고 급강하합니다. ':'캐릭터 옆을 날아다니는 영구 펫. ')+'내 캐릭터에서 장착하세요.':chosen.kind==='slot'?'한 번 구매하면 모든 캐릭터에서 영구적으로 사용할 수 있어요.':'출전 전에 장착하면 시작 시 1개 소모되며, 한 판 동안 적용됩니다.';
+      const guide=chosen.kind==='skin'?(chosen.id.startsWith('wingsuit')?'날개를 펼쳐 낙하하고 급강하하는 윙슈트. ':chosen.id.startsWith('pajama_')?'귀여운 기하학 무늬 잠옷과 편안한 슬리퍼. ':'탐험가 전용 복장. ')+'구매 후 내 캐릭터에서 장착하세요.':chosen.kind==='pet'?(chosen.id==='coco'?'모란앵무 코코가 날갯짓하며 함께 낙하하고 급강하합니다. ':'캐릭터 옆을 날아다니는 영구 펫. ')+'내 캐릭터에서 장착하세요.':chosen.kind==='slot'?'한 번 구매하면 모든 캐릭터에서 영구적으로 사용할 수 있어요.':'출전 전에 장착하면 시작 시 1개 소모되며, 한 판 동안 적용됩니다.';
       detail='<div class="market-overlay"><button type="button" class="market-shade" data-market-close aria-label="닫기"></button><section class="market-detail" role="dialog" aria-modal="true"><span class="market-handle"></span><button type="button" class="market-close" data-market-close aria-label="닫기">✕</button><div class="market-detail-head"><span class="market-large-art">'+art(chosen)+'</span><div class="market-detail-title"><small>'+({skin:'스킨',pet:'영구 펫',slot:'영구 확장',bubble:'한 판용 보호막',drink:'한 판용 드링크'}[chosen.kind])+'</small><strong>'+esc(chosen.name)+'</strong><b>'+esc(stats(chosen))+'</b></div></div><p class="market-guide">'+esc(guide)+'</p><div class="market-detail-bottom"><div><small>판매가</small><strong>'+coin(chosen.price)+'</strong></div><button type="button" '+attr+'="'+value+'" '+(permanent?'disabled':'')+'>'+(permanent?'보유 중':'구매하기')+'</button></div><button type="button" class="rpg-secondary" data-market-close>취소 / 닫기</button></section></div>';
     }
     const browsing=marketTab==='items'&&!marketGroup?'<div class="market-category-grid">'+folders+'</div>':(marketTab==='items'?'<button type="button" class="market-back" data-market-back>‹ 아이템 목록</button>':'')+'<div class="rpg-grid">'+(tiles||'<p class="market-guide">모든 슬롯을 열었어요.</p>')+'</div>';

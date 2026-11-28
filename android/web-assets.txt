@@ -34,3 +34,9 @@ assets/wingsuit_girl_actions.webp
 balance.js
 assets/rpg_items_dragon_v33.webp
 assets/coco_pet_v34.webp
+assets/pajama_boy_portrait_v35.webp
+assets/pajama_boy_actions_v35.webp
+assets/pajama_boy_icon_v35.webp
+assets/pajama_girl_portrait_v35.webp
+assets/pajama_girl_actions_v35.webp
+assets/pajama_girl_icon_v35.webp
