@@ -386,7 +386,7 @@
     ctx.fillStyle='#092e31b0';ctx.fillRect(x0,y-17*u,x1-x0,34*u);
     ctx.fillStyle=beam;ctx.fillRect(x0,y-2.5*u,x1-x0,5*u);
     disk(x0,y,8*u,'#6be1cdbb');disk(x1,y,8*u,'#6be1cdbb');
-    txt('TIME LINE  +'+rewardTime(g.bonus)+'s',W*.5,y-7*u,12*u,'#e3fff6');
+    txt('TIME LINE  +'+rewardTime(g.bonus,true)+'s',W*.5,y-7*u,12*u,'#e3fff6');
     if(t>.5){ctx.strokeStyle='#b1fff43b';ctx.lineWidth=2*u;ctx.strokeRect(x0,y-19*u,x1-x0,38*u);}
   }
   function drawGate(g,y,u){const x=wallX(g.wall)*W,p=(Math.sin(s.elapsed*8)+1)/2;
@@ -892,9 +892,10 @@
     $('lobbySpeedStat').textContent=stats.speed+'%';
     $('lobbySpeedStat').title='기본 60% · 레벨 성장 +'+sys.levelSpeedBonus(sys.profile.level)+'%p · 장착 스킨/펫/출전 아이템 포함';
     $('lobbyBrakeStat').textContent=stats.brake+'%';
-    $('lobbyTimeStat').textContent=stats.timeBonus?'시계 +'+stats.timeBonus+'%':'';
+    const sharedTime=stats.timeBonus>0&&stats.timeBonus===stats.lineBonus;
+    $('lobbyTimeStat').textContent=stats.timeBonus?(sharedTime?'시간 획득 +':'시계 +')+stats.timeBonus+'%':'';
     $('lobbyTimeStat').classList.toggle('hidden',!stats.timeBonus);
-    $('lobbyLifeStat').textContent=stats.lineBonus?'타임라인 +'+stats.lineBonus+'%':'';$('lobbyLifeStat').classList.toggle('hidden',!stats.lineBonus);
+    $('lobbyLifeStat').textContent=stats.lineBonus?'타임라인 +'+stats.lineBonus+'%':'';$('lobbyLifeStat').classList.toggle('hidden',!stats.lineBonus||sharedTime);
     $('lobbyAccelStat').textContent=stats.accel?'가속 +'+stats.accel+'%':'';$('lobbyAccelStat').classList.toggle('hidden',!stats.accel);
     const chosen=(sys.wardrobeOf(sys.profile.selectedCharacter)?.quickSlots||[]).map(id=>sys.ITEM_CATALOG.find(i=>i.id===id)).filter(i=>i?.kind==='drink');
     $('lobbyAura').style.background=chosen.map((i,j)=>'radial-gradient(ellipse at '+(50+(j-(chosen.length-1)/2)*15)+'% 52%, '+i.color+['2a','3b','50'][itemTools.grade(i)-1]+' 0%, '+i.color+'08 45%, transparent 72%)').join(',');
@@ -936,7 +937,7 @@
     const tabs=[['skins','스킨'],['pets','펫'],['items','아이템']].map(([id,label])=>'<button type="button" data-wardrobe-tab="'+id+'" aria-pressed="'+(id===wardrobeTab)+'">'+label+'</button>').join('');
     const contents=wardrobeTab==='skins'?'<div class="rpg-grid">'+skinTiles+'</div>':wardrobeTab==='pets'?'<div class="rpg-grid">'+(petTiles||'<p class="market-guide">보유한 펫이 없어요.</p>')+'</div>':'<div class="prep-grid">'+prepSlotsHTML(prof,'character')+'</div><p class="market-guide">빈 슬롯을 터치해 장착, 다시 터치해 해제 · 한 판용</p><div class="rpg-grid">'+(inventory||'<p class="market-guide">보유한 소모품이 없어요.</p>')+'</div>';
     return '<div class="wardrobe-root"><div class="actor-test-box"><div class="starter-pick-heading"><b>내 캐릭터 · '+sys.actorName(prof.activeActor)+'</b><span>'+(sys.TEST_MODE?'TEST':'')+'</span></div>'+actorButtons+'</div>'+
-      '<div class="rpg-preview"><div class="rpg-preview-hero">'+(previewMode?'<canvas data-preview-canvas width="256" height="280" aria-label="스킨 동작 미리보기"></canvas>':'<img src="'+active.front+'" alt="'+esc(active.name)+'">')+(pet?'<span class="preview-dragon '+(pet.visual.mode==='cat'?'preview-ground':'')+'">'+petArt(pet)+'</span>':'')+'</div><strong>'+esc(active.name)+'</strong><div class="starter-active-stats"><span>⚡ '+stats.speed+'%</span><span>❄ '+stats.brake+'%</span>'+(stats.timeBonus?'<span>시계 +'+stats.timeBonus+'%</span>':'')+'</div><button class="rpg-secondary rpg-motion" type="button" data-preview-motion>'+['동작 보기','낙하 · 다음','급강하 · 다음','벽점프 · 정면'][previewMode]+'</button></div>'+
+      '<div class="rpg-preview"><div class="rpg-preview-hero">'+(previewMode?'<canvas data-preview-canvas width="256" height="280" aria-label="스킨 동작 미리보기"></canvas>':'<img src="'+active.front+'" alt="'+esc(active.name)+'">')+(pet?'<span class="preview-dragon '+(pet.visual.mode==='cat'?'preview-ground':'')+'">'+petArt(pet)+'</span>':'')+'</div><strong>'+esc(active.name)+'</strong><div class="starter-active-stats"><span>⚡ '+stats.speed+'%</span><span>❄ '+stats.brake+'%</span>'+(stats.timeBonus?'<span>'+(stats.timeBonus===stats.lineBonus?'시간':'시계')+' +'+stats.timeBonus+'%</span>':'')+(stats.lineBonus&&stats.lineBonus!==stats.timeBonus?'<span>타임라인 +'+stats.lineBonus+'%</span>':'')+(stats.accel?'<span>가속 +'+stats.accel+'%</span>':'')+'</div><button class="rpg-secondary rpg-motion" type="button" data-preview-motion>'+['동작 보기','낙하 · 다음','급강하 · 다음','벽점프 · 정면'][previewMode]+'</button></div>'+
       '<nav class="rpg-tabs" aria-label="내 보관함">'+tabs+'</nav>'+contents+'</div>';
   }
   function mountPreview(){

@@ -24,16 +24,16 @@
    const response=target>speed?4.25*(1+(stats.accel||0)/100):2.6*(stats.brake/70);
    return {boost,speed:speed+(target-speed)*(1-Math.exp(-response*dt))};
  }
- function simulateIdeal({speed=60,brake=70,timeBonus=0,clockRate=1,taps=6}={}){
+ function simulateIdeal({speed=60,brake=70,timeBonus=0,lineBonus=timeBonus,accel=0,clockRate=1,taps=6}={}){
    const lines=[],clocks=[];
    for(let d=FIRST_LINE;d<CLEAR_DEPTH;d+=CHECKPOINT_GAPS[zoneOf(d)])lines.push({depth:d,bonus:CHECKPOINT_BONUS[zoneOf(d)]});
    for(let d=FIRST_CLOCK;d<CLEAR_DEPTH;d+=CLOCK_GAPS[zoneOf(d)])if(!lines.some(g=>Math.abs(g.depth-d)<200))clocks.push({depth:d,bonus:CLOCK_BONUS[zoneOf(d)]});
    let depth=0,v=T.START,boost=0,left=T.LIMIT,t=0,li=0,ci=0,credits=0,taken=0,missed=0,checkpoints=0;
    const boundaries=[];let nz=1,dt=1/60;
    for(let i=0;i<60*900;i++){
-     const old=depth,start=left,step=speedStep(depth,v,boost,t>=1/taps?taps:0,{speed,brake},dt);
+     const old=depth,start=left,step=speedStep(depth,v,boost,t>=1/taps?taps:0,{speed,brake,accel},dt);
      depth+=(v+step.speed)*.5*dt;v=step.speed;boost=step.boost;left=Math.max(0,left-dt);
-     while(li<lines.length&&lines[li].depth<=depth){const g=lines[li++];if(start>dt*(g.depth-old)/Math.max(.001,depth-old)){left=Math.min(T.LIMIT,left+reward(g.bonus,timeBonus));checkpoints++;}}
+     while(li<lines.length&&lines[li].depth<=depth){const g=lines[li++];if(start>dt*(g.depth-old)/Math.max(.001,depth-old)){left=Math.min(T.LIMIT,left+reward(g.bonus,lineBonus));checkpoints++;}}
      while(ci<clocks.length&&clocks[ci].depth<=depth){const g=clocks[ci++];credits+=clockRate;if(credits>=1-1e-8&&start>dt*(g.depth-old)/Math.max(.001,depth-old)){credits-=1;left=Math.min(T.LIMIT,left+reward(g.bonus,timeBonus));taken++;}else missed++;}
      t+=dt;
      while(nz<BOUNDS.length&&depth>=BOUNDS[nz]){boundaries.push({depth:distance(BOUNDS[nz]),seconds:+t.toFixed(2),left:+left.toFixed(2)});nz++;}
