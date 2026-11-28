@@ -36,9 +36,7 @@
   const runSkin=()=>sys.SKIN_CATALOG.find(c=>c.id===s.runCharacter);
   const skinLabel=c=>c.starter?'기본 복장':c.id.startsWith('wingsuit_')?'윙슈트':'탐험가 스킨';
   function effectiveStats(){
-    const c=statOf(s.runCharacter),pet=s.pet;
-    return {speed:Math.min(100,c.speed+(pet?.speedBonus||0)+s.drinks.speed.bonus),
-      brake:Math.min(100,c.brake+(pet?.brakeBonus||0)+s.drinks.brake.bonus),timeBonus:(pet?.timeBonus||0)+s.drinks.time.bonus};
+    return sys.loadoutStats(s.runCharacter,s.pet,{speed:s.drinks.speed.bonus,brake:s.drinks.brake.bonus,time:s.drinks.time.bonus},s.runLevel);
   }
   const rewardTime=n=>B.reward(n,effectiveStats().timeBonus);
   const assetAtlas=new Image();assetAtlas.src='assets/rpg_items_dragon_v33.webp';
@@ -88,14 +86,14 @@
   function smooth(t){t=Math.max(0,Math.min(1,t));return t*t*(3-2*t);}
   function posX(g,p=g.hopProgress){return wallX(g.hopFrom)*(1-smooth(p))+wallX(g.wall)*smooth(p);}
   function rngSeed(seed){let x=(seed>>>0)||1;return()=>{x=(x+0x6D2B79F5)>>>0;let t=x;t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return ((t^(t>>>14))>>>0)/4294967296;};}
-  function makeGame(stage='READY'){return{seed:(Math.random()*1000000000)|0,stage,depth:0,speed:T.START,timeLeft:T.LIMIT,elapsed:0,boost:0,fold:0,lastTapAt:-1,tapPulse:0,tapCount:0,tapIntervals:[],cadence:0,wall:'L',hopFrom:'L',hopProgress:1,hopVisual:1,obstacles:[],timeGates:[],checkpointGates:[],coinGates:[],runCoins:0,nextObstacle:370,nextTimeGate:B.FIRST_CLOCK,nextCheckpoint:B.FIRST_LINE,nextCoin:210,coinNumber:0,obstacleNumber:0,gateNumber:0,checkpointNumber:0,gateFlash:0,checkpointFlash:0,zoneFlash:0,lastBonus:0,lastCheckpointBonus:0,failure:'',bubbleCharges:0,bubbleColor:null,bubbleName:'',invuln:0,shieldFlash:0,runCharacter:'starter_boy',drinks:{speed:{bonus:0},brake:{bonus:0},time:{bonus:0}},pet:null,petX:null,runItems:[],won:false};}
+  function makeGame(stage='READY'){return{seed:(Math.random()*1000000000)|0,stage,depth:0,speed:T.START,timeLeft:T.LIMIT,elapsed:0,boost:0,fold:0,lastTapAt:-1,tapPulse:0,tapCount:0,tapIntervals:[],cadence:0,wall:'L',hopFrom:'L',hopProgress:1,hopVisual:1,obstacles:[],timeGates:[],checkpointGates:[],coinGates:[],runCoins:0,nextObstacle:370,nextTimeGate:B.FIRST_CLOCK,nextCheckpoint:B.FIRST_LINE,nextCoin:210,coinNumber:0,obstacleNumber:0,gateNumber:0,checkpointNumber:0,gateFlash:0,checkpointFlash:0,zoneFlash:0,lastBonus:0,lastCheckpointBonus:0,failure:'',bubbleCharges:0,bubbleColor:null,bubbleName:'',invuln:0,shieldFlash:0,runCharacter:'starter_boy',runLevel:sys.profile.level,drinks:{speed:{bonus:0},brake:{bonus:0},time:{bonus:0}},pet:null,petX:null,runItems:[],won:false};}
   function start(){
     if(!sys.profile.identityChosen){openPanel('chooseActor');return;}
     if(s.stage==='PLAYING')return;
     const loadout=sys.startLoadout();
     if(!loadout.ok){openPanel('character',loadout.reason);return;}
     applyControlSide();s=makeGame('PLAYING');
-    s.runCharacter=sys.profile.selectedCharacter;s.pet=loadout.pet;
+    s.runCharacter=sys.profile.selectedCharacter;s.pet=loadout.pet;s.runLevel=sys.profile.level;
     s.runItems=loadout.items.map(i=>i.id);
     for(const item of loadout.items){
       if(item.kind==='bubble'){s.bubbleCharges=item.hits;s.bubbleColor=item.color;s.bubbleName=item.name;}
@@ -841,13 +839,10 @@
     $('characterIdentityName').textContent=sys.actorName(character.actor);
     $('characterIdentitySubtitle').textContent=character.starter?'기본 복장 · 무료':skinLabel(character);
     $('lobbyClassTag').textContent=character.starter?'무료 기본 복장':skinLabel(character);
-    const pet=sys.petOf(character.id),stats=statOf(character.id);
-    $('lobbySpeedStat').textContent=(stats.speed+(pet?.speedBonus||0))+'%';
-    $('lobbyBrakeStat').textContent=(stats.brake+(pet?.brakeBonus||0))+'%';
+    const pet=sys.petOf(character.id);
+    syncPreparedStats();
     $('homePet').classList.toggle('hidden',!pet);
     $('homePet').classList.toggle('coco-art',pet?.id==='coco');
-    $('lobbyTimeStat').textContent=pet?.timeBonus?'⏳ 시간 획득 +'+pet.timeBonus+'%':'';
-    $('lobbyTimeStat').classList.toggle('hidden',!pet?.timeBonus);
     $('lobbyTraits').classList.toggle('is-premium',!character.starter);
     $('lobbyCharacter').setAttribute('aria-label',character.name+' 캐릭터');
     lobbyCtrl?.setCharacter(character.id);
@@ -867,15 +862,23 @@
       return '<button type="button" class="prep-slot '+(locked?'is-locked':item?'is-filled':'is-empty')+'" data-prep-slot="'+i+'" data-prep-origin="'+origin+'" aria-label="'+esc(title)+'"><span class="prep-icon">'+(locked?'🔒':item?marketArt(item):'+')+'</span><span class="prep-name">'+(locked?sys.SLOT_PRICES[i]+'🪙':item?esc(item.name.replace(' 드링크 · ',' ').replace(' 보호막','')):'슬롯 '+(i+1))+'</span></button>';
     }).join('');
   }
+  function syncPreparedStats(){
+    const stats=sys.preparedStats(sys.profile.selectedCharacter);
+    $('lobbySpeedStat').textContent=stats.speed+'%';
+    $('lobbySpeedStat').title='기본 60% · 레벨 성장 +'+sys.levelSpeedBonus(sys.profile.level)+'%p · 장착 스킨/펫/출전 아이템 포함';
+    $('lobbyBrakeStat').textContent=stats.brake+'%';
+    $('lobbyTimeStat').textContent=stats.timeBonus?'⏳ 시간 획득 +'+stats.timeBonus+'%':'';
+    $('lobbyTimeStat').classList.toggle('hidden',!stats.timeBonus);
+  }
   function renderHomePrep(){
     const prof=sys.profile,w=sys.wardrobeOf(prof.selectedCharacter);if(!w)return;
-    const key=JSON.stringify([prof.activeActor,prof.slotCount,w.quickSlots,prof.coins]);
+    const key=JSON.stringify([prof.activeActor,prof.selectedCharacter,prof.level,sys.petOf()?.id,prof.slotCount,w.quickSlots,prof.coins]);
     if(key===lastPrep)return;lastPrep=key;
-    $('homePrepSlots').innerHTML=prepSlotsHTML(prof,'home');
+    $('homePrepSlots').innerHTML=prepSlotsHTML(prof,'home');syncPreparedStats();
   }
   function returnToPrep(notice=''){
     pendingSlot=null;marketSelected=null;marketCharacter=null;marketGroup=null;lastPrep='';
-    if(slotOrigin==='character'){wardrobeTab='items';openPanel('character',notice);}
+    if(slotOrigin==='character'){wardrobeTab='items';renderHomePrep();openPanel('character',notice);}
     else{closePanel();renderHomePrep();if(notice){$('homePrepNotice').textContent=notice;}}
   }
   function openPrepSlot(index,origin){
@@ -896,7 +899,7 @@
     return '<div class="info-card"><strong>출전 슬롯 '+(i+1)+' 영구 확장</strong><p>한 번 구매하면 모든 스킨과 캐릭터에서 계속 사용할 수 있습니다.</p><p>판매가 '+price+'코인 · 보유 '+prof.coins+'코인</p><button class="start-button" data-buy-slot="'+i+'" type="button" '+(prof.coins<price?'disabled':'')+'>구매하기</button><button class="rpg-secondary" data-prep-back type="button">취소</button></div>';
   }
   function characterPanelHTML(prof,prog,fmt){
-    const active=sys.SKIN_CATALOG.find(c=>c.id===prof.selectedCharacter)||sys.SKIN_CATALOG[0],pet=sys.petOf(active.id),stats=statOf(active.id);
+    const active=sys.SKIN_CATALOG.find(c=>c.id===prof.selectedCharacter)||sys.SKIN_CATALOG[0],pet=sys.petOf(active.id),stats=sys.preparedStats(active.id);
     const actorButtons=sys.TEST_MODE?'<div class="actor-choice-row">'+sys.ACTOR_CATALOG.map(a=>'<button type="button" data-test-actor="'+a.id+'" aria-pressed="'+(a.id===prof.activeActor)+'">'+a.name+(a.id==='uiji'?' (남)':' (여)')+'</button>').join('')+'</div>':'';
     const skinTiles=sys.skinsFor(prof.activeActor).filter(c=>sys.ownsSkin(c.id)).map(c=>'<button type="button" class="rpg-card '+(c.id===active.id?'is-selected':'')+'" data-character-pick="'+c.id+'" aria-pressed="'+(c.id===active.id)+'"><span class="rpg-art">'+skinArt(c)+'</span><b>'+esc(skinLabel(c))+'</b><small>'+(c.id===active.id?'장착 중':'보유')+'</small></button>').join('');
     const petTiles=sys.PET_CATALOG.filter(p=>prof.ownedPets.includes(p.id)).map(p=>'<button type="button" class="rpg-card '+(pet?.id===p.id?'is-selected':'')+'" data-equip-pet="'+p.id+'"><span class="rpg-art">'+petArt(p)+'</span><b>'+esc(p.name)+'</b><small>'+(pet?.id===p.id?'장착 중 · 터치 해제':petStats(p))+'</small></button>').join('');
@@ -904,7 +907,7 @@
     const tabs=[['skins','스킨'],['pets','펫'],['items','아이템']].map(([id,label])=>'<button type="button" data-wardrobe-tab="'+id+'" aria-pressed="'+(id===wardrobeTab)+'">'+label+'</button>').join('');
     const contents=wardrobeTab==='skins'?'<div class="rpg-grid">'+skinTiles+'</div>':wardrobeTab==='pets'?'<div class="rpg-grid">'+(petTiles||'<p class="market-guide">보유한 펫이 없어요.</p>')+'</div>':'<div class="prep-grid">'+prepSlotsHTML(prof,'character')+'</div><p class="market-guide">빈 슬롯을 터치해 장착, 다시 터치해 해제 · 한 판용</p><div class="rpg-grid">'+(inventory||'<p class="market-guide">보유한 소모품이 없어요.</p>')+'</div>';
     return '<div class="wardrobe-root"><div class="actor-test-box"><div class="starter-pick-heading"><b>내 캐릭터 · '+sys.actorName(prof.activeActor)+'</b><span>'+(sys.TEST_MODE?'TEST':'')+'</span></div>'+actorButtons+'</div>'+
-      '<div class="rpg-preview"><div class="rpg-preview-hero">'+(previewMode?'<canvas data-preview-canvas width="256" height="280" aria-label="스킨 동작 미리보기"></canvas>':'<img src="'+active.front+'" alt="'+esc(active.name)+'">')+(pet?'<span class="preview-dragon">'+petArt(pet)+'</span>':'')+'</div><strong>'+esc(active.name)+'</strong><div class="starter-active-stats"><span>⚡ '+(stats.speed+(pet?.speedBonus||0))+'%</span><span>❄ '+(stats.brake+(pet?.brakeBonus||0))+'%</span>'+(pet?.timeBonus?'<span>⏳ +'+pet.timeBonus+'%</span>':'')+'</div><button class="rpg-secondary rpg-motion" type="button" data-preview-motion>'+['동작 보기','낙하 · 다음','급강하 · 다음','벽점프 · 정면'][previewMode]+'</button></div>'+
+      '<div class="rpg-preview"><div class="rpg-preview-hero">'+(previewMode?'<canvas data-preview-canvas width="256" height="280" aria-label="스킨 동작 미리보기"></canvas>':'<img src="'+active.front+'" alt="'+esc(active.name)+'">')+(pet?'<span class="preview-dragon">'+petArt(pet)+'</span>':'')+'</div><strong>'+esc(active.name)+'</strong><div class="starter-active-stats"><span>⚡ '+stats.speed+'%</span><span>❄ '+stats.brake+'%</span>'+(stats.timeBonus?'<span>⏳ +'+stats.timeBonus+'%</span>':'')+'</div><button class="rpg-secondary rpg-motion" type="button" data-preview-motion>'+['동작 보기','낙하 · 다음','급강하 · 다음','벽점프 · 정면'][previewMode]+'</button></div>'+
       '<nav class="rpg-tabs" aria-label="내 보관함">'+tabs+'</nav>'+contents+'</div>';
   }
   function mountPreview(){

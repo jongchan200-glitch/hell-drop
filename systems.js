@@ -22,8 +22,8 @@
   // Free starter portraits use approved complete-body game illustrations.
   // The premium Uiji/Useoi original artwork is immutable.
   const CHARACTER_CATALOG=[
-    {id:'starter_boy',name:'우지 기본 복장',description:'무료 기본 스킨 · 최고속도 70% · 감속 70%',front:'assets/starter_boy_portrait_v29.webp',actor:'uiji',actions:'assets/starter_boy_actions_v29.webp',starter:true,price:0,speedBonus:0,brakeBonus:0,hasBack:false},
-    {id:'starter_girl',name:'우서 기본 복장',description:'무료 기본 스킨 · 최고속도 70% · 감속 70%',front:'assets/starter_girl_portrait_v29.webp',actor:'useoi',actions:'assets/starter_girl_actions_v29.webp',starter:true,price:0,speedBonus:0,brakeBonus:0,hasBack:false},
+    {id:'starter_boy',name:'우지 기본 복장',description:'무료 기본 스킨 · 최고속도 60% · 감속 70%',front:'assets/starter_boy_portrait_v29.webp',actor:'uiji',actions:'assets/starter_boy_actions_v29.webp',starter:true,price:0,speedBonus:0,brakeBonus:0,hasBack:false},
+    {id:'starter_girl',name:'우서 기본 복장',description:'무료 기본 스킨 · 최고속도 60% · 감속 70%',front:'assets/starter_girl_portrait_v29.webp',actor:'useoi',actions:'assets/starter_girl_actions_v29.webp',starter:true,price:0,speedBonus:0,brakeBonus:0,hasBack:false},
     {id:'useoi',name:'우서 탐험가 스킨',description:'기존 원화 · 최고속도 +3%p · 감속 +2%p',front:'assets/hero_intro.webp',actor:'useoi',starter:false,price:100,speedBonus:3,brakeBonus:2,hasBack:true},
     {id:'uiji',name:'우지 탐험가 스킨',description:'기존 원화 · 최고속도 +3%p · 감속 +2%p',front:'assets/uiji_intro.webp',actor:'uiji',starter:false,price:100,speedBonus:3,brakeBonus:2,hasBack:false},
     {id:'wingsuit_boy',name:'우지 윙슈트',description:'윙슈트 · 최고속도 +6%p · 감속 +5%p',front:'assets/wingsuit_boy_portrait.webp',actions:'assets/wingsuit_boy_actions.webp',actor:'uiji',starter:false,kind:'wingsuit',price:200,speedBonus:6,brakeBonus:5,hasBack:false},
@@ -232,9 +232,26 @@
     if(!save()){profile.selectedCharacter=old;profile.equippedSkins[profile.activeActor]=old;return false;}return true;
   }
   const ownsCharacter=ownsSkin,purchaseCharacter=purchaseSkin;
+  // WEB 3.5: independent speed caps; level steps are provisional.
+  const levelSpeedBonus=level=>clamp(Math.floor((int(level)-1)/5),0,10);
   function characterStats(id){
     const hero=CHARACTER_CATALOG.find(c=>c.id===id)||CHARACTER_CATALOG[0];
-    return {speed:70+(hero.speedBonus||0),brake:70+(hero.brakeBonus||0)};
+    return {speed:60+clamp(hero.speedBonus||0,0,10),brake:70+(hero.brakeBonus||0)};
+  }
+  function loadoutStats(id,pet,drinks={},level=profile.level){
+    const c=characterStats(id);
+    const petSpeed=clamp(pet?.speedBonus||0,0,10),itemSpeed=clamp(drinks.speed||0,0,10),growth=levelSpeedBonus(level);
+    return {speed:Math.min(100,c.speed+petSpeed+itemSpeed+growth),
+      brake:Math.min(100,c.brake+(pet?.brakeBonus||0)+(drinks.brake||0)),
+      timeBonus:(pet?.timeBonus||0)+(drinks.time||0)};
+  }
+  function preparedStats(id){
+    const slots=wardrobeOf(id)?.quickSlots||[],drinks={};
+    for(const itemId of slots.slice(0,profile.slotCount)){
+      const item=ITEM_CATALOG.find(i=>i.id===itemId);
+      if(item?.kind==='drink'&&(profile.consumables[itemId]||0)>0)drinks[item.stat]=item.bonus;
+    }
+    return loadoutStats(id,petOf(id),drinks,profile.level);
   }
   const selectCharacter=equipSkin;
   const itemType=i=>i.kind==='bubble'?'bubble':i.stat;
@@ -369,5 +386,5 @@
   };
   // The actual reward provider must validate the completed impression before calling this.
   // No fake ad credits, real-money checkout, or automatic reward bypass exists in v0.4.
-  window.HellSystems={TEST_MODE,ACTOR_CATALOG,SKIN_CATALOG,actorName,skinsFor,selectActor,equipSkin,purchaseSkin,ownsSkin,profile,save,setting,awardRun,levelProgress,levelFromDepth,threshold,CHARACTER_CATALOG,ITEM_CATALOG,MUSIC_SLOTS,audio,purchase,purchaseCharacter,ownsCharacter,characterStats,selectCharacter,wardrobeOf,setCharacterSlot,startLoadout,PET_CATALOG,SLOT_PRICES,petOf,purchasePet,equipPet,purchaseSlot};
+  window.HellSystems={TEST_MODE,ACTOR_CATALOG,SKIN_CATALOG,actorName,skinsFor,selectActor,equipSkin,purchaseSkin,ownsSkin,profile,save,setting,awardRun,levelProgress,levelFromDepth,threshold,CHARACTER_CATALOG,ITEM_CATALOG,MUSIC_SLOTS,audio,purchase,purchaseCharacter,ownsCharacter,characterStats,levelSpeedBonus,loadoutStats,preparedStats,selectCharacter,wardrobeOf,setCharacterSlot,startLoadout,PET_CATALOG,SLOT_PRICES,petOf,purchasePet,equipPet,purchaseSlot};
 })();

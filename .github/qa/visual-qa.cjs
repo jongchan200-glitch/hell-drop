@@ -4,7 +4,7 @@ const {chromium}=require('playwright');
 const fs=require('fs');
 const B=require('../../balance.js');
 const profiles=[
- ['basic_lines',{clockRate:0}],['basic_half',{clockRate:.5}],['basic_all',{}],
+ ['basic_lines',{speed:70,clockRate:0}],['basic_half',{speed:70,clockRate:.5}],['basic_all',{speed:70}],
  ['explorer',{speed:73}],['wing_dragon',{speed:78}],
  ['wing_dragon_vitality',{speed:88}],['no_pet',{speed:86,timeBonus:15}],
  ['mid_time',{speed:88,timeBonus:10}],['max',{speed:88,timeBonus:15}]
@@ -17,6 +17,11 @@ assert(balance.wing_dragon.depth>=28500&&balance.wing_dragon.depth<36500);
 assert(balance.wing_dragon_vitality.depth>=36500&&!balance.wing_dragon_vitality.won);
 assert(!balance.no_pet.won&&!balance.mid_time.won);
 assert(balance.max.won&&balance.max.seconds>=300&&balance.max.seconds<=420&&balance.max.remaining>0);
+// Legacy 70% physics remains unchanged; the new baseline is a separate provisional balance.
+const revised={lines:B.simulateIdeal({clockRate:0}),all:B.simulateIdeal(),old:B.simulateIdeal({speed:70}),max:B.simulateIdeal({speed:100,timeBonus:15})};
+assert(revised.lines.depth<revised.all.depth&&revised.all.depth<revised.old.depth);
+assert(revised.max.won);
+console.log('QA_NEW_BALANCE='+JSON.stringify(revised));
 (async()=>{
  const browser=await chromium.launch({channel:'chrome',headless:true,args:['--no-sandbox']});
  const page=await browser.newPage({viewport:{width:390,height:844},deviceScaleFactor:1,isMobile:true,hasTouch:true});
@@ -26,7 +31,7 @@ assert(balance.max.won&&balance.max.seconds>=300&&balance.max.seconds<=420&&bala
  const click=async s=>{await page.locator(s).first().click()};
  const shot=async n=>{await page.screenshot({path:'qa-shot-'+n+'.jpg',type:'jpeg',quality:65});console.log('QAIMAGE_'+n.toUpperCase().replace(/-/g,'_')+'='+fs.readFileSync('qa-shot-'+n+'.jpg').toString('base64'))};
  async function reset(actor='uiji'){
-   await page.goto('http://127.0.0.1:8765/?v=nov27-coco34',{waitUntil:'domcontentloaded'});
+   await page.goto('http://127.0.0.1:8765/?v=nov28-speed35',{waitUntil:'domcontentloaded'});
    await page.evaluate(()=>localStorage.clear());await page.reload({waitUntil:'domcontentloaded'});
    await page.waitForFunction(()=>!!window.HellFallTest,{timeout:15000});
    await click('[data-initial-actor="'+actor+'"]');
@@ -50,9 +55,11 @@ assert(balance.max.won&&balance.max.seconds>=300&&balance.max.seconds<=420&&bala
  async function tapBoost(times=5){
    for(let i=0;i<times;i++){await page.locator('#boost').tap();await page.waitForTimeout(115)}
  }
- for(const [actor,id,stat] of [['uiji','starter_boy',70],['useoi','starter_girl',70],['uiji','uiji',73],['useoi','useoi',73],['uiji','wingsuit_boy',76],['useoi','wingsuit_girl',76]]){
+ for(const [actor,id,stat] of [['uiji','starter_boy',60],['useoi','starter_girl',60],['uiji','uiji',63],['useoi','useoi',63],['uiji','wingsuit_boy',66],['useoi','wingsuit_girl',66]]){
    await reset(actor);
-   const p0=await prof();assert.equal(p0.coins,1000);assert.equal(p0.slotCount,2);assert.equal(p0.ownedSkins.length,2);
+   const caps=await page.evaluate(()=>{const s=window.HellSystems;return [s.levelSpeedBonus(1),s.levelSpeedBonus(5),s.levelSpeedBonus(6),s.levelSpeedBonus(51),s.levelSpeedBonus(1000),s.loadoutStats('starter_boy',{speedBonus:99},{speed:99},1000).speed,s.loadoutStats('starter_boy',null,{},1).brake]});
+    assert.deepEqual(caps,[0,0,1,10,10,90,70]);
+    const p0=await prof();assert.equal(p0.coins,1000);assert.equal(p0.slotCount,2);assert.equal(p0.ownedSkins.length,2);
    if(id.startsWith('starter')){
      await click('[data-panel="character"]');
      assert.equal(await page.locator('[data-character-pick]').count(),1);
@@ -115,16 +122,16 @@ assert(balance.max.won&&balance.max.seconds>=300&&balance.max.seconds<=420&&bala
  assert.equal((await prof()).consumables.vitality_5,2);
  await shot('home-prepared');
  await click('#start');await page.waitForTimeout(250);let run=await snap();
- assert.equal(run.pet,'baby_dragon');assert.equal(run.stats.speed,77);assert.equal(run.stats.timeBonus,15);
+ assert.equal(run.pet,'baby_dragon');assert.equal(run.stats.speed,67);assert.equal(run.stats.timeBonus,15);
  assert.equal(run.profile.consumables.time_15,1);assert.equal(run.profile.consumables.vitality_5,1);
  assert(run.profile.wardrobes.uiji.quickSlots.every(x=>x===null));assert.equal(run.runItems.length,2);assert(Number.isFinite(run.petX));
  const a=await snap();await page.locator('#jump').tap();await page.waitForTimeout(200);const shifted=await snap();assert.notEqual(a.petX,shifted.petX);await page.locator('#jump').tap();await page.waitForTimeout(180);await tapBoost();const b=await snap();assert.equal(b.stage,'PLAYING');
- assert.equal(b.stats.timeBonus,15);assert.equal(b.stats.speed,77);await shot('dragon-play');
+ assert.equal(b.stats.timeBonus,15);assert.equal(b.stats.speed,67);await shot('dragon-play');
  // Lifecycle pause must stop simulation. This also verifies retained web/native glue.
  await page.evaluate(()=>window.HellPlatform.setNativePaused(true));const pa=await snap();await page.waitForTimeout(300);const pb=await snap();assert.equal(pa.depth,pb.depth);await page.evaluate(()=>window.HellPlatform.setNativePaused(false));
  await page.reload({waitUntil:'domcontentloaded'});await page.waitForFunction(()=>!!window.HellFallTest);let p=await prof();
  assert.equal(p.consumables.time_15,1);assert.equal(p.consumables.vitality_5,1);assert(p.wardrobes.uiji.quickSlots.every(x=>x===null));assert.equal(p.equippedPets.uiji,'baby_dragon');
- await click('#start');run=await snap();assert.equal(run.stats.speed,72);assert.equal(run.stats.timeBonus,0);assert.equal(run.runItems.length,0);assert.equal(run.profile.consumables.time_15,1);
+ await click('#start');run=await snap();assert.equal(run.stats.speed,62);assert.equal(run.stats.timeBonus,0);assert.equal(run.runItems.length,0);assert.equal(run.profile.consumables.time_15,1);
  console.log('QACONSUME='+JSON.stringify({first:{speed:b.stats.speed,timeBonus:b.stats.timeBonus,pet:b.pet,stock:b.profile.consumables.time_15},next:{stats:run.stats,stock:run.profile.consumables.time_15}}));
  // Permanent slot purchases and one-per-category selections.
  await reset('useoi');
@@ -137,7 +144,7 @@ assert(balance.max.won&&balance.max.seconds>=300&&balance.max.seconds<=420&&bala
  for(const [i,id] of ['bubble_10','vitality_3','calm_3','time_5'].entries()){
    await click('#homePrepSlots [data-prep-slot="'+i+'"]');await click('[data-loadout-item="'+id+'"]');
  }
- await click('#start');run=await snap();assert.equal(run.bubbleCharges,1);assert.equal(run.stats.speed,73);assert.equal(run.stats.brake,73);assert.equal(run.stats.timeBonus,5);assert.equal(run.runItems.length,4);
+ await click('#start');run=await snap();assert.equal(run.bubbleCharges,1);assert.equal(run.stats.speed,63);assert.equal(run.stats.brake,73);assert.equal(run.stats.timeBonus,5);assert.equal(run.runItems.length,4);
  assert(run.profile.wardrobes.useoi.quickSlots.every(x=>x===null));assert.equal(run.profile.slotCount,4);
  await page.reload({waitUntil:'domcontentloaded'});await page.waitForFunction(()=>!!window.HellFallTest);assert.equal((await prof()).slotCount,4);
 
@@ -150,11 +157,12 @@ assert(balance.max.won&&balance.max.seconds>=300&&balance.max.seconds<=420&&bala
  await click('[data-panel="character"]');await click('[data-wardrobe-tab="pets"]');await click('[data-equip-pet="coco"]');
  assert.equal(await page.locator('.preview-dragon .coco-art').count(),1);await shot('coco-equipped');await click('#drawerClose');
  assert.equal(await page.locator('#homePet.coco-art:not(.hidden)').count(),1);
+  assert.equal(await page.locator('#homePet').evaluate(el=>getComputedStyle(el).backgroundPosition),'100% 0%');
  await page.reload({waitUntil:'domcontentloaded'});await page.waitForFunction(()=>!!window.HellFallTest);
  assert.equal((await prof()).equippedPets.uiji,'coco');
  await page.evaluate(()=>{Math.random=()=>2.1/1e9;});
  await click('#start');await page.waitForFunction(()=>['flap-up','flap-down'].includes(window.HellFallTest.snapshot().petPose));
- let cr=await snap();assert.equal(cr.pet,'coco');assert.equal(cr.stats.speed,73);assert.equal(cr.stats.brake,72);assert.equal(cr.stats.timeBonus,5);
+ let cr=await snap();assert.equal(cr.pet,'coco');assert.equal(cr.stats.speed,63);assert.equal(cr.stats.brake,72);assert.equal(cr.stats.timeBonus,5);
  await shot('coco-flap');
  await tapBoost(10);await page.waitForFunction(()=>window.HellFallTest.snapshot().petPose==='dive',{timeout:5000});
  cr=await snap();assert.equal(cr.stage,'PLAYING');await shot('coco-dive');

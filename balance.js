@@ -24,7 +24,7 @@
    const response=target>speed?4.25:2.6*(stats.brake/70);
    return {boost,speed:speed+(target-speed)*(1-Math.exp(-response*dt))};
  }
- function simulateIdeal({speed=70,brake=70,timeBonus=0,clockRate=1,taps=6}={}){
+ function simulateIdeal({speed=60,brake=70,timeBonus=0,clockRate=1,taps=6}={}){
    const lines=[],clocks=[];
    for(let d=FIRST_LINE;d<CLEAR_DEPTH;d+=CHECKPOINT_GAPS[zoneOf(d)])lines.push({depth:d,bonus:CHECKPOINT_BONUS[zoneOf(d)]});
    for(let d=FIRST_CLOCK;d<CLEAR_DEPTH;d+=CLOCK_GAPS[zoneOf(d)])if(!lines.some(g=>Math.abs(g.depth-d)<200))clocks.push({depth:d,bonus:CLOCK_BONUS[zoneOf(d)]});
