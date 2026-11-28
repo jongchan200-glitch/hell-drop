@@ -41,3 +41,5 @@ assets/pajama_girl_portrait_v35.webp
 assets/pajama_girl_actions_v35.webp
 assets/pajama_girl_icon_v35.webp
 assets/winter_pet_v36.webp
+items.js
+ranking.js

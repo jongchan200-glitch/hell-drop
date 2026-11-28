@@ -31,10 +31,11 @@ console.log('QA_NEW_BALANCE='+JSON.stringify(revised));
  const click=async s=>{await page.locator(s).first().click()};
  const shot=async n=>{await page.screenshot({path:'qa-shot-'+n+'.jpg',type:'jpeg',quality:65});console.log('QAIMAGE_'+n.toUpperCase().replace(/-/g,'_')+'='+fs.readFileSync('qa-shot-'+n+'.jpg').toString('base64'))};
  async function reset(actor='uiji'){
-   await page.goto('http://127.0.0.1:8765/?v=nov28-winter36',{waitUntil:'domcontentloaded'});
+   await page.goto('http://127.0.0.1:8765/?v=nov28-rank37',{waitUntil:'domcontentloaded'});
    await page.evaluate(()=>localStorage.clear());await page.reload({waitUntil:'domcontentloaded'});
    await page.waitForFunction(()=>!!window.HellFallTest,{timeout:15000});
    await click('[data-initial-actor="'+actor+'"]');
+   await page.locator('#nicknameInput').fill('QA탐험가');await click('#nicknameForm button');
    await page.waitForFunction(()=>!document.querySelector('#lobbyHero').hidden&&document.querySelector('#lobbyHero').naturalWidth>0);
    // QA-only deterministic world; early obstacle walls are opposite the starting lane.
    await page.evaluate(seed=>{Math.random=()=>((seed+.1)/1e9);},2);
@@ -119,6 +120,10 @@ console.log('QA_NEW_BALANCE='+JSON.stringify(revised));
    console.log('QASKIN_'+id+'='+JSON.stringify({speed:boosted.stats.speed,taps:boosted.tapCount,wall:returned.wall,displayDepth:boosted.displayDepth}));
    if(id.startsWith('wingsuit')||id.startsWith('pajama'))await shot('play-'+id);
  }
+ // WEB 3.7 daily local rank and provisional item semantics.
+ await reset('uiji');await click('[data-panel="ranking"]');assert.equal(await page.locator('.rank-list .rank-row').count(),20);assert.equal(await page.locator('.rank-own .rank-row').count(),1);assert((await page.locator('.rank-header').textContent()).includes('가상 순위'));await click('.rank-list .rank-row');assert.equal(await page.locator('.rank-profile .rank-face img').count(),1);assert.equal(await page.locator('.rank-profile-item').count(),2);await shot('rank-profile');await click('.rank-close');await shot('rank-list');await click('#drawerClose');
+ const extra=await page.evaluate(()=>{const I=window.HellItems,s=window.HellSystems;const mods={revive:1,hourglass:5};return {types:I.extra.length,rescue1:I.rescue(true,8,mods),rescue2:I.rescue(false,0,mods),rescue3:I.rescue(true,0,mods),reward:I.rewards(10,1000,{coin:30,growth:30,luck:1},()=>0),stats:s.loadoutStats('starter_boy',{timeBonus:3},{life:30,time:15,accel:20},1),name:window.HellRanking.provider.nickname()}});assert.equal(extra.types,12);assert(extra.rescue1.revived&&!extra.rescue1.crashed);assert.equal(extra.rescue2.remain,5);assert(extra.rescue3.crashed);assert.deepEqual(extra.reward,{coins:18,growth:300});assert.equal(extra.stats.lineBonus,33);assert.equal(extra.stats.timeBonus,18);assert.equal(extra.stats.accel,20);assert.equal(extra.name,'QA탐험가');
+ await shop('items');await click('[data-market-group="drink"]');await click('[data-market-item="life_30"]');await shot('life-potion');await click('[data-market-buy="life_30"]');await click('[data-market-back]');await click('[data-market-group="special"]');assert.equal(await page.locator('[data-market-item]').count(),6);await click('[data-market-item="clock_magnet"]');await click('[data-market-buy="clock_magnet"]');await click('#drawerClose');await click('#homePrepSlots [data-prep-slot="0"]');await click('[data-loadout-item="life_30"]');await click('#homePrepSlots [data-prep-slot="1"]');await click('[data-loadout-item="clock_magnet"]');assert((await page.locator('#lobbyAura').evaluate(el=>el.style.background)).includes('radial-gradient'));await shot('aura-prepared');await click('#start');const newRun=await snap();assert.equal(newRun.stats.lineBonus,30);assert.equal(newRun.mods.magnet,1);assert.equal(newRun.profile.consumables.life_30,0);assert.equal(newRun.profile.consumables.clock_magnet,0);console.log('QA_RANK_ITEMS_PASS');
  // Real UI shopping, preparation, consumption, dragon and save.
  await reset('uiji');
  await shop('skins');await shot('skin-shop');await click('[data-market-character="wingsuit_boy"]');await shot('skin-detail');
@@ -239,5 +244,5 @@ console.log('QA_NEW_BALANCE='+JSON.stringify(revised));
  await page.reload({waitUntil:'domcontentloaded'});await page.waitForFunction(()=>!!window.HellFallTest);assert.equal((await prof()).coins,522);
  console.log('QAMIGRATION='+JSON.stringify({coins:p.coins,total:p.totalDepth,level:p.level,refund:p.retiredGearRefund}));
  assert.equal(errors.length,0,JSON.stringify(errors));
- await browser.close();console.log('QA_PASS_WEB36');
+ await browser.close();console.log('QA_PASS_WEB37');
 })().catch(e=>{console.error(e);process.exit(1)});

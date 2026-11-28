@@ -5,7 +5,7 @@
   // Only the build-time flag enables the two-actor test wallet. Production has a separate storage namespace.
   const TEST_MODE=true,LEGACY_KEY='hell_fall_profile_v1';
   const KEY=TEST_MODE?'hell_fall_skin_test_v30':'hell_fall_skin_release_v1';
-  const ACTOR_CATALOG=[{id:'uiji',name:'우지',base:'starter_boy'},{id:'useoi',name:'우서',base:'starter_girl'}];
+  const ACTOR_CATALOG=[{id:'uiji',name:'남자 캐릭터',base:'starter_boy'},{id:'useoi',name:'여자 캐릭터',base:'starter_girl'}];
   const DEFAULT_MUSIC=.20; // 20% default; real output controlled by Web Audio GainNode.
   // Original arrangements from the user's Rhythm Game Lab / shared game-music library.
   // Local MP3s are loaded only when their zone is played; no external URL dependency.
@@ -22,21 +22,21 @@
   // Free starter portraits use approved complete-body game illustrations.
   // The premium Uiji/Useoi original artwork is immutable.
   const CHARACTER_CATALOG=[
-    {id:'starter_boy',name:'우지 기본 복장',description:'무료 기본 스킨 · 최고속도 60% · 감속 70%',front:'assets/starter_boy_portrait_v29.webp',actor:'uiji',actions:'assets/starter_boy_actions_v29.webp',starter:true,price:0,speedBonus:0,brakeBonus:0,hasBack:false},
-    {id:'starter_girl',name:'우서 기본 복장',description:'무료 기본 스킨 · 최고속도 60% · 감속 70%',front:'assets/starter_girl_portrait_v29.webp',actor:'useoi',actions:'assets/starter_girl_actions_v29.webp',starter:true,price:0,speedBonus:0,brakeBonus:0,hasBack:false},
-    {id:'useoi',name:'우서 탐험가 스킨',description:'기존 원화 · 최고속도 +3%p · 감속 +2%p',front:'assets/hero_intro.webp',actor:'useoi',starter:false,price:100,speedBonus:3,brakeBonus:2,hasBack:true},
-    {id:'uiji',name:'우지 탐험가 스킨',description:'기존 원화 · 최고속도 +3%p · 감속 +2%p',front:'assets/uiji_intro.webp',actor:'uiji',starter:false,price:100,speedBonus:3,brakeBonus:2,hasBack:false},
-    {id:'wingsuit_boy',name:'우지 윙슈트',description:'윙슈트 · 최고속도 +6%p · 감속 +5%p',front:'assets/wingsuit_boy_portrait.webp',actions:'assets/wingsuit_boy_actions.webp',actor:'uiji',starter:false,kind:'wingsuit',price:200,speedBonus:6,brakeBonus:5,hasBack:false},
-    {id:'wingsuit_girl',name:'우서 윙슈트',description:'윙슈트 · 최고속도 +6%p · 감속 +5%p',front:'assets/wingsuit_girl_portrait.webp',actions:'assets/wingsuit_girl_actions.webp',actor:'useoi',starter:false,kind:'wingsuit',price:200,speedBonus:6,brakeBonus:5,hasBack:false},
-    {id:'pajama_boy',name:'우지 잠옷 스킨',description:'기하학 무늬 파자마 · 최고속도 +4%p · 감속 +3%p',front:'assets/pajama_boy_portrait_v35.webp',actions:'assets/pajama_boy_actions_v35.webp',iconArt:'assets/pajama_boy_icon_v35.webp',actor:'uiji',starter:false,kind:'pajama',price:150,speedBonus:4,brakeBonus:3,hasBack:false},
-    {id:'pajama_girl',name:'우서 잠옷 스킨',description:'기하학 무늬 파자마 · 최고속도 +4%p · 감속 +3%p',front:'assets/pajama_girl_portrait_v35.webp',actions:'assets/pajama_girl_actions_v35.webp',iconArt:'assets/pajama_girl_icon_v35.webp',actor:'useoi',starter:false,kind:'pajama',price:150,speedBonus:4,brakeBonus:3,hasBack:false}
+    {id:'starter_boy',name:'기본 복장',description:'무료 기본 스킨 · 최고속도 60% · 감속 70%',front:'assets/starter_boy_portrait_v29.webp',actor:'uiji',actions:'assets/starter_boy_actions_v29.webp',starter:true,price:0,speedBonus:0,brakeBonus:0,hasBack:false},
+    {id:'starter_girl',name:'기본 복장',description:'무료 기본 스킨 · 최고속도 60% · 감속 70%',front:'assets/starter_girl_portrait_v29.webp',actor:'useoi',actions:'assets/starter_girl_actions_v29.webp',starter:true,price:0,speedBonus:0,brakeBonus:0,hasBack:false},
+    {id:'useoi',name:'탐험가 스킨',description:'기존 원화 · 최고속도 +3%p · 감속 +2%p',front:'assets/hero_intro.webp',actor:'useoi',starter:false,price:100,speedBonus:3,brakeBonus:2,hasBack:true},
+    {id:'uiji',name:'탐험가 스킨',description:'기존 원화 · 최고속도 +3%p · 감속 +2%p',front:'assets/uiji_intro.webp',actor:'uiji',starter:false,price:100,speedBonus:3,brakeBonus:2,hasBack:false},
+    {id:'wingsuit_boy',name:'윙슈트',description:'윙슈트 · 최고속도 +6%p · 감속 +5%p',front:'assets/wingsuit_boy_portrait.webp',actions:'assets/wingsuit_boy_actions.webp',actor:'uiji',starter:false,kind:'wingsuit',price:200,speedBonus:6,brakeBonus:5,hasBack:false},
+    {id:'wingsuit_girl',name:'윙슈트',description:'윙슈트 · 최고속도 +6%p · 감속 +5%p',front:'assets/wingsuit_girl_portrait.webp',actions:'assets/wingsuit_girl_actions.webp',actor:'useoi',starter:false,kind:'wingsuit',price:200,speedBonus:6,brakeBonus:5,hasBack:false},
+    {id:'pajama_boy',name:'잠옷 스킨',description:'기하학 무늬 파자마 · 최고속도 +4%p · 감속 +3%p',front:'assets/pajama_boy_portrait_v35.webp',actions:'assets/pajama_boy_actions_v35.webp',iconArt:'assets/pajama_boy_icon_v35.webp',actor:'uiji',starter:false,kind:'pajama',price:150,speedBonus:4,brakeBonus:3,hasBack:false},
+    {id:'pajama_girl',name:'잠옷 스킨',description:'기하학 무늬 파자마 · 최고속도 +4%p · 감속 +3%p',front:'assets/pajama_girl_portrait_v35.webp',actions:'assets/pajama_girl_actions_v35.webp',iconArt:'assets/pajama_girl_icon_v35.webp',actor:'useoi',starter:false,kind:'pajama',price:150,speedBonus:4,brakeBonus:3,hasBack:false}
   ];
   // Rendering IDs are stable for existing art. Domain objects are two actors with independent catalog skins.
   const SKIN_CATALOG=CHARACTER_CATALOG;
   const actorOf=id=>SKIN_CATALOG.find(c=>c.id===id)?.actor;
   const baseOf=actor=>ACTOR_CATALOG.find(a=>a.id===actor)?.base;
   const validActor=id=>ACTOR_CATALOG.some(a=>a.id===id);
-  const actorName=id=>ACTOR_CATALOG.find(a=>a.id===id)?.name||'우지';
+  const actorName=id=>ACTOR_CATALOG.find(a=>a.id===id)?.name||'캐릭터';
   const skinsFor=actor=>SKIN_CATALOG.filter(c=>c.actor===actor);
   // Beta balance: the exact prices can be adjusted without changing saved purchases.
   // Each pet owns its atlas/frame layout and movement family; economy is editable here.
@@ -58,9 +58,10 @@
     {id:'calm_3',name:'침착 드링크 · 소',kind:'drink',stat:'brake',bonus:3,price:30,color:'#6bdafa',icon:'❄️',description:'한 판 동안 연타 중단 시 감속력 +3%p'},
     {id:'calm_5',name:'침착 드링크 · 중',kind:'drink',stat:'brake',bonus:5,price:55,color:'#3dbbe6',icon:'❄️',description:'한 판 동안 연타 중단 시 감속력 +5%p'},
     {id:'calm_10',name:'침착 드링크 · 대',kind:'drink',stat:'brake',bonus:10,price:100,color:'#3899e9',icon:'❄️',description:'한 판 동안 연타 중단 시 감속력 +10%p'},
-    {id:'time_5',name:'시간의 드링크 · 소',kind:'drink',stat:'time',bonus:5,price:35,color:'#d2a0ff',icon:'⏳',description:'한 판 동안 타임라인·시계 획득 시간 +5%'},
-    {id:'time_10',name:'시간의 드링크 · 중',kind:'drink',stat:'time',bonus:10,price:65,color:'#b984ff',icon:'⏳',description:'한 판 동안 타임라인·시계 획득 시간 +10%'},
-    {id:'time_15',name:'시간의 드링크 · 대',kind:'drink',stat:'time',bonus:15,price:120,color:'#8d59e3',icon:'⏳',description:'한 판 동안 타임라인·시계 획득 시간 +15%'}
+    {id:'time_5',name:'시간의 드링크 · 소',kind:'drink',stat:'time',bonus:5,price:35,color:'#d2a0ff',icon:'⏳',description:'한 판 동안 시계 획득 시간 +5%'},
+    {id:'time_10',name:'시간의 드링크 · 중',kind:'drink',stat:'time',bonus:10,price:65,color:'#b984ff',icon:'⏳',description:'한 판 동안 시계 획득 시간 +10%'},
+    {id:'time_15',name:'시간의 드링크 · 대',kind:'drink',stat:'time',bonus:15,price:120,color:'#8d59e3',icon:'⏳',description:'한 판 동안 시계 획득 시간 +15%'},
+    ...window.HellItems.extra
   ];
   const clamp=(v,a,b)=>Math.max(a,Math.min(b,Number.isFinite(+v)?+v:a));
   const int=(v)=>Math.max(0,Math.floor(Number(v)||0));
@@ -102,7 +103,7 @@
     p.selectedCharacter=p.equippedSkins[p.activeActor];
     p.equippedHelmet=null;
     p.consumables={};
-    for(const item of ITEM_CATALOG.filter(x=>x.kind==='bubble'||x.kind==='drink')){
+    for(const item of ITEM_CATALOG){
       const n=Number(obj?.consumables?.[item.id]);
       p.consumables[item.id]=Number.isFinite(n)?Math.max(0,Math.min(99,Math.floor(n))):0;
     }
@@ -122,7 +123,7 @@
       for(let i=0;i<p.slotCount;i++){
         const candidate=priorSlots[i]||secondary.quickSlots?.[i]||null;
         const item=ITEM_CATALOG.find(x=>x.id===candidate);
-        const type=item&&(item.kind==='bubble'?'bubble':item.stat);
+        const type=item&&window.HellItems.type(item);
         if(item&&p.consumables[item.id]>0&&!types.has(type)){quickSlots[i]=item.id;types.add(type);}
       }
       p.wardrobes[a.id]={quickSlots,gear:{}};
@@ -153,7 +154,7 @@
       p.levelBaseDepth=p.totalDepth;
       p.levelBaseLevel=Math.max(savedLevel,legacyLevelFromDepth(p.totalDepth));
     }
-    p.level=computeLevelProgress(p.totalDepth,p.levelBaseDepth,p.levelBaseLevel).level;
+    p.growthBonusDepth=int(p.growthBonusDepth);p.level=computeLevelProgress(p.totalDepth+p.growthBonusDepth,p.levelBaseDepth,p.levelBaseLevel).level;
     return p;
   }
   let profile=load();
@@ -174,8 +175,8 @@
     return {level:1000,within:0,next:1,ratio:1};
   }
   function levelFromDepth(distance){return computeLevelProgress(distance).level;}
-  function levelProgress(distance){return computeLevelProgress(distance,profile.levelBaseDepth,profile.levelBaseLevel);}
-  function awardRun(distance,foundCoins){distance=int(distance);foundCoins=int(foundCoins);const old=profile.level;
+  function levelProgress(distance){return computeLevelProgress(distance+(profile.growthBonusDepth||0),profile.levelBaseDepth,profile.levelBaseLevel);}
+  function awardRun(distance,foundCoins,growth=0){distance=int(distance);foundCoins=int(foundCoins);profile.growthBonusDepth=(profile.growthBonusDepth||0)+int(growth);const old=profile.level;
     profile.totalDepth+=distance;profile.runs++;profile.worldCoins+=foundCoins;
     profile.level=levelProgress(profile.totalDepth).level;
     let bonus=0;for(let lv=old+1;lv<=profile.level;lv++)bonus+=8+4*lv;
@@ -251,7 +252,7 @@
     const petSpeed=clamp(pet?.speedBonus||0,0,10),itemSpeed=clamp(drinks.speed||0,0,10),growth=levelSpeedBonus(level);
     return {speed:Math.min(100,c.speed+petSpeed+itemSpeed+growth),
       brake:Math.min(100,c.brake+(pet?.brakeBonus||0)+(drinks.brake||0)),
-      timeBonus:(pet?.timeBonus||0)+(drinks.time||0)};
+      timeBonus:(pet?.timeBonus||0)+(drinks.time||0),lineBonus:(pet?.timeBonus||0)+(drinks.life||0),accel:drinks.accel||0};
   }
   function preparedStats(id){
     const slots=wardrobeOf(id)?.quickSlots||[],drinks={};
@@ -262,7 +263,7 @@
     return loadoutStats(id,petOf(id),drinks,profile.level);
   }
   const selectCharacter=equipSkin;
-  const itemType=i=>i.kind==='bubble'?'bubble':i.stat;
+  const itemType=window.HellItems.type;
   function setCharacterSlot(characterId,index,itemId){
     const wardrobe=wardrobeOf(characterId);
     if(!wardrobe||!Number.isInteger(index)||index<0||index>=profile.slotCount)return false;

@@ -36,9 +36,10 @@
   const runSkin=()=>sys.SKIN_CATALOG.find(c=>c.id===s.runCharacter);
   const skinLabel=c=>c.starter?'기본 복장':c.id.startsWith('wingsuit_')?'윙슈트':c.id.startsWith('pajama_')?'잠옷 스킨':'탐험가 스킨';
   function effectiveStats(){
-    return sys.loadoutStats(s.runCharacter,s.pet,{speed:s.drinks.speed.bonus,brake:s.drinks.brake.bonus,time:s.drinks.time.bonus},s.runLevel);
+    return sys.loadoutStats(s.runCharacter,s.pet,s.mods||{},s.runLevel);
   }
-  const rewardTime=n=>B.reward(n,effectiveStats().timeBonus);
+  const rewardTime=(n,line=false)=>B.reward(n,line?effectiveStats().lineBonus:effectiveStats().timeBonus);
+  const ranking=window.HellRanking.provider, itemTools=window.HellItems;
   const petAtlases=new Map();
   for(const {visual:v} of sys.PET_CATALOG){
     if(!petAtlases.has(v.atlas)){const image=new Image();image.src=v.atlas;petAtlases.set(v.atlas,image);}
@@ -88,18 +89,19 @@
   function smooth(t){t=Math.max(0,Math.min(1,t));return t*t*(3-2*t);}
   function posX(g,p=g.hopProgress){return wallX(g.hopFrom)*(1-smooth(p))+wallX(g.wall)*smooth(p);}
   function rngSeed(seed){let x=(seed>>>0)||1;return()=>{x=(x+0x6D2B79F5)>>>0;let t=x;t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return ((t^(t>>>14))>>>0)/4294967296;};}
-  function makeGame(stage='READY'){return{seed:(Math.random()*1000000000)|0,stage,depth:0,speed:T.START,timeLeft:T.LIMIT,elapsed:0,boost:0,fold:0,lastTapAt:-1,tapPulse:0,tapCount:0,tapIntervals:[],cadence:0,wall:'L',hopFrom:'L',hopProgress:1,hopVisual:1,obstacles:[],timeGates:[],checkpointGates:[],coinGates:[],runCoins:0,nextObstacle:370,nextTimeGate:B.FIRST_CLOCK,nextCheckpoint:B.FIRST_LINE,nextCoin:210,coinNumber:0,obstacleNumber:0,gateNumber:0,checkpointNumber:0,gateFlash:0,checkpointFlash:0,zoneFlash:0,lastBonus:0,lastCheckpointBonus:0,failure:'',bubbleCharges:0,bubbleColor:null,bubbleName:'',invuln:0,shieldFlash:0,runCharacter:'starter_boy',runLevel:sys.profile.level,drinks:{speed:{bonus:0},brake:{bonus:0},time:{bonus:0}},pet:null,petX:null,runItems:[],won:false};}
+  function makeGame(stage='READY'){return{seed:(Math.random()*1000000000)|0,stage,depth:0,speed:T.START,timeLeft:T.LIMIT,elapsed:0,boost:0,fold:0,lastTapAt:-1,tapPulse:0,tapCount:0,tapIntervals:[],cadence:0,wall:'L',hopFrom:'L',hopProgress:1,hopVisual:1,obstacles:[],timeGates:[],checkpointGates:[],coinGates:[],runCoins:0,nextObstacle:370,nextTimeGate:B.FIRST_CLOCK,nextCheckpoint:B.FIRST_LINE,nextCoin:210,coinNumber:0,obstacleNumber:0,gateNumber:0,checkpointNumber:0,gateFlash:0,checkpointFlash:0,zoneFlash:0,lastBonus:0,lastCheckpointBonus:0,failure:'',bubbleCharges:0,bubbleColor:null,bubbleName:'',invuln:0,shieldFlash:0,runCharacter:'starter_boy',runLevel:sys.profile.level,drinks:{speed:{bonus:0},brake:{bonus:0},time:{bonus:0}},pet:null,petX:null,runItems:[],mods:{},won:false};}
   function start(){
     if(!sys.profile.identityChosen){openPanel('chooseActor');return;}
+    if(!ranking.nickname()){openPanel('nickname');return;}
     if(s.stage==='PLAYING')return;
     const loadout=sys.startLoadout();
     if(!loadout.ok){openPanel('character',loadout.reason);return;}
     applyControlSide();s=makeGame('PLAYING');
     s.runCharacter=sys.profile.selectedCharacter;s.pet=loadout.pet;s.runLevel=sys.profile.level;
-    s.runItems=loadout.items.map(i=>i.id);
+    s.runItems=loadout.items.map(i=>i.id);s.mods=itemTools.modifiers(loadout.items);
     for(const item of loadout.items){
       if(item.kind==='bubble'){s.bubbleCharges=item.hits;s.bubbleColor=item.color;s.bubbleName=item.name;}
-      else s.drinks[item.stat].bonus=item.bonus;
+      else if(s.drinks[item.stat])s.drinks[item.stat].bonus=item.bonus;
     }
     const wing=runSkin()?.kind==='wingsuit';
     boostBtn.querySelector('strong').textContent=wing?'급강하':'망토 접기';
@@ -109,7 +111,7 @@
     heldKeys.clear();sys.audio.unlock();sys.audio.startGamePlaylist();
     sys.audio.effect('start');updateUI();
   }
-  function finish(msg){if(s.stage==='OVER')return;s.stage='OVER';s.failure=msg;if(s.depth>best){best=s.depth;saveRecord(best);}lastReward=sys.awardRun(s.depth,s.runCoins);sys.audio.effect(lastReward.levelUps>0?'level':'hit');heldKeys.clear();boostBtn.classList.remove('active');updateUI();}
+  function finish(msg){if(s.stage==='OVER')return;s.stage='OVER';s.failure=msg;if(s.depth>best){best=s.depth;saveRecord(best);}const rewards=itemTools.rewards(s.runCoins,s.depth,s.mods);lastReward=sys.awardRun(s.depth,rewards.coins,rewards.growth);sys.audio.effect(lastReward.levelUps>0?'level':'hit');heldKeys.clear();boostBtn.classList.remove('active');updateUI();}
   function tapAccelerate(){
     if(s.stage!=='PLAYING')return;
     // Cadence—not lifetime tap count—controls the continuously moving storm.
@@ -193,7 +195,7 @@
       if(g.collected||!(old<g.depth&&depth>=g.depth))continue;
       const along=Math.max(0,Math.min(1,(g.depth-old)/traveled));
       if(s.timeLeft<=dt*along)continue; // no rescue after already running out
-      checkpointBonus=rewardTime(g.bonus);remain=Math.min(T.LIMIT,remain+checkpointBonus);
+      checkpointBonus=rewardTime(g.bonus,true);remain=Math.min(T.LIMIT,remain+checkpointBonus);
       checkpointGlow=1.25;g.collected=true;sys.audio.effect('checkpoint');
     }
     for(const g of s.timeGates){
@@ -201,7 +203,7 @@
       const along=Math.max(0,Math.min(1,(g.depth-old)/traveled));
       if(s.timeLeft<=dt*along)continue;
       const p=Math.min(1,s.hopProgress+dt*along/T.HOP_SECONDS);
-      if(Math.abs(posX(s,p)-wallX(g.wall))<=.12){
+      if(s.mods.magnet||Math.abs(posX(s,p)-wallX(g.wall))<=.12){
         bonus=rewardTime(g.bonus);remain=Math.min(T.LIMIT,remain+bonus);
         glow=1.2;g.collected=true;sys.audio.effect('clock');
       }
@@ -232,7 +234,10 @@
     }
     Object.assign(s,{boost,fold,cadence:rate,tapPulse:Math.max(0,s.tapPulse-dt*3.3),speed:nextSpeed,depth:Math.min(B.CLEAR_DEPTH,depth),timeLeft:remain,elapsed:s.elapsed+dt,hopProgress:hop,hopVisual,gateFlash:glow,checkpointFlash:checkpointGlow,zoneFlash,lastBonus:bonus,lastCheckpointBonus:checkpointBonus,bubbleCharges,invuln,shieldFlash});
     if(hop>=1)jumpBtn.classList.remove('active');
-    if(crashed)finish('지층 장애물에 부딪혔어!');else if(remain<=0)finish('시간이 다 됐어!');else if(s.depth>=B.CLEAR_DEPTH){s.won=true;finish('지옥의 심연 정복!');}
+    const rescue=itemTools.rescue(crashed,remain,s.mods);s.timeLeft=Math.min(T.LIMIT,rescue.remain);
+    if(rescue.revived){s.invuln=.75;s.shieldFlash=.64;sys.audio.effect('hit');}
+    if(rescue.timed){s.gateFlash=1.2;s.lastBonus=rescue.remain;sys.audio.effect('clock');}
+    if(rescue.crashed)finish('지층 장애물에 부딪혔어!');else if(s.timeLeft<=0)finish('시간이 다 됐어!');else if(s.depth>=B.CLEAR_DEPTH){s.won=true;finish('지옥의 심연 정복!');}
   }
   function updateUI(){
     const playing=s.stage==='PLAYING',over=s.stage==='OVER',ready=s.stage==='READY';
@@ -248,6 +253,7 @@
     if(playing&&s.drinks.speed.bonus>0)protection.push('⚡ +'+s.drinks.speed.bonus+'%p');
     if(playing&&s.drinks.brake.bonus>0)protection.push('❄ +'+s.drinks.brake.bonus+'%p');
     if(playing&&s.drinks.time.bonus>0)protection.push('⏳ +'+s.drinks.time.bonus+'%');
+    if(playing&&s.mods.life)protection.push('♡ +'+s.mods.life+'%');if(playing&&s.mods.accel)protection.push('↟ +'+s.mods.accel+'%');if(playing&&s.mods.revive)protection.push('🪶');if(playing&&s.mods.hourglass)protection.push('⌛');if(playing&&s.mods.magnet)protection.push('🧲');
     $('protectionBadge').textContent=protection.join(' · ');
     $('protectionBadge').classList.toggle('hidden',protection.length===0);
     $('runCoinLabel').textContent=String(s.runCoins);
@@ -366,6 +372,7 @@
     const arc=Math.sin(Math.min(1,s.hopProgress)*Math.PI)*15*u;
     drawSpeedWind(posX(s)*W,charY-arc,u);
     // One approved renderer; physics position stays unchanged.
+    drawDrinkAura(posX(s)*W,charY-arc,u);
     drawHero(posX(s)*W,charY-arc,u,s.fold,s.elapsed,s.speed,s.stage==='OVER',s.hopVisual<1,s.hopFrom);
     drawBubble(posX(s)*W,charY-arc,u);
     drawPet(posX(s)*W,charY-arc,u);
@@ -674,6 +681,13 @@
     ctx.rotate(cat?(tuck?Math.sin(s.elapsed*7)*.08:fast?-.48:-.20+Math.sin(s.elapsed*5)*.06):(fast?.25:Math.sin(s.elapsed*8)*.06));
     ctx.drawImage(atlas,(frame%cols)*256,Math.floor(frame/cols)*256,256,256,-size/2,-size/2,size,size);ctx.restore();
   }
+  function drawDrinkAura(x,y,u){
+    const drinks=s.runItems.map(id=>sys.ITEM_CATALOG.find(i=>i.id===id)).filter(i=>i?.kind==='drink');
+    if(!drinks.length)return;
+    ctx.save();ctx.globalCompositeOperation='screen';
+    for(let j=0;j<drinks.length;j++){const i=drinks[j],g=itemTools.grade(i),dx=(j-(drinks.length-1)/2)*17*u;const grad=ctx.createRadialGradient(x+dx,y-8*u,3*u,x+dx,y-8*u,(76+g*7)*u);grad.addColorStop(0,i.color+['24','37','4d'][g-1]);grad.addColorStop(.55,i.color+['18','24','35'][g-1]);grad.addColorStop(1,i.color+'00');ctx.fillStyle=grad;ctx.fillRect(x-150*u,y-150*u,300*u,300*u);}
+    ctx.restore();
+  }
   function drawBubble(x,y,u){
     if(s.bubbleCharges<=0&&s.shieldFlash<=0)return;
     const color=s.bubbleCharges>0?(s.bubbleColor||'#ffe579'):'#b5eaff';
@@ -828,7 +842,7 @@
   }
   bindGamePress(boostBtn,tapAccelerate);
   bindGamePress(jumpBtn,jump);
-  document.addEventListener('keydown',e=>{if(['Space','ArrowRight','Enter'].includes(e.code)){e.preventDefault();if(e.repeat||heldKeys.has(e.code))return;heldKeys.add(e.code);
+  document.addEventListener('keydown',e=>{if(e.target?.matches?.('input,textarea,[contenteditable]'))return;if(['Space','ArrowRight','Enter'].includes(e.code)){e.preventDefault();if(e.repeat||heldKeys.has(e.code))return;heldKeys.add(e.code);
     if(e.code==='Space')tapAccelerate();else if(e.code==='ArrowRight')jump();else if(e.code==='Enter'&&(s.stage==='READY'||s.stage==='OVER')&&document.activeElement?.tagName!=='BUTTON')start();}});
   document.addEventListener('keyup',e=>heldKeys.delete(e.code));
   window.addEventListener('blur',()=>{heldKeys.clear();});
@@ -840,8 +854,8 @@
   let lobbyCtrl=null;
   function syncLobbyCharacter(){
     const character=sys.CHARACTER_CATALOG.find(c=>c.id===sys.profile.selectedCharacter)||sys.CHARACTER_CATALOG[0];
-    $('homeCharacterName').textContent=sys.actorName(character.actor);
-    $('homeAvatar').src=character.front;
+    $('homeCharacterName').textContent=ranking.nickname()||'모험가';
+    $('homeAvatar').src=sys.SKIN_CATALOG.find(c=>c.actor===character.actor&&c.starter).front;
     $('characterIdentityName').textContent=sys.actorName(character.actor);
     $('characterIdentitySubtitle').textContent=character.starter?'기본 복장 · 무료':skinLabel(character);
     $('lobbyClassTag').textContent=character.starter?'무료 기본 복장':skinLabel(character);
@@ -878,8 +892,12 @@
     $('lobbySpeedStat').textContent=stats.speed+'%';
     $('lobbySpeedStat').title='기본 60% · 레벨 성장 +'+sys.levelSpeedBonus(sys.profile.level)+'%p · 장착 스킨/펫/출전 아이템 포함';
     $('lobbyBrakeStat').textContent=stats.brake+'%';
-    $('lobbyTimeStat').textContent=stats.timeBonus?'⏳ 시간 획득 +'+stats.timeBonus+'%':'';
+    $('lobbyTimeStat').textContent=stats.timeBonus?'시계 +'+stats.timeBonus+'%':'';
     $('lobbyTimeStat').classList.toggle('hidden',!stats.timeBonus);
+    $('lobbyLifeStat').textContent=stats.lineBonus?'타임라인 +'+stats.lineBonus+'%':'';$('lobbyLifeStat').classList.toggle('hidden',!stats.lineBonus);
+    $('lobbyAccelStat').textContent=stats.accel?'가속 +'+stats.accel+'%':'';$('lobbyAccelStat').classList.toggle('hidden',!stats.accel);
+    const chosen=(sys.wardrobeOf(sys.profile.selectedCharacter)?.quickSlots||[]).map(id=>sys.ITEM_CATALOG.find(i=>i.id===id)).filter(i=>i?.kind==='drink');
+    $('lobbyAura').style.background=chosen.map((i,j)=>'radial-gradient(ellipse at '+(50+(j-(chosen.length-1)/2)*15)+'% 52%, '+i.color+['2a','3b','50'][itemTools.grade(i)-1]+' 0%, '+i.color+'08 45%, transparent 72%)').join(',');
   }
   function renderHomePrep(){
     const prof=sys.profile,w=sys.wardrobeOf(prof.selectedCharacter);if(!w)return;
@@ -900,7 +918,7 @@
     openPanel('loadout');
   }
   function loadoutHTML(prof){
-    const w=sys.wardrobeOf(prof.selectedCharacter),type=i=>i.kind==='bubble'?'bubble':i.stat;
+    const w=sys.wardrobeOf(prof.selectedCharacter),type=itemTools.type;
     const used=new Set(w.quickSlots.map(id=>sys.ITEM_CATALOG.find(i=>i.id===id)).filter(Boolean).map(type));
     const owned=sys.ITEM_CATALOG.filter(i=>(prof.consumables[i.id]||0)>0);
     return '<div class="rpg-picker"><p class="market-guide">슬롯 '+(pendingSlot+1)+'에 장착할 보유 아이템을 선택하세요. 출전 전에는 차감되지 않습니다.</p><div class="rpg-grid">'+(owned.map(i=>'<button class="rpg-card" type="button" data-loadout-item="'+i.id+'" '+(used.has(type(i))?'disabled':'')+'><span class="rpg-art">'+marketArt(i)+'</span><b>'+esc(i.name)+'</b><small>×'+prof.consumables[i.id]+(used.has(type(i))?' · 같은 능력 장착 중':'')+'</small></button>').join('')||'<p class="market-guide">보유한 소모품이 없어요. 상점에서 구매할 수 있어요.</p>')+'</div><button class="rpg-secondary" data-prep-back type="button">취소</button></div>';
@@ -911,14 +929,14 @@
   }
   function characterPanelHTML(prof,prog,fmt){
     const active=sys.SKIN_CATALOG.find(c=>c.id===prof.selectedCharacter)||sys.SKIN_CATALOG[0],pet=sys.petOf(active.id),stats=sys.preparedStats(active.id);
-    const actorButtons=sys.TEST_MODE?'<div class="actor-choice-row">'+sys.ACTOR_CATALOG.map(a=>'<button type="button" data-test-actor="'+a.id+'" aria-pressed="'+(a.id===prof.activeActor)+'">'+a.name+(a.id==='uiji'?' (남)':' (여)')+'</button>').join('')+'</div>':'';
+    const actorButtons=sys.TEST_MODE?'<div class="actor-choice-row">'+sys.ACTOR_CATALOG.map(a=>'<button type="button" data-test-actor="'+a.id+'" aria-pressed="'+(a.id===prof.activeActor)+'">'+a.name+'</button>').join('')+'</div>':'';
     const skinTiles=sys.skinsFor(prof.activeActor).filter(c=>sys.ownsSkin(c.id)).map(c=>'<button type="button" class="rpg-card '+(c.id===active.id?'is-selected':'')+'" data-character-pick="'+c.id+'" aria-pressed="'+(c.id===active.id)+'"><span class="rpg-art">'+skinArt(c)+'</span><b>'+esc(skinLabel(c))+'</b><small>'+(c.id===active.id?'장착 중':'보유')+'</small></button>').join('');
     const petTiles=sys.PET_CATALOG.filter(p=>prof.ownedPets.includes(p.id)).map(p=>'<button type="button" class="rpg-card '+(pet?.id===p.id?'is-selected':'')+'" data-equip-pet="'+p.id+'"><span class="rpg-art">'+petArt(p)+'</span><b>'+esc(p.name)+'</b><small>'+(pet?.id===p.id?'장착 중 · 터치 해제':petStats(p))+'</small></button>').join('');
     const inventory=sys.ITEM_CATALOG.filter(i=>(prof.consumables[i.id]||0)>0).map(i=>'<div class="rpg-card"><span class="rpg-art">'+marketArt(i)+'</span><b>'+esc(i.name)+'</b><small>×'+prof.consumables[i.id]+'</small></div>').join('');
     const tabs=[['skins','스킨'],['pets','펫'],['items','아이템']].map(([id,label])=>'<button type="button" data-wardrobe-tab="'+id+'" aria-pressed="'+(id===wardrobeTab)+'">'+label+'</button>').join('');
     const contents=wardrobeTab==='skins'?'<div class="rpg-grid">'+skinTiles+'</div>':wardrobeTab==='pets'?'<div class="rpg-grid">'+(petTiles||'<p class="market-guide">보유한 펫이 없어요.</p>')+'</div>':'<div class="prep-grid">'+prepSlotsHTML(prof,'character')+'</div><p class="market-guide">빈 슬롯을 터치해 장착, 다시 터치해 해제 · 한 판용</p><div class="rpg-grid">'+(inventory||'<p class="market-guide">보유한 소모품이 없어요.</p>')+'</div>';
     return '<div class="wardrobe-root"><div class="actor-test-box"><div class="starter-pick-heading"><b>내 캐릭터 · '+sys.actorName(prof.activeActor)+'</b><span>'+(sys.TEST_MODE?'TEST':'')+'</span></div>'+actorButtons+'</div>'+
-      '<div class="rpg-preview"><div class="rpg-preview-hero">'+(previewMode?'<canvas data-preview-canvas width="256" height="280" aria-label="스킨 동작 미리보기"></canvas>':'<img src="'+active.front+'" alt="'+esc(active.name)+'">')+(pet?'<span class="preview-dragon '+(pet.visual.mode==='cat'?'preview-ground':'')+'">'+petArt(pet)+'</span>':'')+'</div><strong>'+esc(active.name)+'</strong><div class="starter-active-stats"><span>⚡ '+stats.speed+'%</span><span>❄ '+stats.brake+'%</span>'+(stats.timeBonus?'<span>⏳ +'+stats.timeBonus+'%</span>':'')+'</div><button class="rpg-secondary rpg-motion" type="button" data-preview-motion>'+['동작 보기','낙하 · 다음','급강하 · 다음','벽점프 · 정면'][previewMode]+'</button></div>'+
+      '<div class="rpg-preview"><div class="rpg-preview-hero">'+(previewMode?'<canvas data-preview-canvas width="256" height="280" aria-label="스킨 동작 미리보기"></canvas>':'<img src="'+active.front+'" alt="'+esc(active.name)+'">')+(pet?'<span class="preview-dragon '+(pet.visual.mode==='cat'?'preview-ground':'')+'">'+petArt(pet)+'</span>':'')+'</div><strong>'+esc(active.name)+'</strong><div class="starter-active-stats"><span>⚡ '+stats.speed+'%</span><span>❄ '+stats.brake+'%</span>'+(stats.timeBonus?'<span>시계 +'+stats.timeBonus+'%</span>':'')+'</div><button class="rpg-secondary rpg-motion" type="button" data-preview-motion>'+['동작 보기','낙하 · 다음','급강하 · 다음','벽점프 · 정면'][previewMode]+'</button></div>'+
       '<nav class="rpg-tabs" aria-label="내 보관함">'+tabs+'</nav>'+contents+'</div>';
   }
   function mountPreview(){
@@ -941,15 +959,7 @@
     requestAnimationFrame(render);
   }
   function marketArt(item,full=false){
-  if(item.kind==='drink'){
-    const c=item.color;
-    return '<svg viewBox="0 0 100 100" class="market-svg" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">'+
-      '<path d="M40 10h20v10H40z" fill="#f0e6cf" stroke="#48444d" stroke-width="3"/>'+
-      '<path d="M38 23h24l13 18v42q-25 14-50 0V41z" fill="'+c+'" stroke="#364350" stroke-width="4"/>'+
-      '<path d="M38 23h24l10 18H28z" fill="#ffffff55"/>'+
-      '<text x="50" y="64" text-anchor="middle" font-size="18" font-weight="900" fill="#17202e">'+item.bonus+'%</text>'+
-      '<circle cx="37" cy="37" r="4" fill="#fff" opacity=".65"/></svg>';
-  }
+  if(item.kind==='drink'||item.kind==='special')return itemTools.art(item);
   const id="mark-"+item.id+(full?"-big":"-small");
   if(item.kind==="bubble"){
     const color={bubble_10:["#fff9c2","#ffb932","#a85424"],bubble_20:["#c5ffe9","#20d69a","#116f55"],bubble_30:["#ffe0d8","#f3437b","#8d295f"]}[item.id]||["#fff","#9ae","#457"];
@@ -972,14 +982,14 @@
     const stats=i=>i.kind==='skin'?'최고속 '+statOf(i.id).speed+'% · 감속 '+statOf(i.id).brake+'%':i.kind==='pet'?petStats(i):i.description;
     const coin=n=>'<span class="market-coin" aria-hidden="true"></span>'+fmt(n);
     const tiles=products.map(i=>'<button type="button" class="rpg-card market-rpg-card '+(owned(i)?'is-owned':'')+'" '+(i.kind==='skin'?'data-market-character':'data-market-item')+'="'+i.id+'"><span class="rpg-art">'+art(i)+'</span><b>'+esc(i.kind==='skin'?skinLabel(i):i.name)+'</b><small class="market-price">'+(owned(i)?'보유 중':coin(i.price))+'</small>'+((prof.consumables[i.id]||0)>0?'<small>보유 '+prof.consumables[i.id]+'개</small>':'')+'</button>').join('');
-    const groups=[['bubble','보호 버블','🫧'],['drink','드링크','🧪'],['slots','슬롯 확장','🔓']];
+    const groups=[['bubble','보호 버블','🫧'],['drink','드링크','🧪'],['special','특수 아이템','✦'],['slots','슬롯 확장','🔓']];
     const folders=groups.map(([id,label,icon])=>'<button type="button" class="market-folder" data-market-group="'+id+'"><span class="market-folder-icon">'+icon+'</span><strong>'+label+'</strong><small>'+(id==='slots'?'기본 2 · 최대 4':items.filter(i=>i.kind===id).length+'종')+'</small><span class="market-folder-caret">›</span></button>').join('');
     let detail='';
     if(chosen){
       const permanent=owned(chosen),attr=chosen.kind==='skin'?'data-market-buy-character':chosen.kind==='pet'?'data-market-buy-pet':chosen.kind==='slot'?'data-market-buy-slot':'data-market-buy';
       const value=chosen.kind==='slot'?prof.slotCount:chosen.id;
       const guide=chosen.kind==='skin'?(chosen.id.startsWith('wingsuit')?'날개를 펼쳐 낙하하고 급강하하는 윙슈트. ':chosen.id.startsWith('pajama_')?'귀여운 기하학 무늬 잠옷과 편안한 슬리퍼. ':'탐험가 전용 복장. ')+'구매 후 내 캐릭터에서 장착하세요.':chosen.kind==='pet'?(chosen.guide||'캐릭터와 함께 낙하하는 영구 펫.')+' 내 캐릭터에서 장착하세요.':chosen.kind==='slot'?'한 번 구매하면 모든 캐릭터에서 영구적으로 사용할 수 있어요.':'출전 전에 장착하면 시작 시 1개 소모되며, 한 판 동안 적용됩니다.';
-      detail='<div class="market-overlay"><button type="button" class="market-shade" data-market-close aria-label="닫기"></button><section class="market-detail" role="dialog" aria-modal="true"><span class="market-handle"></span><button type="button" class="market-close" data-market-close aria-label="닫기">✕</button><div class="market-detail-head"><span class="market-large-art">'+art(chosen)+'</span><div class="market-detail-title"><small>'+({skin:'스킨',pet:'영구 펫',slot:'영구 확장',bubble:'한 판용 보호막',drink:'한 판용 드링크'}[chosen.kind])+'</small><strong>'+esc(chosen.name)+'</strong><b>'+esc(stats(chosen))+'</b></div></div><p class="market-guide">'+esc(guide)+'</p><div class="market-detail-bottom"><div><small>판매가</small><strong>'+coin(chosen.price)+'</strong></div><button type="button" '+attr+'="'+value+'" '+(permanent?'disabled':'')+'>'+(permanent?'보유 중':'구매하기')+'</button></div><button type="button" class="rpg-secondary" data-market-close>취소 / 닫기</button></section></div>';
+      detail='<div class="market-overlay"><button type="button" class="market-shade" data-market-close aria-label="닫기"></button><section class="market-detail" role="dialog" aria-modal="true"><span class="market-handle"></span><button type="button" class="market-close" data-market-close aria-label="닫기">✕</button><div class="market-detail-head"><span class="market-large-art">'+art(chosen)+'</span><div class="market-detail-title"><small>'+({skin:'스킨',pet:'영구 펫',slot:'영구 확장',bubble:'한 판용 보호막',drink:'한 판용 드링크',special:'한 판용 특수 아이템'}[chosen.kind])+'</small><strong>'+esc(chosen.name)+'</strong><b>'+esc(stats(chosen))+'</b></div></div><p class="market-guide">'+esc(guide)+'</p><div class="market-detail-bottom"><div><small>판매가</small><strong>'+coin(chosen.price)+'</strong></div><button type="button" '+attr+'="'+value+'" '+(permanent?'disabled':'')+'>'+(permanent?'보유 중':'구매하기')+'</button></div><button type="button" class="rpg-secondary" data-market-close>취소 / 닫기</button></section></div>';
     }
     const browsing=marketTab==='items'&&!marketGroup?'<div class="market-category-grid">'+folders+'</div>':(marketTab==='items'?'<button type="button" class="market-back" data-market-back>‹ 아이템 목록</button>':'')+'<div class="rpg-grid">'+(tiles||'<p class="market-guide">모든 슬롯을 열었어요.</p>')+'</div>';
     return '<div class="market-root"><p class="market-eyebrow">HELL DROP · MARKET</p><div class="market-wallet"><span>보유 코인'+(sys.TEST_MODE?' · TEST':'')+'</span><strong>'+coin(prof.coins)+'</strong></div><nav class="market-main-tabs" aria-label="상점 대분류">'+menu+'</nav>'+browsing+'<div class="market-footer">구매 후 캐릭터 보관함에서 장착할 수 있어요.</div>'+detail+'</div>';
@@ -993,11 +1003,19 @@
     body.querySelector('[data-preview-motion]')?.addEventListener('click',()=>{previewMode=(previewMode+1)%4;openPanel('character');});
     mountPreview();
   }
-  const titles={chooseActor:'캐릭터 선택',character:'캐릭터 · 보관함',loadout:'출전 아이템 선택',slotUnlock:'슬롯 확장',shop:'상점',earn:'코인 획득소',records:'내 기록',settings:'설정'};
+  let rankSelected=null,rankView=null;
+  const rankDelta=r=>r.newEntry?'<span class="rank-new">NEW</span>':r.change==null||r.change===0?'<span class="rank-same">—</span>':r.change>0?'<span class="rank-up">▲ '+r.change+'</span>':'<span class="rank-down">▼ '+Math.abs(r.change)+'</span>';
+  function rankingHTML(){const p=sys.profile;rankView=ranking.getSnapshot({depth:dm(best),skin:p.selectedCharacter,pet:sys.petOf()?.id,level:p.level});const top=rankView.rows.slice(0,20),me=rankView.rows.find(r=>r.id==='local-me');
+    const row=r=>'<button type="button" class="rank-row" data-rank-id="'+esc(r.id)+'"><b>'+r.rank+'</b><span>'+esc(r.nickname)+'</span><strong>'+r.depth.toLocaleString('ko-KR')+'m</strong>'+rankDelta(r)+'</button>';
+    return '<div class="rank-root"><header class="rank-header"><small>'+esc(rankView.day.replaceAll('-','.'))+'</small><strong>오늘의 랭킹</strong><span>TEST · 가상 순위 / 서버 미연결</span><small>하루 1회 갱신 · KST 기준(테스트)</small></header><div class="rank-list">'+top.map(row).join('')+'</div><section class="rank-own"><small>나의 순위 · 테스트</small>'+row(me)+'<small>기기에 저장된 최고 기록 '+meters(best)+'m</small></section><div id="rankDetail" class="rank-detail hidden"></div></div>';}
+  function mountRanking(){const root=$('drawerBody');root.querySelectorAll('[data-rank-id]').forEach(b=>b.addEventListener('click',()=>{const r=rankView.rows.find(x=>x.id===b.dataset.rankId);if(!r)return;rankSelected=r.id;const c=sys.SKIN_CATALOG.find(x=>x.id===r.skin)||sys.SKIN_CATALOG[0],face=sys.SKIN_CATALOG.find(x=>x.actor===c.actor&&x.starter),pet=sys.PET_CATALOG.find(x=>x.id===r.pet);const detail=$('rankDetail');detail.innerHTML='<button type="button" class="rank-shade" aria-label="닫기"></button><section class="rank-profile"><button type="button" class="rank-close" aria-label="닫기">✕</button><div class="rank-profile-head"><div class="rank-face"><img src="'+esc(face.front)+'" alt="캐릭터 얼굴"></div><div><strong>'+esc(r.nickname)+'</strong><small>Lv. '+r.level+'</small></div></div><div class="rank-profile-item"><span>스킨</span><b>'+esc(skinLabel(c))+'</b></div><div class="rank-profile-item"><span>펫</span><b>'+esc(pet?.name||'없음')+'</b></div></section>';detail.classList.remove('hidden');detail.querySelectorAll('button').forEach(x=>x.addEventListener('click',()=>{detail.classList.add('hidden');rankSelected=null;}));}));}
+  const titles={nickname:'닉네임 등록',ranking:'오늘의 랭킹',chooseActor:'캐릭터 선택',character:'캐릭터 · 보관함',loadout:'출전 아이템 선택',slotUnlock:'슬롯 확장',shop:'상점',earn:'코인 획득소',records:'내 기록',settings:'설정'};
   function openPanel(type,notice=''){if(!titles[type])return;sys.audio.unlock();$('drawerTitle').textContent=titles[type];$('drawer').querySelector('.drawer-card').classList.toggle('is-market',type==='shop');
     const prof=sys.profile,prog=sys.levelProgress(prof.totalDepth),fmt=n=>Number(n).toLocaleString('ko-KR');
     let html='';
-    if(type==='chooseActor')html=`<div class="actor-onboarding"><p>함께 지옥을 탐험할 캐릭터를 선택하세요.</p><div class="starter-pick-grid">${sys.ACTOR_CATALOG.map(a=>{const c=sys.SKIN_CATALOG.find(x=>x.id===a.base);return '<button class="actor-onboard-card" type="button" data-initial-actor="'+a.id+'"><img src="'+c.front+'" alt=""><strong>'+a.name+(a.id==='uiji'?' (남)':' (여)')+'</strong><small>무료 기본 복장</small></button>'}).join('')}</div><p class="muted">${sys.TEST_MODE?'테스트용: 이후 캐릭터 메뉴에서 남녀 전환 가능 · 코인 1,000개로 구매 시험':'최초 선택한 캐릭터로 계속 성장합니다.'}</p></div>`;
+    if(type==='nickname')html='<form id="nicknameForm" class="rank-nickname"><strong>나만의 닉네임</strong><p>2~16자 · 나중에 랭킹에 표시됩니다. 현재는 기기 안에만 저장돼요.</p><input id="nicknameInput" maxlength="32" autocomplete="off" placeholder="닉네임 입력" required><button type="submit" class="start-button">등록하기</button><small id="nicknameError" role="alert"></small></form>';
+    else if(type==='ranking')html=rankingHTML();
+    else if(type==='chooseActor')html=`<div class="actor-onboarding"><p>함께 지옥을 탐험할 캐릭터를 선택하세요.</p><div class="starter-pick-grid">${sys.ACTOR_CATALOG.map(a=>{const c=sys.SKIN_CATALOG.find(x=>x.id===a.base);return '<button class="actor-onboard-card" type="button" data-initial-actor="'+a.id+'"><img src="'+c.front+'" alt=""><strong>'+a.name+'</strong><small>무료 기본 복장</small></button>'}).join('')}</div><p class="muted">${sys.TEST_MODE?'테스트용: 이후 캐릭터 메뉴에서 남녀 전환 가능 · 코인 1,000개로 구매 시험':'최초 선택한 캐릭터로 계속 성장합니다.'}</p></div>`;
     else if(type==='character')html=characterPanelHTML(prof,prog,fmt);
     else if(type==='shop')html=shopPanelHTML(prof,fmt);
     else if(type==='loadout')html=loadoutHTML(prof);
@@ -1007,9 +1025,11 @@
     else if(type==='settings')html=`<div class="info-card"><strong>🎮 가속·벽점프 버튼 위치</strong><span class="muted">휴대폰을 잡고 연타하기 편한 손으로 가속 버튼을 옮길 수 있어. 선택은 자동 저장돼.</span><div class="control-layout-choices" role="group" aria-label="가속 버튼 방향"><button type="button" class="control-layout-choice" data-boost-side="left" aria-pressed="${prof.settings.boostSide!=='right'}">🌪️ 가속 왼쪽<br><small>점프 오른쪽</small></button><button type="button" class="control-layout-choice" data-boost-side="right" aria-pressed="${prof.settings.boostSide==='right'}">🌪️ 가속 오른쪽<br><small>점프 왼쪽</small></button></div></div><div class="info-card"><strong>🔊 음량 설정</strong><span class="muted">BGM은 배경음악이야. 홈은 무음이니까 아래 음악의 ▶ 미리듣기를 켜고 슬라이더를 움직이면 바로 확인할 수 있어.</span><label for="musicRange">BGM (배경음악) <span id="musicValue">${Math.round(prof.settings.music*100)}%</span><input id="musicRange" type="range" min="0" max="100" value="${Math.round(prof.settings.music*100)}"></label><label for="sfxRange">효과음 <span id="sfxValue">${Math.round(prof.settings.sfx*100)}%</span><input id="sfxRange" type="range" min="0" max="100" value="${Math.round(prof.settings.sfx*100)}"></label></div><div class="info-card"><strong>🎵 게임 음악 미리듣기</strong><span class="muted">게임에서 7곡이 순서대로 이어져. 홈은 무음이며 ▶는 선택한 곡의 미리듣기야.</span><ul class="slot-list music-preview-list">${sys.MUSIC_SLOTS.slice(1).map((v,i)=>`<li><span>${(i+1)+'번 곡'} · ${esc(v.title||v.name)}</span><button type="button" data-music-preview="${i+1}" aria-label="${esc(v.title||v.name)} 미리듣기">▶</button></li>`).join('')}</ul></div>`;
     $('drawerBody').innerHTML=(notice?'<div class="shop-notice" role="status">'+esc(notice)+'</div>':'')+html;
     $('drawer').classList.remove('hidden');
-    $('drawerClose').disabled=type==='chooseActor'&&!prof.identityChosen;
+    $('drawerClose').disabled=(type==='chooseActor'&&!prof.identityChosen)||(type==='nickname'&&!ranking.nickname());
+    if(type==='nickname')$('nicknameForm').addEventListener('submit',e=>{e.preventDefault();if(!ranking.register($('nicknameInput').value)){$('nicknameError').textContent='2~16자 닉네임을 입력해 주세요. 저장이 실패하면 다시 시도하세요.';return;}syncLobbyCharacter();closePanel();});
+    if(type==='ranking')mountRanking();
     if(type==='chooseActor')$('drawerBody').querySelectorAll('[data-initial-actor]').forEach(b=>b.addEventListener('click',()=>{
-      if(sys.selectActor(b.dataset.initialActor)){syncLobbyCharacter();updateUI();closePanel();}
+      if(sys.selectActor(b.dataset.initialActor)){syncLobbyCharacter();updateUI();if(!ranking.nickname())openPanel('nickname');else closePanel();}
       else openPanel('chooseActor','저장 실패 · 다시 선택해 주세요.');
     }));
     if(type==='character')mountWardrobeControls();
@@ -1084,6 +1104,7 @@
   function closePanel(){
     previewSerial++;pendingSlot=null;marketSelected=null;marketCharacter=null;marketGroup=null;
     if(!sys.profile.identityChosen){openPanel('chooseActor');return;}
+    if(!ranking.nickname()){openPanel('nickname');return;}
     $('drawerClose').disabled=false;
     $('drawer').classList.add('hidden');
     sys.audio.stopPreview();
@@ -1105,7 +1126,7 @@
     embers.appendChild(frag);
   })();
   applyControlSide();fit();updateUI();requestAnimationFrame(frame);
-  if(!sys.profile.identityChosen)openPanel('chooseActor');
+  if(!sys.profile.identityChosen)openPanel('chooseActor');else if(!ranking.nickname())openPanel('nickname');
   // Expose read-only simple debug state for local test harnesses, never gameplay rewards.
-  if(sys.TEST_MODE)window.HellFallTest={snapshot:()=>({stage:s.stage,depth:s.depth,speed:s.speed,timeLeft:s.timeLeft,wall:s.wall,hopProgress:s.hopProgress,hopVisual:s.hopVisual,boost:s.boost,fold:s.fold,cadence:s.cadence,tapCount:s.tapCount,runCoins:s.runCoins,hazards:s.obstacles.length,gates:s.timeGates.length,checkpoints:s.checkpointGates.length,checkpointFlash:s.checkpointFlash,lastCheckpointBonus:s.lastCheckpointBonus,boostSide:sys.profile.settings.boostSide,bubbleCharges:s.bubbleCharges,pet:s.pet?.id||null,petX:s.petX,petPose:s.petPose||null,shieldFlash:s.shieldFlash,runItems:s.runItems.slice(),won:s.won,poseFrames:window.HellStarterPoses?.getCachedCount()||0,drinks:{speed:{...s.drinks.speed},brake:{...s.drinks.brake},time:{...s.drinks.time}},displayDepth:dm(s.depth),stats:effectiveStats(),character:sys.profile.selectedCharacter,profile:{...sys.profile}}),start:()=>start(false)};
+  if(sys.TEST_MODE)window.HellFallTest={snapshot:()=>({stage:s.stage,depth:s.depth,speed:s.speed,timeLeft:s.timeLeft,wall:s.wall,hopProgress:s.hopProgress,hopVisual:s.hopVisual,boost:s.boost,fold:s.fold,cadence:s.cadence,tapCount:s.tapCount,runCoins:s.runCoins,hazards:s.obstacles.length,gates:s.timeGates.length,checkpoints:s.checkpointGates.length,checkpointFlash:s.checkpointFlash,lastCheckpointBonus:s.lastCheckpointBonus,boostSide:sys.profile.settings.boostSide,bubbleCharges:s.bubbleCharges,pet:s.pet?.id||null,petX:s.petX,petPose:s.petPose||null,shieldFlash:s.shieldFlash,runItems:s.runItems.slice(),mods:{...s.mods},won:s.won,poseFrames:window.HellStarterPoses?.getCachedCount()||0,drinks:{speed:{...s.drinks.speed},brake:{...s.drinks.brake},time:{...s.drinks.time}},displayDepth:dm(s.depth),stats:effectiveStats(),character:sys.profile.selectedCharacter,profile:{...sys.profile}}),start:()=>start(false)};
 })();

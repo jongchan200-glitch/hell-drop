@@ -17,11 +17,11 @@
  function reward(seconds,percent=0){return Math.round(seconds*(1+percent/100)*100)/100;}
  function speedStep(depth,speed,oldBoost,rate,stats,dt){
    const demand=Math.max(0,Math.min(1,(rate-T.TAP_RATE_BASE)/T.TAP_RATE_RANGE)),targetBoost=Math.pow(demand,1.55);
-   const responseBoost=targetBoost>oldBoost?T.RISE_RESPONSE:T.FALL_RESPONSE*(stats.brake/70);
+   const responseBoost=targetBoost>oldBoost?T.RISE_RESPONSE*(1+(stats.accel||0)/100):T.FALL_RESPONSE*(stats.brake/70);
    const boost=oldBoost+(targetBoost-oldBoost)*(1-Math.exp(-responseBoost*dt));
    const tier=tierOf(depth),ratio=stats.speed/70;
    const target=Math.min(T.MAX*ratio,T.GLIDE+tier*T.GLIDE_TIER+(T.BOOST_SPEED+tier*T.BOOST_TIER)*Math.pow(boost,1.15)*ratio);
-   const response=target>speed?4.25:2.6*(stats.brake/70);
+   const response=target>speed?4.25*(1+(stats.accel||0)/100):2.6*(stats.brake/70);
    return {boost,speed:speed+(target-speed)*(1-Math.exp(-response*dt))};
  }
  function simulateIdeal({speed=60,brake=70,timeBonus=0,clockRate=1,taps=6}={}){

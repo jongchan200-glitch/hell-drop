@@ -11,8 +11,8 @@
   <link rel="preload" href="assets/starter_girl_portrait_v29.webp" as="image">
   <link rel="preload" href="assets/starter_boy_actions_v29.webp" as="image">
   <link rel="preload" href="assets/starter_girl_actions_v29.webp" as="image">
-  <link rel="stylesheet" href="style.css?v=nov28-winter36">
-  <link rel="stylesheet" href="hero_turnaround.css?v=nov28-winter36">
+  <link rel="stylesheet" href="style.css?v=nov28-rank37">
+  <link rel="stylesheet" href="hero_turnaround.css?v=nov28-rank37">
 </head>
 <body>
   <svg class="svg-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
@@ -87,18 +87,18 @@
             <div class="lobby-backlight" aria-hidden="true"></div>
             <div class="lobby-shadow" aria-hidden="true"></div>
             <div id="lobbyCharacter" class="lobby-character" tabindex="0" role="button" aria-label="기본 탐험가 캐릭터 보기">
-              <div class="turnaround-stage"><img id="lobbyHero" class="turnaround-pose is-selected" draggable="false" alt=""></div>
+              <div id="lobbyAura" class="lobby-aura" aria-hidden="true"></div><div class="turnaround-stage"><img id="lobbyHero" class="turnaround-pose is-selected" draggable="false" alt=""></div>
             </div>
             <span id="homePet" class="home-dragon hidden" aria-hidden="true"></span>
             <div class="showcase-ground" aria-hidden="true"></div>
             <div class="character-traits" id="lobbyTraits" aria-label="현재 캐릭터 능력치">
-              <span id="lobbyClassTag">무료 기본</span>
+              <span id="lobbyClassTag" hidden></span>
               <strong>⚡ 최고속 <b id="lobbySpeedStat">60%</b></strong>
               <strong>❄ 감속 <b id="lobbyBrakeStat">70%</b></strong>
-              <strong id="lobbyTimeStat" class="hidden"></strong>
+              <strong id="lobbyTimeStat" class="hidden"></strong><strong id="lobbyLifeStat" class="hidden"></strong><strong id="lobbyAccelStat" class="hidden"></strong>
             </div>
-            <div class="character-identity"><span class="identity-diamond">✦</span><b id="characterIdentityName">우지</b><i></i><span id="characterIdentitySubtitle">기본 탐험가</span></div>
-            <div class="character-turn-tip"><span>‹</span> 좌우로 밀어 앞·뒷모습 바꾸기 <span>›</span></div>
+            <div class="character-identity" hidden><span class="identity-diamond">✦</span><b id="characterIdentityName">우지</b><i></i><span id="characterIdentitySubtitle">기본 탐험가</span></div>
+            <div class="character-turn-tip" hidden><span>‹</span> 좌우로 밀어 앞·뒷모습 바꾸기 <span>›</span></div>
           </div>
           <div class="lobby-bottom">
             <div class="lobby-summary"><div><small>PERSONAL BEST</small><strong><svg><use href="#icon-trophy"></use></svg><span id="homeBest">0</span><i>m</i></strong></div><div class="summary-divider"></div><div><small>TOTAL DESCENT</small><strong><svg><use href="#icon-spark"></use></svg><span id="homeTotal">0</span><i>m</i></strong></div></div>
@@ -108,7 +108,7 @@
               <button type="button" data-panel="character"><svg><use href="#icon-person"></use></svg><span>캐릭터</span></button>
               <button type="button" data-panel="shop"><svg><use href="#icon-shop"></use></svg><span>상점</span></button>
               <button type="button" data-panel="earn"><svg><use href="#icon-coin"></use></svg><span>코인</span></button>
-              <button type="button" data-panel="records"><svg><use href="#icon-trophy"></use></svg><span>기록</span></button>
+              <button type="button" data-panel="ranking"><svg><use href="#icon-trophy"></use></svg><span>랭킹</span></button>
               <button type="button" data-panel="settings"><svg><use href="#icon-gear"></use></svg><span>설정</span></button>
             </nav>
             <div class="lobby-home-indicator" aria-hidden="true"></div>
@@ -135,15 +135,17 @@
       <section id="drawer" class="drawer hidden" aria-label="게임 부가 메뉴" role="dialog" aria-modal="true">
         <div class="drawer-card"><div class="drawer-head"><h2 id="drawerTitle">메뉴</h2><button id="drawerClose" type="button" aria-label="닫기">✕</button></div><div id="drawerBody" class="drawer-body"></div></div>
       </section>
-      <div class="version">WEB 3.6 TEST · WINTER</div>
+      <div class="version">WEB 3.7 TEST · RANK & ITEMS</div>
     </section>
     <aside class="outside-note">연타로 토네이도 성장 · 누적 레벨과 코인은 이 브라우저에 저장돼요.</aside>
   </main>
-  <script src="platform.js?v=nov28-winter36" defer></script>
-  <script src="balance.js?v=nov28-winter36" defer></script>
-  <script src="systems.js?v=nov28-winter36" defer></script>
-  <script src="hero_turnaround.js?v=nov28-winter36" defer></script>
-  <script src="starter-poses.js?v=nov28-winter36" defer></script>
-  <script src="game.js?v=nov28-winter36" defer></script>
+  <script src="platform.js?v=nov28-rank37" defer></script>
+  <script src="balance.js?v=nov28-rank37" defer></script>
+  <script src="items.js?v=nov28-rank37" defer></script>
+  <script src="systems.js?v=nov28-rank37" defer></script>
+  <script src="ranking.js?v=nov28-rank37" defer></script>
+  <script src="hero_turnaround.js?v=nov28-rank37" defer></script>
+  <script src="starter-poses.js?v=nov28-rank37" defer></script>
+  <script src="game.js?v=nov28-rank37" defer></script>
 </body>
 </html>
